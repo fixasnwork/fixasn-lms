@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Logo, Button, Modal, Card } from '@/components/ui';
+import { Logo, Button, Card } from '@/components/ui';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useAppStore } from '@/store/useAppStore';
 import { ADMIN_EMAIL } from '@/data/constants';

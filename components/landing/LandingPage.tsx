@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Logo, Button, Card, Badge } from '@/components/ui';
+import { Logo, Button, Card } from '@/components/ui';
 import { useAppStore } from '@/store/useAppStore';
 import { WA_LINK } from '@/data/constants';
 import { PackagesSection } from './PackagesSection';

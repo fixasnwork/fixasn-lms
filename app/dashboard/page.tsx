@@ -2,7 +2,7 @@
 
 import { useAppStore } from '@/store/useAppStore';
 import { useAuthStore } from '@/store/useAuthStore';
-import { StatCard, Button, Card, Badge } from '@/components/ui';
+import { StatCard, Button, Card } from '@/components/ui';
 import { useRouter } from 'next/navigation';
 
 export default function DashboardHome() {

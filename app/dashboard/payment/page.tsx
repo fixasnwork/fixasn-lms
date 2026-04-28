@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Button, Card, Badge, Modal } from '@/components/ui';
+import { Button, Card, Modal } from '@/components/ui';
 import { useAppStore } from '@/store/useAppStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { WA_LINK, WA_NUMBER } from '@/data/constants';
@@ -18,7 +18,6 @@ function PaymentContent() {
   const [selectedPkgId, setSelectedPkgId] = useState<string | null>(pkgId);
   const [proofMethod, setProofMethod] = useState<'upload' | 'wa'>('upload');
   const [proofUrl, setProofUrl] = useState('');
-  const [proofFile, setProofFile] = useState<{ name: string; url: string } | null>(null);
   const [step, setStep] = useState<'select' | 'pay' | 'done'>('select');
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [showWAWarning, setShowWAWarning] = useState(false);
@@ -201,7 +200,7 @@ function PaymentContent() {
             </h3>
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 mb-4">
               <p className="text-xs text-amber-700 font-bold mb-3">
-                ⚠️ Gunakan nominal transfer yang PERSIS sama untuk加快确认
+                ⚠️ Gunakan nominal transfer yang PERSIS sama untuk mempercepat konfirmasi
               </p>
               <div className="flex flex-col gap-2">
                 {banks.map((b) => (
@@ -316,7 +315,7 @@ function PaymentContent() {
                   Konfirmasi via WhatsApp
                 </h4>
                 <p className="text-sm text-gray-500 mb-4 leading-relaxed">
-                  Klik tombol di bawah untuk membuka WhatsApp. Sampaikan你已经 transfer dan
+                  Klik tombol di bawah untuk membuka WhatsApp. Sampaikan bahwa Anda sudah transfer dan
                   sebutkan nama paket serta nominal.
                 </p>
                 <Button

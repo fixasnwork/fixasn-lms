@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import type { Question, QuestionCategory, Tryout } from '@/lib/types';
 import { useAppStore } from '@/store/useAppStore';
-import { Button, Badge, Card, Modal } from '@/components/ui';
+import { Button, Card, Modal } from '@/components/ui';
 import SoalTable from '@/components/admin/SoalTable';
 import ImageUpload from '@/components/admin/ImageUpload';
 
@@ -523,36 +523,7 @@ export default function SoalPage() {
 
             <Button
               variant="primary"
-              onClick={() => {
-                if (!soalForm.q.trim() && !soalForm.qImg) {
-                  alert('Pertanyaan tidak boleh kosong!');
-                  return;
-                }
-                const filledOpts = soalForm.opts.filter(
-                  (o, j) => o.trim() || (soalForm.optImgs && soalForm.optImgs[j])
-                );
-                if (filledOpts.length < 2) {
-                  alert('Isi minimal 2 pilihan jawaban!');
-                  return;
-                }
-                const currentQ = getCurrentQuestions();
-                const newId =
-                  editSoal ||
-                  (currentQ.length > 0
-                    ? Math.max(...currentQ.map((q) => Number(q.id) || 0)) + 1
-                    : 1);
-                const soalBaru = { ...soalForm, id: newId };
-                const updated = editSoal
-                  ? currentQ.map((q) => (q.id === editSoal ? soalBaru : q))
-                  : [...currentQ, soalBaru];
-                saveQ(updated);
-                setShowAddSoal(false);
-                setEditSoal(null);
-                setSoalSavedMsg(
-                  editSoal ? '✅ Soal diperbarui!' : '✅ Soal ditambahkan!'
-                );
-                setTimeout(() => setSoalSavedMsg(''), 2500);
-              }}
+              onClick={saveSoal}
             >
               💾 Simpan Soal
             </Button>

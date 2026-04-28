@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, Badge, Button } from '@/components/ui';
+import { useRouter } from 'next/navigation';
+import { Card, Button } from '@/components/ui';
 
 const RANKINGS = [
   { rank: 1, name: 'Rizki Andalas', skor: 345, tryouts: 12, paket: 'Paket Komplit', avatar: 'RA', badge: '🥇' },
@@ -17,6 +18,7 @@ const RANKINGS = [
 ];
 
 export default function RankingPage() {
+  const router = useRouter();
   const [tab, setTab] = useState<'all' | 'weekly' | 'monthly'>('all');
 
   return (
@@ -95,7 +97,7 @@ export default function RankingPage() {
                 i !== RANKINGS.slice(3).length - 1 ? 'border-b border-gray-100' : ''
               } hover:bg-gray-50 transition-colors`}
             >
-              <div className="w-8 text-center font-black text-gray-400 text-sm">{r.rank + 3}</div>
+              <div className="w-8 text-center font-black text-gray-400 text-sm">{r.rank}</div>
               <div
                 className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-white flex-shrink-0"
                 style={{
@@ -127,7 +129,7 @@ export default function RankingPage() {
           <p className="text-white/70 text-sm mb-3">
             Rutin tryout dan naikkan skormu sekarang!
           </p>
-          <Button variant="gold" onClick={() => window.location.href = '/dashboard/tryout'}>
+          <Button variant="gold" onClick={() => router.push('/dashboard/tryout')}>
             🚀 Mulai Tryout Sekarang
           </Button>
         </Card>

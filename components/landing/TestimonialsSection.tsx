@@ -1,7 +1,5 @@
 'use client';
 
-import { Card } from '@/components/ui';
-
 export function TestimonialsSection() {
   const testimonials = [
     {

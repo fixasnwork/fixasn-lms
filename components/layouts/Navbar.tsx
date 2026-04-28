@@ -14,10 +14,6 @@ export default function Navbar() {
     router.push('/login');
   };
 
-  const handleRegister = () => {
-    router.push('/login');
-  };
-
   return (
     <nav className="bg-white border-b border-gray-100 sticky top-0 z-50 shadow-sm">
       <div className="max-w-[1180px] mx-auto px-6 flex items-center justify-between h-[68px]">
@@ -28,7 +24,7 @@ export default function Navbar() {
             <Button variant="ghost" onClick={handleLogin} size="sm">
               Masuk
             </Button>
-            <Button variant="primary" onClick={handleRegister} size="sm">
+            <Button variant="primary" onClick={handleLogin} size="sm">
               Daftar Gratis
             </Button>
           </div>

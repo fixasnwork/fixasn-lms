@@ -4,13 +4,11 @@ import { useState, useCallback } from 'react';
 import type { Question, Package } from '@/lib/types';
 import { getScore } from '@/lib/scoring';
 import { useAppStore } from '@/store/useAppStore';
-import { useAuthStore } from '@/store/useAuthStore';
 import TryoutEngine from '@/components/tryout/TryoutEngine';
 import { Button, Badge, Card, Modal } from '@/components/ui';
 import { WA_LINK } from '@/data/constants';
 
 export default function TryoutPage() {
-  const { user } = useAuthStore();
   const {
     packages,
     questions,
@@ -38,7 +36,6 @@ export default function TryoutPage() {
   const [activePkgId, setActivePkgId] = useState<string | null>(null);
   const [activeTryoutId, setActiveTryoutId] = useState<string | null>(null);
   const [completedTryouts, setCompletedTryouts] = useState<Record<string, string[]>>({});
-  const [unlockedVideo, setUnlockedVideo] = useState(false);
   const [showPayModal, setShowPayModal] = useState<Package | null>(null);
   const [proofFile, setProofFile] = useState<{ name: string; url: string } | null>(null);
   const [payStep, setPayStep] = useState<'form' | 'success'>('form');
@@ -382,7 +379,6 @@ export default function TryoutPage() {
                 className="w-full mb-2.5"
                 onClick={() => {
                   if (showPayModal.video) {
-                    setUnlockedVideo(true);
                     setShowPayModal(null);
                     setPayStep('form');
                     setProofFile(null);

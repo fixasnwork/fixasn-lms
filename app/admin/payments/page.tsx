@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import type { Payment } from '@/lib/types';
 import { Button, Badge, Card, Modal, StatCard } from '@/components/ui';
-import { useAuthStore } from '@/store/useAuthStore';
 
 // Sample payment data for admin demo
 const SAMPLE_PAYMENTS: Payment[] = [
