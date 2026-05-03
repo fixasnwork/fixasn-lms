@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  allowedDevOrigins: ["100.80.192.30", "macmini"], // tailscale remote IP
 };
 
 export default nextConfig;

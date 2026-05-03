@@ -14,9 +14,8 @@ interface PackagesSectionProps {
 export function PackagesSection({ packages, logoConfig, onRegister }: PackagesSectionProps) {
   const [tab, setTab] = useState<'tryout' | 'video'>('tryout');
 
-  const tryoutPkgs = packages.filter((p) => !p.video);
-  const videoPkgs = packages.filter((p) => p.video);
-  const shown = tab === 'tryout' ? tryoutPkgs : videoPkgs;
+  const tryoutPkgs = packages.filter((p) => p.isActive && !p.isTrial);
+  const shown = tryoutPkgs;
 
   return (
     <section className="py-12 px-5 bg-[#F8FAFF] w-full box-border">
@@ -30,23 +29,11 @@ export function PackagesSection({ packages, logoConfig, onRegister }: PackagesSe
 
         {/* Tabs */}
         <div className="flex gap-2 justify-center mb-8">
-          {(['tryout', 'video'] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`
-                px-6.5 py-2.25 rounded-full font-bold text-sm font-['Montserrat',sans-serif]
-                border-2 border-[#1B3A6B] cursor-pointer transition-all duration-200
-                ${
-                  tab === t
-                    ? 'bg-[#1B3A6B] text-white'
-                    : 'bg-transparent text-[#1B3A6B]'
-                }
-              `}
-            >
-              {t === 'tryout' ? '📝 Tryout SKD' : '🎬 Video Belajar'}
-            </button>
-          ))}
+          <button
+            className="px-6.5 py-2.25 rounded-full font-bold text-sm font-['Montserrat',sans-serif] border-2 border-[#1B3A6B] bg-[#1B3A6B] text-white cursor-pointer"
+          >
+            📝 Tryout SKD
+          </button>
         </div>
 
         {/* Package Cards */}
@@ -62,37 +49,22 @@ export function PackagesSection({ packages, logoConfig, onRegister }: PackagesSe
             <Card
               key={pkg.id}
               hover
-              className="relative pt-6"
+              className="relative"
               style={{
-                border: pkg.popular ? '2px solid #F5C518' : '1px solid #F1F5F9',
-                paddingTop: pkg.popular ? 32 : 24,
+                border: '1px solid #F1F5F9',
+                paddingTop: 24,
               }}
             >
-              {pkg.popular && (
-                <div className="absolute -top-3.25 left-1/2 -translate-x-1/2 bg-gradient-to-br from-[#B8860B] to-[#F5C518] text-white px-5 py-1 rounded-full text-xs font-extrabold whitespace-nowrap">
-                  🔥 PALING LARIS
-                </div>
-              )}
-
               <div className="mb-4">
                 <h3 className="font-black text-lg text-[#1B3A6B] mb-1.5">{pkg.name}</h3>
-                <p className="text-gray-600 text-sm m-0">{pkg.desc}</p>
+                <p className="text-gray-600 text-sm m-0">{pkg.description}</p>
               </div>
 
-              {pkg.tryouts > 0 && (
-                <div className="flex gap-2 flex-wrap mb-4">
-                  <Badge color="blue">📝 {pkg.tryouts} Tryout SKD</Badge>
-                  <Badge color="yellow">⏱ 100 menit/sesi</Badge>
-                  <Badge color="purple">110 Soal/sesi</Badge>
-                </div>
-              )}
-
-              {pkg.video && (
-                <div className="flex gap-2 flex-wrap mb-4">
-                  <Badge color="blue">🎬 Video TWK+TIU+TKP</Badge>
-                  <Badge color="green">📥 Modul PDF Download</Badge>
-                </div>
-              )}
+              <div className="flex gap-2 flex-wrap mb-4">
+                <Badge color="blue">📝 Tryout SKD</Badge>
+                <Badge color="yellow">⏱ 100 menit/sesi</Badge>
+                <Badge color="purple">110 Soal/sesi</Badge>
+              </div>
 
               <div className="flex items-end justify-between mt-4">
                 <div>
@@ -102,7 +74,7 @@ export function PackagesSection({ packages, logoConfig, onRegister }: PackagesSe
                   <div className="text-xs text-gray-400">sekali bayar, akses selamanya</div>
                 </div>
                 <Button
-                  variant={pkg.popular || pkg.video ? 'gold' : 'primary'}
+                  variant="primary"
                   onClick={onRegister}
                   size="sm"
                 >

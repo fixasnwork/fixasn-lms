@@ -2,8 +2,11 @@ import type { Question } from "@/lib/types";
 
 export function getScore(q: Question, answerIdx: number | undefined | null): number {
   if (answerIdx === undefined || answerIdx === null) return 0;
-  if (q.cat === "TKP") return q.tkpVals?.[answerIdx] ?? 0;
-  return answerIdx === q.ans ? 5 : 0;
+  if (q.category === "TKP") {
+    const opt = q.options[answerIdx];
+    return opt?.tkpValue ?? 0;
+  }
+  return answerIdx === q.correctAnswer ? 5 : 0;
 }
 
 export function calculateScoring(
@@ -12,7 +15,7 @@ export function calculateScoring(
 ): { TWK: number; TIU: number; TKP: number; total: number } {
   const totals = { TWK: 0, TIU: 0, TKP: 0 };
   questions.forEach((q, i) => {
-    totals[q.cat] += getScore(q, answers[i]);
+    totals[q.category] += getScore(q, answers[i]);
   });
   return { ...totals, total: totals.TWK + totals.TIU + totals.TKP };
 }

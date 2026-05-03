@@ -1,9 +1,18 @@
 'use client';
 
-import { Card } from '@/components/ui';
+import { useState } from 'react';
+import { Card, Modal, Button } from '@/components/ui';
+
+interface VideoItem {
+  title: string;
+  duration: string;
+  views: number;
+}
 
 export default function VideoPage() {
-  const categories = [
+  const [playingVideo, setPlayingVideo] = useState<VideoItem | null>(null);
+
+  const categories: { cat: string; color: string; bg: string; videos: VideoItem[] }[] = [
     {
       cat: 'TWK',
       color: '#2563EB',
@@ -39,6 +48,23 @@ export default function VideoPage() {
     },
   ];
 
+  const handlePlay = (video: VideoItem) => {
+    setPlayingVideo(video);
+  };
+
+  const handlePDFDownload = (video: VideoItem) => {
+    const content = `Modul Pembelajaran\n${video.title}\n\nKategori: CPNS / SKD\nDurasi Video: ${video.duration}\n\nModul PDF lengkap akan segera tersedia.\nTim kami sedang menyiapkan materi pembelajaran terbaik.\n\n— Tim FIX ASN`;
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${video.title.replace(/\s+/g, '_')}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div>
       <h2 className="font-black text-2xl text-[#1B3A6B] mb-1">🎬 Video Belajar</h2>
@@ -62,16 +88,13 @@ export default function VideoPage() {
                   Paket Video Belajar Komplit
                 </h3>
                 <span className="bg-amber-200 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full">
-                  🕐 Coming Soon
+                  🔄 Dalam Pengembangan
                 </span>
               </div>
               <p className="text-sm text-gray-500 m-0">
-                Video pembelajaran sedang dalam tahap produksi. Segera hadir!
+                Video pembelajaran sedang dalam tahap produksi. Modul PDF dapat diunduh sebagai referensi belajar.
               </p>
             </div>
-          </div>
-          <div className="bg-amber-100 text-amber-600 px-4 py-2 rounded-full font-bold text-sm">
-            🕐 Segera Hadir
           </div>
         </div>
       </Card>
@@ -104,10 +127,16 @@ export default function VideoPage() {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-bold bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors">
+                  <button
+                    className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-bold bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => handlePDFDownload(v)}
+                  >
                     📥 PDF
                   </button>
-                  <button className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-bold bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors">
+                  <button
+                    className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-bold bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => handlePlay(v)}
+                  >
                     ▶️ Mulai
                   </button>
                 </div>
@@ -116,6 +145,41 @@ export default function VideoPage() {
           </div>
         </div>
       ))}
+
+      {/* Video Player Modal */}
+      <Modal
+        open={playingVideo !== null}
+        onClose={() => setPlayingVideo(null)}
+        title={playingVideo?.title || 'Video Player'}
+        width={720}
+      >
+        <div className="aspect-video bg-[#0C1E45] rounded-xl flex flex-col items-center justify-center gap-4">
+          <div className="text-6xl">🎬</div>
+          <p className="text-white/80 text-base font-bold text-center px-8">
+            Video &ldquo;{playingVideo?.title}&rdquo; akan segera hadir.
+          </p>
+          <p className="text-white/50 text-sm text-center px-8">
+            Tim kami sedang memproduksi materi pembelajaran terbaik untuk membantu persiapan CPNS Anda. Silakan unduh modul PDF sebagai referensi belajar sementara.
+          </p>
+          <div className="flex gap-3 mt-2">
+            <Button
+              variant="white"
+              size="sm"
+              onClick={() => {
+                if (playingVideo) {
+                  handlePDFDownload(playingVideo);
+                  setPlayingVideo(null);
+                }
+              }}
+            >
+              📥 Unduh Modul PDF
+            </Button>
+          </div>
+        </div>
+        <div className="text-center text-xs text-gray-400 mt-4">
+          ⏱ Durasi: {playingVideo?.duration} &middot; Klik tombol di atas untuk mengunduh modul belajar
+        </div>
+      </Modal>
     </div>
   );
 }

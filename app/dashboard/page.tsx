@@ -11,9 +11,19 @@ export default function DashboardHome() {
   const { packages } = useAppStore();
 
   const userName = user?.name || 'Pengguna';
-  const remainingTryouts = 10; // Mock data
-  const usedTryouts = 3; // Mock data
-  const unlockedVideo = false; // Mock data
+  const purchasedPkgIds: number[] = []; // TODO: derive from payments API
+
+  // Video access
+  const unlockedVideo = false;
+
+  // Calculate tryout stats from purchased packages
+  const ownedPkgs = packages.filter((p) => purchasedPkgIds.includes(p.id));
+  const totalTryouts = ownedPkgs.length;
+  const remainingTryouts = totalTryouts;
+  const usedTryouts = 0;
+
+  // Package ownership helper
+  const isOwned = (pkgId: number) => purchasedPkgIds.includes(pkgId);
 
   return (
     <div>
@@ -52,7 +62,7 @@ export default function DashboardHome() {
             ['TIU - Intelegensia Umum', 65, '#7C3AED'],
             ['TKP - Karakteristik Pribadi', 82, '#D97706'],
           ].map(([cat, pct, col]) => (
-            <div key={cat} className="mb-3.5">
+            <div key={cat as string} className="mb-3.5">
               <div className="flex justify-between mb-1.25">
                 <span className="text-sm font-semibold text-gray-700">{cat as string}</span>
                 <span className="text-sm font-black" style={{ color: col as string }}>
@@ -79,7 +89,7 @@ export default function DashboardHome() {
               variant="primary"
               className="w-full"
               onClick={() => router.push('/dashboard/tryout')}
-              disabled={remainingTryouts <= 0}
+              disabled={remainingTryouts <= 0 && purchasedPkgIds.length === 0}
             >
               📝 Mulai Tryout
             </Button>
@@ -107,27 +117,48 @@ export default function DashboardHome() {
           📦 Paket Tersedia
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          {packages.filter((p) => !p.video).map((pkg) => (
-            <Card key={pkg.id} hover className="border-2 border-dashed border-gray-300 bg-gray-50 p-4.5 cursor-pointer">
-              <div className="flex items-center justify-between mb-1">
-                <div className="font-extrabold text-base text-gray-400">{pkg.name}</div>
-                <div className="text-4.5">🔒</div>
-              </div>
-              <div className="text-xs text-gray-400 mb-1.5">
-                {pkg.tryouts} paket tryout · 110 soal/paket
-              </div>
-              <div className="font-black text-lg text-gray-400 mb-3">
-                Rp {pkg.price.toLocaleString('id-ID')}
-              </div>
-              <Button
-                variant="outline"
-                className="w-full border-gray-300 text-gray-400"
-                onClick={() => router.push('/dashboard/buy')}
+          {packages.filter((p) => p.isActive && !p.isTrial).map((pkg) => {
+            const owned = isOwned(pkg.id);
+            return (
+              <Card
+                key={pkg.id}
+                hover
+                className={`p-4.5 cursor-pointer transition-colors ${
+                  owned
+                    ? 'border-2 border-solid border-green-300 bg-green-50'
+                    : 'border-2 border-dashed border-gray-300 bg-gray-50'
+                }`}
               >
-                Beli Sekarang
-              </Button>
-            </Card>
-          ))}
+                <div className="flex items-center justify-between mb-1">
+                  <div
+                    className={`font-extrabold text-base ${
+                      owned ? 'text-green-700' : 'text-gray-400'
+                    }`}
+                  >
+                    {pkg.name}
+                  </div>
+                  <div className="text-4.5">{owned ? '✅' : '🔒'}</div>
+                </div>
+                <div className={`text-xs mb-1.5 ${owned ? 'text-green-600' : 'text-gray-400'}`}>
+                  Tryout SKD · 110 soal/paket
+                </div>
+                <div
+                  className={`font-black text-lg mb-3 ${
+                    owned ? 'text-green-700' : 'text-gray-400'
+                  }`}
+                >
+                  {owned ? 'SUDAH DIMILIKI' : `Rp ${pkg.price.toLocaleString('id-ID')}`}
+                </div>
+                <Button
+                  variant={owned ? 'success' : 'outline'}
+                  className={`w-full ${owned ? '' : 'border-gray-300 text-gray-400'}`}
+                  onClick={() => router.push(owned ? '/dashboard/tryout' : '/dashboard/buy')}
+                >
+                  {owned ? 'Mulai Tryout' : 'Beli Sekarang'}
+                </Button>
+              </Card>
+            );
+          })}
         </div>
       </div>
     </div>

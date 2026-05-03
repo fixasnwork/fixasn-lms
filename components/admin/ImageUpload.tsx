@@ -10,22 +10,44 @@ interface ImageUploadProps {
 
 export default function ImageUpload({ value, onChange, label }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
   const [inputUrl, setInputUrl] = useState(value || '');
 
   const handleUrlSubmit = () => {
+    setError('');
     onChange(inputUrl.trim());
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     setUploading(true);
-    // In a real app, upload to cloud storage
-    // For now, use a placeholder
-    const url = `https://placehold.co/400x200/gray/white?text=${encodeURIComponent(file.name)}`;
-    setInputUrl(url);
-    onChange(url);
-    setUploading(false);
+    setError('');
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Upload failed');
+        return;
+      }
+
+      setInputUrl(data.url);
+      onChange(data.url);
+    } catch {
+      setError('Network error during upload');
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -42,7 +64,7 @@ export default function ImageUpload({ value, onChange, label }: ImageUploadProps
           />
           <button
             type="button"
-            onClick={() => { onChange(''); setInputUrl(''); }}
+            onClick={() => { onChange(''); setInputUrl(''); setError(''); }}
             className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold"
           >
             ×
@@ -72,12 +94,16 @@ export default function ImageUpload({ value, onChange, label }: ImageUploadProps
               type="file"
               accept="image/*"
               onChange={handleFileChange}
-              className="text-xs text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700"
+              disabled={uploading}
+              className="text-xs text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 disabled:opacity-50"
             />
             {uploading && (
               <span className="ml-2 text-xs text-blue-500">Mengupload...</span>
             )}
           </div>
+          {error && (
+            <div className="mt-2 text-xs text-red-500 font-bold">{error}</div>
+          )}
         </div>
       )}
     </div>

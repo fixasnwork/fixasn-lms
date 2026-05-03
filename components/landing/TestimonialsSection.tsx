@@ -1,22 +1,16 @@
 'use client';
 
-export function TestimonialsSection() {
+import type { LogoConfig } from '@/lib/types';
+
+interface TestimonialsSectionProps {
+  logoConfig: LogoConfig;
+}
+
+export function TestimonialsSection({ logoConfig }: TestimonialsSectionProps) {
   const testimonials = [
-    {
-      name: 'Rizki A.',
-      role: 'Kemenkes RI',
-      text: 'Soal-soal tryoutnya mirip banget sama ujian asli. Skor TWK saya naik dari 85 jadi 130 setelah rutin tryout di sini!',
-    },
-    {
-      name: 'Maya S.',
-      role: 'Kemendikbud RI',
-      text: 'Video materinya sangat terstruktur. Modul PDF-nya membantu banget untuk belajar offline. Worth it banget!',
-    },
-    {
-      name: 'Doni P.',
-      role: 'BPS Jawa Timur',
-      text: 'Fitur ranking bikin saya terpacu. Tahu posisi nasional sendiri sangat memotivasi untuk terus berlatih!',
-    },
+    { name: logoConfig.testimonial1Name || 'Rizki A.', role: logoConfig.testimonial1Role || 'Kemenkes RI', text: logoConfig.testimonial1Text || 'Soal-soal tryoutnya mirip banget sama ujian asli. Skor TWK saya naik dari 85 jadi 130 setelah rutin tryout di sini!' },
+    { name: logoConfig.testimonial2Name || 'Maya S.', role: logoConfig.testimonial2Role || 'Kemendikbud RI', text: logoConfig.testimonial2Text || 'Video materinya sangat terstruktur. Modul PDF-nya membantu banget untuk belajar offline. Worth it banget!' },
+    { name: logoConfig.testimonial3Name || 'Doni P.', role: logoConfig.testimonial3Role || 'BPS Jawa Timur', text: logoConfig.testimonial3Text || 'Fitur ranking bikin saya terpacu. Tahu posisi nasional sendiri sangat memotivasi untuk terus berlatih!' },
   ];
 
   return (
@@ -34,7 +28,7 @@ export function TestimonialsSection() {
             >
               <div className="text-5 mb-2.5">⭐⭐⭐⭐⭐</div>
               <p className="text-gray-700 text-sm leading-relaxed mb-4.5 italic">
-                "{t.text}"
+                &ldquo;{t.text}&rdquo;
               </p>
               <div className="flex items-center gap-3">
                 <div className="w-9.5 h-9.5 rounded-full bg-gradient-to-br from-[#1B3A6B] to-[#2563EB] flex items-center justify-center text-white font-extrabold flex-shrink-0">

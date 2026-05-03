@@ -8,21 +8,16 @@ describe('useAppStore', () => {
       packages: useAppStore.getState().packages,
       banks: useAppStore.getState().banks,
       questions: useAppStore.getState().questions,
-      durationMin: 100,
-      tryoutSets: useAppStore.getState().tryoutSets,
       packageBanks: useAppStore.getState().packageBanks,
       trialSet: useAppStore.getState().trialSet,
       logoConfig: useAppStore.getState().logoConfig,
+      attemptHistory: [],
     });
-  });
-
-  it('has correct initial duration of 100 minutes', () => {
-    expect(useAppStore.getState().durationMin).toBe(100);
   });
 
   it('setPackages updates packages', () => {
     const newPackages: Package[] = [
-      { id: 'new', name: 'New Package', tryouts: 5, price: 50000, desc: 'Test', popular: false, video: false, comingSoon: false },
+      { id: 999, name: 'New Package', description: 'Test', price: 50000, isTrial: false, isActive: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
     ];
     useAppStore.getState().setPackages(newPackages);
     expect(useAppStore.getState().packages).toEqual(newPackages);
@@ -30,49 +25,22 @@ describe('useAppStore', () => {
 
   it('setBanks updates banks', () => {
     const newBanks: BankAccount[] = [
-      { id: 'new', bank: 'BSI', norek: '9999999999', atas: 'Test' },
+      { id: 999, bankName: 'BSI', accountNumber: '9999999999', accountHolder: 'Test', isActive: true, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
     ];
     useAppStore.getState().setBanks(newBanks);
     expect(useAppStore.getState().banks).toEqual(newBanks);
   });
 
-  it('setDurationMin updates duration', () => {
-    useAppStore.getState().setDurationMin(90);
-    expect(useAppStore.getState().durationMin).toBe(90);
-  });
-
   it('setLogoConfig updates logoConfig', () => {
+    const state = useAppStore.getState();
+    const baseConfig = state.logoConfig;
     const newConfig: LogoConfig = {
+      ...baseConfig,
       namaApp: 'New App',
       tagline: 'New Tagline',
-      warnaNama: '#000000',
-      warnaTag: '#111111',
-      warnaKiri: '#222222',
-      warnaKanan: '#333333',
-      warnaInner: '#444444',
-      customImg: null,
-      heroImg: 'https://example.com/hero.jpg',
-      heroCaption: 'Caption',
-      heroSubCaption: 'Sub',
-      heroTitle1: 'Title1',
-      heroTitle2: 'Title2',
-      heroTitle3: 'Title3',
-      heroDesc: 'Desc',
-      skdTitle: 'SKD',
-      skdSubtitle: 'SKD Sub',
-      paketTitle: 'Paket',
-      paketSubtitle: 'Sub',
-      ctaTitle: 'CTA',
-      stat1Val: '100',
-      stat1Label: 'Label',
-      stat2Val: '200',
-      stat2Label: 'Label',
-      stat3Val: '300',
-      stat3Label: 'Label',
     };
     useAppStore.getState().setLogoConfig(newConfig);
     expect(useAppStore.getState().logoConfig.namaApp).toBe('New App');
-    expect(useAppStore.getState().logoConfig.heroImg).toBe('https://example.com/hero.jpg');
   });
 
   it('setLogoConfig accepts a functional updater', () => {
@@ -88,7 +56,7 @@ describe('useAppStore', () => {
     // Reset
     useAppStore.getState().resetToDefaults();
 
-    // Packages and banks should be restored (durationMin is NOT reset by resetToDefaults)
+    // Packages and banks should be restored
     expect(useAppStore.getState().packages.length).toBeGreaterThan(0);
     expect(useAppStore.getState().banks.length).toBeGreaterThan(0);
   });
@@ -97,11 +65,11 @@ describe('useAppStore', () => {
     expect(useAppStore.getState().trialSet.questions.length).toBe(10);
   });
 
-  it('packageBanks has entries for each package', () => {
+  it('packageBanks initializes empty (loaded from API)', () => {
     const banks = useAppStore.getState().packageBanks;
-    expect(Object.keys(banks).length).toBeGreaterThan(0);
-    expect(banks['p1']).toBeDefined();
-    expect(banks['p2']).toBeDefined();
-    expect(banks['p3']).toBeDefined();
+    expect(banks).toEqual({});
+    // Verify setter works
+    useAppStore.getState().setPackageBanks({ '1': [], '2': [] });
+    expect(Object.keys(useAppStore.getState().packageBanks).length).toBe(2);
   });
 });

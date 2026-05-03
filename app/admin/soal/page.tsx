@@ -8,13 +8,13 @@ import SoalTable from '@/components/admin/SoalTable';
 import ImageUpload from '@/components/admin/ImageUpload';
 
 interface SoalFormState {
-  cat: QuestionCategory;
-  q: string;
-  qImg: string;
+  category: QuestionCategory;
+  question: string;
+  questionImage: string;
   opts: string[];
   optImgs: string[];
-  ans: number;
-  tkpVals: number[];
+  correctAnswer: number;
+  tkpValues: number[];
   explanation: string;
   explanationImg: string;
 }
@@ -30,8 +30,8 @@ export default function SoalPage() {
     setPackageBanks,
   } = useAppStore();
 
-  const [activePkgTab, setActivePkgTab] = useState<string>('trial');
-  const [activeTryoutTab, setActiveTryoutTab] = useState<string | null>(null);
+  const [activePkgTab, setActivePkgTab] = useState<string | number>('trial');
+  const [activeTryoutTab, setActiveTryoutTab] = useState<number | null>(null);
   const [adminDuration, setAdminDuration] = useState(durationMin);
   const [adminPkgBanks, setAdminPkgBanks] = useState<Record<string, Tryout[]>>(() =>
     JSON.parse(JSON.stringify(packageBanks))
@@ -40,13 +40,13 @@ export default function SoalPage() {
   const [showAddSoal, setShowAddSoal] = useState(false);
   const [editSoal, setEditSoal] = useState<number | null>(null);
   const [soalForm, setSoalForm] = useState<SoalFormState>({
-    cat: 'TWK',
-    q: '',
-    qImg: '',
+    category: 'TWK',
+    question: '',
+    questionImage: '',
     opts: ['', '', '', '', ''],
     optImgs: ['', '', '', '', ''],
-    ans: 0,
-    tkpVals: [5, 4, 3, 2, 1],
+    correctAnswer: 0,
+    tkpValues: [5, 4, 3, 2, 1],
     explanation: '',
     explanationImg: '',
   });
@@ -58,7 +58,7 @@ export default function SoalPage() {
     if (activePkgTab === 'trial') {
       return trialSet?.questions || [];
     }
-    const bank = adminPkgBanks[activePkgTab] || [];
+    const bank = adminPkgBanks[String(activePkgTab)] || [];
     const currentTab =
       activeTryoutTab && bank.find((t) => t.id === activeTryoutTab)
         ? activeTryoutTab
@@ -71,14 +71,14 @@ export default function SoalPage() {
     if (activePkgTab === 'trial') {
       setTrialSet((t) => ({ ...t, questions: updated }));
     } else {
-      const bank = adminPkgBanks[activePkgTab] || [];
+      const bank = adminPkgBanks[String(activePkgTab)] || [];
       const currentTab =
         activeTryoutTab && bank.find((t) => t.id === activeTryoutTab)
           ? activeTryoutTab
           : bank[0]?.id;
       const newBanks = {
         ...adminPkgBanks,
-        [activePkgTab]: bank.map((t) =>
+        [String(activePkgTab)]: bank.map((t) =>
           t.id === currentTab ? { ...t, questions: updated } : t
         ),
       };
@@ -89,13 +89,13 @@ export default function SoalPage() {
 
   const openAddSoal = () => {
     setSoalForm({
-      cat: 'TWK',
-      q: '',
-      qImg: '',
+      category: 'TWK',
+      question: '',
+      questionImage: '',
       opts: ['', '', '', '', ''],
       optImgs: ['', '', '', '', ''],
-      ans: 0,
-      tkpVals: [5, 4, 3, 2, 1],
+      correctAnswer: 0,
+      tkpValues: [5, 4, 3, 2, 1],
       explanation: '',
       explanationImg: '',
     });
@@ -105,22 +105,22 @@ export default function SoalPage() {
 
   const openEditSoal = (q: Question) => {
     setSoalForm({
-      cat: q.cat,
-      q: q.q,
-      qImg: q.qImg || '',
-      opts: [...q.opts],
-      optImgs: q.optImgs ? [...q.optImgs] : ['', '', '', '', ''],
-      ans: q.ans ?? 0,
-      tkpVals: q.tkpVals ? [...q.tkpVals] : [5, 4, 3, 2, 1],
+      category: q.category,
+      question: q.question,
+      questionImage: q.questionImage || '',
+      opts: q.options.map((o) => o.optionText || ''),
+      optImgs: q.options.map((o) => o.optionImage || ''),
+      correctAnswer: q.correctAnswer ?? 0,
+      tkpValues: q.options.map((o) => o.tkpValue ?? 1),
       explanation: q.explanation || '',
-      explanationImg: q.explanationImg || '',
+      explanationImg: q.explanationImage || '',
     });
     setEditSoal(q.id);
     setShowAddSoal(true);
   };
 
   const saveSoal = () => {
-    if (!soalForm.q.trim() && !soalForm.qImg) {
+    if (!soalForm.question.trim() && !soalForm.questionImage) {
       alert('Pertanyaan tidak boleh kosong!');
       return;
     }
@@ -135,12 +135,31 @@ export default function SoalPage() {
       return;
     }
     const currentQ = getCurrentQuestions();
+    const now = new Date().toISOString();
     const newId =
       editSoal ||
       (currentQ.length > 0
         ? Math.max(...currentQ.map((q) => Number(q.id) || 0)) + 1
         : 1);
-    const soalBaru = { ...soalForm, id: newId };
+    const soalBaru: Question = {
+      id: newId,
+      category: soalForm.category,
+      question: soalForm.question,
+      questionImage: soalForm.questionImage || null,
+      correctAnswer: soalForm.category === 'TKP' ? null : soalForm.correctAnswer,
+      explanation: soalForm.explanation || null,
+      explanationImage: soalForm.explanationImg || null,
+      options: soalForm.opts.map((text, j) => ({
+        id: newId * 100 + j,
+        questionId: newId,
+        optionIndex: j,
+        optionText: text || null,
+        optionImage: soalForm.optImgs[j] || null,
+        tkpValue: soalForm.category === 'TKP' ? soalForm.tkpValues[j] : null,
+      })),
+      createdAt: now,
+      updatedAt: now,
+    };
     let updated: Question[];
     if (editSoal) {
       updated = currentQ.map((q) => (q.id === editSoal ? soalBaru : q));
@@ -168,7 +187,7 @@ export default function SoalPage() {
   // Determine current tryout tab and info
   const currentBank =
     activePkgTab && activePkgTab !== 'trial'
-      ? adminPkgBanks[activePkgTab] || []
+      ? adminPkgBanks[String(activePkgTab)] || []
       : [];
   const currentTab =
     activeTryoutTab && currentBank.find((t) => t.id === activeTryoutTab)
@@ -234,16 +253,15 @@ export default function SoalPage() {
             )}
           </div>
           <div className="text-xs text-gray-400">
-            {trialSet?.questions?.length || 0} soal · {trialSet?.durationMin || 15}{' '}
-            menit
+            {trialSet?.questions?.length || 0} soal · 15 menit
           </div>
         </div>
 
         {/* Paid packages */}
         {packages
-          .filter((p) => !p.video)
+          .filter((p) => p.isActive && !p.isTrial)
           .map((pkg) => {
-            const bank = adminPkgBanks[pkg.id] || [];
+            const bank = adminPkgBanks[String(pkg.id)] || [];
             const totalSoal = bank.reduce((s, t) => s + (t.questions?.length || 0), 0);
             const isActive = activePkgTab === pkg.id;
             return (
@@ -284,19 +302,8 @@ export default function SoalPage() {
               <div className="flex items-center gap-2">
                 <span className="font-bold text-[#1B3A6B]">Trial Gratis</span>
                 <span className="text-sm text-gray-400 ml-2">
-                  {trialSet?.questions?.length || 0} soal · durasi
+                  {trialSet?.questions?.length || 0} soal
                 </span>
-                <input
-                  type="number"
-                  min={5}
-                  max={60}
-                  value={trialSet?.durationMin || 15}
-                  onChange={(e) =>
-                    setTrialSet((t) => ({ ...t, durationMin: Number(e.target.value) }))
-                  }
-                  className="w-11 px-1.5 py-0.5 border border-gray-200 rounded-md font-bold text-xs text-center"
-                />
-                <span className="text-xs text-gray-400">menit</span>
               </div>
               <Button variant="gold" size="sm" onClick={openAddSoal}>
                 + Tambah Soal
@@ -351,9 +358,9 @@ export default function SoalPage() {
               <span className="font-bold text-[#1B3A6B]">
                 {activePkg?.name} — {currentTryout?.name}
                 <span className="font-normal text-gray-400 text-sm ml-2">
-                  ({currentQ.length} soal · TWK:{currentQ.filter((q) => q.cat === 'TWK').length}{' '}
-                  TIU:{currentQ.filter((q) => q.cat === 'TIU').length} TKP:
-                  {currentQ.filter((q) => q.cat === 'TKP').length})
+                  ({currentQ.length} soal · TWK:{currentQ.filter((q) => q.category === 'TWK').length}{' '}
+                  TIU:{currentQ.filter((q) => q.category === 'TIU').length} TKP:
+                  {currentQ.filter((q) => q.category === 'TKP').length})
                 </span>
               </span>
               <Button variant="primary" size="sm" onClick={openAddSoal}>
@@ -395,9 +402,9 @@ export default function SoalPage() {
                   <button
                     key={cat}
                     type="button"
-                    onClick={() => setSoalForm((f) => ({ ...f, cat }))}
+                    onClick={() => setSoalForm((f) => ({ ...f, category: cat }))}
                     className={`px-4 py-2 border-2 rounded-lg cursor-pointer font-bold text-sm transition-all ${
-                      soalForm.cat === cat
+                      soalForm.category === cat
                         ? 'border-blue-500 bg-blue-50 text-blue-600'
                         : 'border-gray-200 bg-white text-gray-500'
                     }`}
@@ -415,8 +422,8 @@ export default function SoalPage() {
               </label>
               <textarea
                 rows={3}
-                value={soalForm.q}
-                onChange={(e) => setSoalForm((f) => ({ ...f, q: e.target.value }))}
+                value={soalForm.question}
+                onChange={(e) => setSoalForm((f) => ({ ...f, question: e.target.value }))}
                 placeholder="Ketik pertanyaan di sini..."
                 className="w-full p-3 border border-gray-200 rounded-lg text-sm resize-y"
               />
@@ -429,8 +436,8 @@ export default function SoalPage() {
                 <span className="font-normal text-gray-400">(opsional)</span>
               </label>
               <ImageUpload
-                value={soalForm.qImg || ''}
-                onChange={(v) => setSoalForm((f) => ({ ...f, qImg: v }))}
+                value={soalForm.questionImage || ''}
+                onChange={(v) => setSoalForm((f) => ({ ...f, questionImage: v }))}
               />
             </div>
 
@@ -439,7 +446,7 @@ export default function SoalPage() {
               <div
                 key={opt}
                 className={`border-2 rounded-xl p-3 ${
-                  soalForm.cat !== 'TKP' && soalForm.ans === j
+                  soalForm.category !== 'TKP' && soalForm.correctAnswer === j
                     ? 'border-green-400 bg-green-50'
                     : 'border-gray-100 bg-gray-50'
                 }`}
@@ -447,31 +454,31 @@ export default function SoalPage() {
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-sm font-bold text-gray-700">
                     Pilihan {opt}
-                    {soalForm.cat !== 'TKP' && soalForm.ans === j && (
+                    {soalForm.category !== 'TKP' && soalForm.correctAnswer === j && (
                       <span className="text-green-600 ml-1.5">✓ Kunci</span>
                     )}
                   </label>
-                  {soalForm.cat === 'TKP' ? (
+                  {soalForm.category === 'TKP' ? (
                     <span className="text-sm text-violet-600 font-semibold">
                       Nilai:{' '}
                       <input
                         type="number"
                         min={1}
                         max={5}
-                        value={soalForm.tkpVals[j]}
+                        value={soalForm.tkpValues[j]}
                         onChange={(e) => {
-                          const v = [...soalForm.tkpVals];
+                          const v = [...soalForm.tkpValues];
                           v[j] = Number(e.target.value);
-                          setSoalForm((f) => ({ ...f, tkpVals: v }));
+                          setSoalForm((f) => ({ ...f, tkpValues: v }));
                         }}
                         className="w-10 px-1 py-0.5 border border-gray-200 rounded text-xs text-center"
                       />
                     </span>
                   ) : (
-                    soalForm.ans !== j && (
+                    soalForm.correctAnswer !== j && (
                       <button
                         type="button"
-                        onClick={() => setSoalForm((f) => ({ ...f, ans: j }))}
+                        onClick={() => setSoalForm((f) => ({ ...f, correctAnswer: j }))}
                         className="text-xs text-gray-500 bg-white border border-gray-200 rounded-md px-2 py-1 cursor-pointer"
                       >
                         Jadikan Kunci

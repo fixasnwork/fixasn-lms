@@ -1,30 +1,26 @@
 // ─────────────────────────────────────────────
-// API: Auth endpoints
+// API: Auth check (legacy — replaced by NextAuth.js)
+// Returns current session info if authenticated
 // ─────────────────────────────────────────────
-import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/auth';
+import { NextResponse } from 'next/server';
 
-export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const { action, email } = body;
+export async function GET() {
+  const session = await auth();
 
-  if (action === 'login') {
-    // Simulated login - in production, verify with Google OAuth
-    const isAdmin = email === 'admin@fixasn.id';
-    
-    return NextResponse.json({
-      success: true,
-      user: {
-        name: isAdmin ? 'Admin FIX ASN' : 'User',
-        email,
-        avatar: isAdmin ? 'AD' : email[0].toUpperCase(),
-      },
-      role: isAdmin ? 'admin' : 'user',
-    });
+  if (!session?.user) {
+    return NextResponse.json({ authenticated: false }, { status: 401 });
   }
 
-  if (action === 'logout') {
-    return NextResponse.json({ success: true });
-  }
+  const isAdmin = session.user.email === 'admin@fixasn.id';
 
-  return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+  return NextResponse.json({
+    authenticated: true,
+    user: {
+      name: session.user.name || 'Pengguna',
+      email: session.user.email,
+      avatar: session.user.image || session.user.email?.[0]?.toUpperCase(),
+    },
+    role: isAdmin ? 'admin' : 'user',
+  });
 }

@@ -1,17 +1,21 @@
-'use client';
-
-import { useAuthStore } from '@/store/useAuthStore';
+import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import AdminSidebar from '@/components/layouts/AdminSidebar';
 
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, role } = useAuthStore();
+  const session = await auth();
 
-  if (!isAuthenticated || role !== 'admin') {
+  if (!session?.user) {
+    redirect('/login');
+  }
+
+  // Only admins should see the admin panel
+  const role = (session.user as { role?: string }).role;
+  if (role !== 'admin') {
     redirect('/login');
   }
 

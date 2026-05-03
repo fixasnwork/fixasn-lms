@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
+import { signOut } from 'next-auth/react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Logo } from '@/components/ui';
 import { useAppStore } from '@/store/useAppStore';
@@ -37,7 +38,7 @@ export default function AdminSidebar() {
 
   const handleLogout = () => {
     logout();
-    router.push('/');
+    signOut({ callbackUrl: '/' });
   };
 
   return (

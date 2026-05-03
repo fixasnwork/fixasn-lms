@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
+import { signOut } from 'next-auth/react';
 import { useAuthStore } from '@/store/useAuthStore';
 
 interface NavItem {
@@ -31,10 +32,11 @@ export default function UserSidebar() {
 
   const handleLogout = () => {
     logout();
-    router.push('/');
+    signOut({ callbackUrl: '/' });
   };
 
-  const userAvatar = user?.avatar || user?.name?.[0]?.toUpperCase() || 'U';
+  const hasAvatarUrl = !!(user?.avatar && user.avatar.startsWith('http'));
+  const userInitial = user?.name?.[0]?.toUpperCase() || 'U';
 
   return (
     <>
@@ -42,9 +44,17 @@ export default function UserSidebar() {
       <aside className="hidden md:flex flex-col w-[228px] bg-white border-r border-gray-100 fixed h-screen top-0 shadow-md z-50">
         {/* User Info */}
         <div className="p-4 border-b border-gray-100 flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#1B3A6B] to-[#2563EB] flex items-center justify-center text-white font-extrabold text-sm flex-shrink-0">
-            {userAvatar}
-          </div>
+          {hasAvatarUrl ? (
+            <img
+              src={user.avatar}
+              alt={user?.name || 'User'}
+              className="w-9 h-9 rounded-full object-cover flex-shrink-0"
+            />
+          ) : (
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#1B3A6B] to-[#2563EB] flex items-center justify-center text-white font-extrabold text-sm flex-shrink-0">
+              {userInitial}
+            </div>
+          )}
           <div className="overflow-hidden">
             <div className="font-bold text-sm text-gray-800 whitespace-nowrap overflow-hidden text-ellipsis">
               {user?.name || 'Pengguna'}

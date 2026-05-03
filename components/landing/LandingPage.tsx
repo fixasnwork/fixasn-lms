@@ -13,10 +13,7 @@ export function LandingPage() {
   const { packages, logoConfig } = useAppStore();
 
   const handleLogin = () => router.push('/login');
-  const handleRegister = () => router.push('/login');
-
-  const tryoutPkgs = packages.filter((p) => !p.video);
-  const videoPkgs = packages.filter((p) => p.video);
+  const handleRegister = () => router.push('/login?action=register');
 
   return (
     <div className="font-sans bg-[#FAFBFF] min-h-screen">
@@ -44,7 +41,7 @@ export function LandingPage() {
           <div className="text-left">
             <div className="inline-flex items-center gap-2 bg-yellow-400/15 border border-yellow-400/30 rounded-full px-4 py-1.5 mb-5">
               <span className="text-sm">🏆</span>
-              <span className="text-xs font-bold text-yellow-400">Platform Tryout CPNS Terpercaya #1</span>
+              <span className="text-xs font-bold text-yellow-400">{logoConfig.promoBannerText || "Platform Tryout CPNS Terpercaya #1"}</span>
             </div>
             
             <h1 className="text-5xl font-black leading-tight mb-4 text-white text-left">
@@ -80,8 +77,8 @@ export function LandingPage() {
                 [logoConfig.stat1Val, logoConfig.stat1Label],
                 [logoConfig.stat2Val, logoConfig.stat2Label],
                 [logoConfig.stat3Val, logoConfig.stat3Label],
-              ].map(([val, label]) => (
-                <div key={label} className="text-left">
+              ].map(([val, label], i) => (
+                <div key={i} className="text-left">
                   <div className="text-3xl font-black text-yellow-400">{val}</div>
                   <div className="text-xs text-white/60 font-medium mt-0.5">{label}</div>
                 </div>
@@ -179,7 +176,7 @@ export function LandingPage() {
       <PackagesSection packages={packages} logoConfig={logoConfig} onRegister={handleRegister} />
 
       {/* TESTIMONIALS */}
-      <TestimonialsSection />
+      <TestimonialsSection logoConfig={logoConfig} />
 
       {/* CTA */}
       <CTASection logoConfig={logoConfig} onRegister={handleRegister} />

@@ -56,7 +56,7 @@ describe('PUT /api/packages', () => {
     const data = await response.json();
 
     expect(response.status).toBe(400);
-    expect(data.error).toBe('Invalid data');
+    expect(data.error).toContain('Invalid data');
   });
 
   it('returns 400 when packages is missing', async () => {

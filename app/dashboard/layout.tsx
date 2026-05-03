@@ -1,17 +1,21 @@
-'use client';
-
-import { useAuthStore } from '@/store/useAuthStore';
+import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import UserSidebar from '@/components/layouts/UserSidebar';
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, role } = useAuthStore();
+  const session = await auth();
 
-  if (!isAuthenticated || role !== 'user') {
+  if (!session?.user) {
+    redirect('/login');
+  }
+
+  // Only users (not admins) should see the dashboard
+  const role = (session.user as { role?: string }).role;
+  if (role !== 'user') {
     redirect('/login');
   }
 

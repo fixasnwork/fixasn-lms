@@ -6,16 +6,17 @@ import { Button, Card, Modal } from '@/components/ui';
 import { useAppStore } from '@/store/useAppStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { WA_LINK, WA_NUMBER } from '@/data/constants';
+import { addPayment, generatePaymentId } from '@/lib/paymentStorage';
 
 function PaymentContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const pkgId = searchParams.get('pkg');
+  const pkgIdParam = searchParams.get('pkg');
 
   const { user } = useAuthStore();
   const { packages, banks } = useAppStore();
 
-  const [selectedPkgId, setSelectedPkgId] = useState<string | null>(pkgId);
+  const [selectedPkgId, setSelectedPkgId] = useState<number | null>(pkgIdParam ? parseInt(pkgIdParam, 10) : null);
   const [proofMethod, setProofMethod] = useState<'upload' | 'wa'>('upload');
   const [proofUrl, setProofUrl] = useState('');
   const [step, setStep] = useState<'select' | 'pay' | 'done'>('select');
@@ -25,8 +26,8 @@ function PaymentContent() {
   const selectedPkg = packages.find((p) => p.id === selectedPkgId);
 
   useEffect(() => {
-    if (pkgId) setSelectedPkgId(pkgId);
-  }, [pkgId]);
+    if (pkgIdParam) setSelectedPkgId(parseInt(pkgIdParam, 10));
+  }, [pkgIdParam]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -50,13 +51,17 @@ function PaymentContent() {
       alert('Silakan upload bukti transfer terlebih dahulu');
       return;
     }
-    // Mark package as purchased in user data
-    const updatedUser = {
-      ...user!,
-      purchasedPackageIds: [...(user?.purchasedPackageIds || []), selectedPkgId!],
-    };
-    // Update auth store
-    useAuthStore.setState({ user: updatedUser });
+    // Persist payment proof
+    if (selectedPkg && user) {
+      addPayment({
+        id: generatePaymentId(),
+        userId: user.email,
+        packageId: selectedPkg.id,
+        status: 'pending',
+        proofUrl: proofUrl || null,
+        blockReason: null,
+      });
+    }
     setStep('done');
   };
 
@@ -71,11 +76,17 @@ function PaymentContent() {
     );
     window.open(`https://wa.me/${WA_NUMBER}?text=${msg}`, '_blank');
     setShowWAWarning(false);
-    const updatedUser = {
-      ...user!,
-      purchasedPackageIds: [...(user?.purchasedPackageIds || []), selectedPkgId!],
-    };
-    useAuthStore.setState({ user: updatedUser });
+    // Persist WA-confirmed payment
+    if (selectedPkg && user) {
+      addPayment({
+        id: generatePaymentId(),
+        userId: user.email,
+        packageId: selectedPkg.id,
+        status: 'pending',
+        proofUrl: null,
+        blockReason: null,
+      });
+    }
     setStep('done');
   };
 
@@ -100,7 +111,7 @@ function PaymentContent() {
           {/* Package cards */}
           <div className="flex flex-col gap-3 mb-6">
             {packages
-              .filter((p) => !p.comingSoon)
+              .filter((p) => p.isActive && !p.isTrial)
               .map((pkg) => (
                 <Card
                   key={pkg.id}
@@ -126,31 +137,21 @@ function PaymentContent() {
                     </div>
                     <div className="flex items-center gap-3 flex-1">
                       <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#1B3A6B] to-[#2563EB] flex items-center justify-center text-lg flex-shrink-0">
-                        {pkg.video ? '🎬' : '📝'}
+                        📝
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <span className="font-extrabold text-sm text-[#1B3A6B]">
                             {pkg.name}
                           </span>
-                          {pkg.popular && (
-                            <span className="bg-gradient-to-r from-amber-600 to-yellow-400 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full">
-                              🔥 POPULER
-                            </span>
-                          )}
                         </div>
-                        <p className="text-xs text-gray-500 m-0">{pkg.desc}</p>
+                        <p className="text-xs text-gray-500 m-0">{pkg.description}</p>
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0">
                       <div className="font-black text-xl text-[#1B3A6B]">
                         Rp {pkg.price.toLocaleString('id-ID')}
                       </div>
-                      {!pkg.video && (
-                        <div className="text-xs text-gray-400">
-                          {pkg.tryouts} tryout
-                        </div>
-                      )}
                     </div>
                   </div>
                 </Card>
@@ -176,13 +177,13 @@ function PaymentContent() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#1B3A6B] to-[#2563EB] flex items-center justify-center text-lg">
-                  {selectedPkg.video ? '🎬' : '📝'}
+                  📝
                 </div>
                 <div>
                   <p className="font-extrabold text-base text-[#1B3A6B] m-0">
                     {selectedPkg.name}
                   </p>
-                  <p className="text-sm text-gray-500 m-0">{selectedPkg.desc}</p>
+                  <p className="text-sm text-gray-500 m-0">{selectedPkg.description}</p>
                 </div>
               </div>
               <div className="text-right">
@@ -210,12 +211,12 @@ function PaymentContent() {
                   >
                     <div>
                       <span className="font-bold text-sm text-gray-800">
-                        Bank {b.bank}
+                        Bank {b.bankName}
                       </span>
-                      <div className="text-xs text-gray-400">{b.atas}</div>
+                      <div className="text-xs text-gray-400">{b.accountHolder}</div>
                     </div>
                     <span className="font-mono font-black text-base text-[#1B3A6B] tracking-wider">
-                      {b.norek}
+                      {b.accountNumber}
                     </span>
                   </div>
                 ))}

@@ -1,0 +1,327 @@
+// ============================================================================
+// Prisma Schema — FixASN LMS v2 (camelCase IDs, camelCase table names)
+// ============================================================================
+// ID convention:
+//   Master/reference tables → Int @default(autoincrement())
+//   User                    → String @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+//   Transactional tables    → String @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+//   Junction tables         → Int @default(autoincrement())
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── Users ──────────────────────────────────────────────────────────────────
+model User {
+  id        String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  email     String   @unique @db.Text
+  name      String   @db.Text
+  avatar    String?  @db.Text
+  role      String   @default("user") @db.Text
+
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+  createdBy String?   @db.Text
+  createdIP String?   @db.Text
+  updatedAt DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+  updatedBy String?   @db.Text
+  updatedIP String?   @db.Text
+  deletedAt DateTime? @db.Timestamptz(6)
+
+  payments        Payment[]
+  purchases       UserPurchase[]
+  attempts        TryoutAttempt[]
+  userPermissions UserPermission[]
+
+  @@map("users")
+}
+
+// ── Permissions ───────────────────────────────────────────────────────────
+model Permission {
+  id          Int     @id @default(autoincrement())
+  name        String  @unique @db.Text
+  description String? @db.Text
+  category    String  @default("general") @db.Text
+
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  rolePermissions RolePermission[]
+  userPermissions UserPermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           Int      @id @default(autoincrement())
+  role         String   @db.Text
+  permissionId Int
+
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([role, permissionId])
+  @@map("rolePermissions")
+}
+
+model UserPermission {
+  id           Int     @id @default(autoincrement())
+  userId       String  @db.Uuid
+  permissionId Int
+  isGranted    Boolean @default(true)
+
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, permissionId])
+  @@map("userPermissions")
+}
+
+// ── Packages ──────────────────────────────────────────────────────────────
+model Package {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique @db.Text
+  tryoutCount Int      @default(0)
+  price       Int      @default(0)
+  description String   @default("") @db.Text
+  isTrial     Boolean  @default(false)
+  isActive    Boolean  @default(true)
+
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
+  createdBy   String?   @db.Text
+  createdIP   String?   @db.Text
+  updatedAt   DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+  updatedBy   String?   @db.Text
+  updatedIP   String?   @db.Text
+  deletedAt   DateTime? @db.Timestamptz(6)
+
+  payments       Payment[]
+  purchases      UserPurchase[]
+  packageTryouts PackageTryout[]
+
+  @@map("packages")
+}
+
+// ── Tryouts ───────────────────────────────────────────────────────────────
+model Tryout {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.Text
+  isTrial   Boolean  @default(false)
+  sortOrder Int      @default(0)
+
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+  createdBy String?   @db.Text
+  createdIP String?   @db.Text
+  updatedAt DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+  updatedBy String?   @db.Text
+  updatedIP String?   @db.Text
+  deletedAt DateTime? @db.Timestamptz(6)
+
+  packageTryouts  PackageTryout[]
+  tryoutQuestions TryoutQuestion[]
+  attempts        TryoutAttempt[]
+
+  @@map("tryouts")
+}
+
+model PackageTryout {
+  id        Int      @id @default(autoincrement())
+  packageId Int
+  tryoutId  Int
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  package Package @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  tryout  Tryout  @relation(fields: [tryoutId], references: [id], onDelete: Cascade)
+
+  @@unique([packageId, tryoutId])
+  @@map("packageTryouts")
+}
+
+// ── Questions ─────────────────────────────────────────────────────────────
+model Question {
+  id               Int      @id @default(autoincrement())
+  category         String   @db.Text
+  question         String   @db.Text
+  questionImage    String?  @db.Text
+  correctAnswer    Int?
+  explanation      String?  @db.Text
+  explanationImage String?  @db.Text
+
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+  createdBy String?   @db.Text
+  createdIP String?   @db.Text
+  updatedAt DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+  updatedBy String?   @db.Text
+  updatedIP String?   @db.Text
+  deletedAt DateTime? @db.Timestamptz(6)
+
+  options         QuestionOption[]
+  tryoutQuestions TryoutQuestion[]
+
+  @@map("questions")
+}
+
+model QuestionOption {
+  id           Int      @id @default(autoincrement())
+  questionId   Int
+  optionIndex  Int      @db.Integer
+  optionText   String?  @db.Text
+  optionImage  String?  @db.Text
+  tkpValue     Int?
+
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, optionIndex])
+  @@map("questionOptions")
+}
+
+model TryoutQuestion {
+  id         Int @id @default(autoincrement())
+  tryoutId   Int
+  questionId Int
+  sortOrder  Int @default(0)
+
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  tryout   Tryout   @relation(fields: [tryoutId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([tryoutId, questionId])
+  @@map("tryoutQuestions")
+}
+
+// ── Bank Accounts ─────────────────────────────────────────────────────────
+model BankAccount {
+  id            Int      @id @default(autoincrement())
+  bankName      String   @db.Text
+  accountNumber String   @db.Text
+  accountHolder String   @db.Text
+  isActive      Boolean  @default(true)
+
+  createdAt     DateTime  @default(now()) @db.Timestamptz(6)
+  createdBy     String?   @db.Text
+  createdIP     String?   @db.Text
+  updatedAt     DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+  updatedBy     String?   @db.Text
+  updatedIP     String?   @db.Text
+  deletedAt     DateTime? @db.Timestamptz(6)
+
+  @@unique([bankName, accountNumber])
+  @@map("bankAccounts")
+}
+
+// ── Payments ──────────────────────────────────────────────────────────────
+model Payment {
+  id          String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId      String   @db.Text
+  packageId   Int
+  status      String   @default("pending") @db.Text
+  proofUrl    String?  @db.Text
+  blockReason String?  @db.Text
+
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
+  createdBy   String?   @db.Text
+  createdIP   String?   @db.Text
+  updatedAt   DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+  updatedBy   String?   @db.Text
+  updatedIP   String?   @db.Text
+  deletedAt   DateTime? @db.Timestamptz(6)
+
+  user    User    @relation(fields: [userId], references: [email], onDelete: NoAction, onUpdate: NoAction)
+  package Package @relation(fields: [packageId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  purchases UserPurchase[]
+
+  @@map("payments")
+}
+
+// ── User Purchases ────────────────────────────────────────────────────────
+model UserPurchase {
+  id        String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId    String   @db.Text
+  packageId Int
+  paymentId String?  @db.Uuid
+
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+  createdBy String?   @db.Text
+  createdIP String?   @db.Text
+  updatedAt DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+  updatedBy String?   @db.Text
+  updatedIP String?   @db.Text
+  deletedAt DateTime? @db.Timestamptz(6)
+
+  user    User    @relation(fields: [userId], references: [email], onDelete: NoAction, onUpdate: NoAction)
+  package Package @relation(fields: [packageId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([userId, packageId])
+  @@map("userPurchases")
+}
+
+// ── Tryout Attempts ───────────────────────────────────────────────────────
+model TryoutAttempt {
+  id         String  @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId     String  @db.Text
+  userName   String  @db.Text
+  tryoutId   Int
+  twkScore   Int     @default(0)
+  tiuScore   Int     @default(0)
+  tkpScore   Int     @default(0)
+  totalScore Int     @default(0)
+
+  createdAt  DateTime  @default(now()) @db.Timestamptz(6)
+  createdBy  String?   @db.Text
+  createdIP  String?   @db.Text
+  updatedAt  DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+  updatedBy  String?   @db.Text
+  updatedIP  String?   @db.Text
+  deletedAt  DateTime? @db.Timestamptz(6)
+
+  user    User   @relation(fields: [userId], references: [email], onDelete: NoAction, onUpdate: NoAction)
+  tryout  Tryout @relation(fields: [tryoutId], references: [id], onDelete: Cascade)
+  answers AttemptAnswer[]
+
+  @@map("tryoutAttempts")
+}
+
+model AttemptAnswer {
+  id             String @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  attemptId      String @db.Uuid
+  questionIndex  Int
+  selectedOption Int    @default(-1)
+
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  attempt TryoutAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  @@unique([attemptId, questionIndex])
+  @@map("attemptAnswers")
+}
+
+// ── Logo Config ───────────────────────────────────────────────────────────
+model LogoConfigEntry {
+  id          Int     @id @default(autoincrement())
+  configKey   String  @unique @db.Text
+  configValue String? @db.Text
+
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@map("logoConfigEntries")
+}

@@ -1,5 +1,8 @@
 import type { Metadata } from 'next';
 import { Montserrat } from 'next/font/google';
+import { SessionProvider as NextAuthSessionProvider } from 'next-auth/react';
+import AuthHydrator from '@/components/SessionProvider';
+import QueryProvider from '@/components/QueryProvider';
 import './globals.css';
 
 const montserrat = Montserrat({
@@ -21,7 +24,13 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body className={`${montserrat.variable} font-sans antialiased`}>
-        {children}
+        <NextAuthSessionProvider>
+          <QueryProvider>
+            <AuthHydrator>
+              {children}
+            </AuthHydrator>
+          </QueryProvider>
+        </NextAuthSessionProvider>
       </body>
     </html>
   );

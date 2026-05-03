@@ -24,12 +24,12 @@ export default function PembahasanNavigator({
   const q = questions[idx];
   const userAns = answers[idx];
   const score = getScore(q, userAns);
-  const isCorrect = q.cat !== 'TKP' ? userAns === q.ans : null;
+  const isCorrect = q.category !== 'TKP' ? userAns === q.correctAnswer : null;
 
   const statusColor =
-    q.cat === 'TKP' ? '#7C3AED' : isCorrect ? '#16A34A' : '#DC2626';
+    q.category === 'TKP' ? '#7C3AED' : isCorrect ? '#16A34A' : '#DC2626';
   const statusLabel =
-    q.cat === 'TKP' ? 'Karakteristik Pribadi' : isCorrect ? 'Benar' : 'Salah';
+    q.category === 'TKP' ? 'Karakteristik Pribadi' : isCorrect ? 'Benar' : 'Salah';
 
   return (
     <div>
@@ -48,10 +48,10 @@ export default function PembahasanNavigator({
               let bg = '#F1F5F9';
               let col = '#9CA3AF';
               if (a !== undefined) {
-                if (q2.cat === 'TKP') {
+                if (q2.category === 'TKP') {
                   bg = '#F5F3FF';
                   col = '#7C3AED';
-                } else if (a === q2.ans) {
+                } else if (a === q2.correctAnswer) {
                   bg = '#F0FDF4';
                   col = '#16A34A';
                 } else {
@@ -88,8 +88,8 @@ export default function PembahasanNavigator({
       <Card className="border-l-4 mb-4" style={{ borderLeftColor: statusColor }}>
         {/* Question header */}
         <div className="flex items-center gap-3 mb-3.5 flex-wrap">
-          <Badge color={q.cat === 'TWK' ? 'blue' : q.cat === 'TIU' ? 'purple' : 'yellow'}>
-            {q.cat}
+          <Badge color={q.category === 'TWK' ? 'blue' : q.category === 'TIU' ? 'purple' : 'yellow'}>
+            {q.category}
           </Badge>
           <span className="text-sm text-gray-500 font-semibold">
             Soal {idx + 1} dari {questions.length}
@@ -107,10 +107,10 @@ export default function PembahasanNavigator({
         </div>
 
         {/* Question text */}
-        <p className="font-bold text-base text-gray-800 mb-3 leading-relaxed">{q.q}</p>
-        {q.qImg && (
+        <p className="font-bold text-base text-gray-800 mb-3 leading-relaxed">{q.question}</p>
+        {q.questionImage && (
           <img
-            src={q.qImg}
+            src={q.questionImage}
             alt="soal"
             className="max-w-full max-h-56 rounded-lg mb-4 border border-gray-200 object-contain bg-white"
           />
@@ -118,9 +118,9 @@ export default function PembahasanNavigator({
 
         {/* Answer options */}
         <div className="flex flex-col gap-2 mb-5">
-          {q.opts.map((opt, j) => {
+          {q.options.map((opt, j) => {
             const isUser = userAns === j;
-            const isJawaban = q.cat !== 'TKP' && q.ans === j;
+            const isJawaban = q.category !== 'TKP' && q.correctAnswer === j;
             let bg = '#F9FAFB';
             let col = '#6B7280';
             let fw = 'font-normal';
@@ -130,22 +130,22 @@ export default function PembahasanNavigator({
               col = '#15803D';
               fw = 'font-bold';
               border = 'border-2 border-green-300';
-            } else if (isUser && q.cat !== 'TKP') {
+            } else if (isUser && q.category !== 'TKP') {
               bg = '#FEF2F2';
               col = '#DC2626';
               fw = 'font-semibold';
               border = 'border-2 border-red-300';
-            } else if (isUser && q.cat === 'TKP') {
+            } else if (isUser && q.category === 'TKP') {
               bg = '#F5F3FF';
               col = '#7C3AED';
               fw = 'font-bold';
               border = 'border-2 border-violet-300';
             }
-            const optImg = q.optImgs?.[j];
+            const optImg = opt.optionImage;
 
             const dotColor = isJawaban
               ? '#16A34A'
-              : isUser && q.cat !== 'TKP'
+              : isUser && q.category !== 'TKP'
                 ? '#DC2626'
                 : isUser
                   ? '#7C3AED'
@@ -164,7 +164,7 @@ export default function PembahasanNavigator({
                   {String.fromCharCode(65 + j)}
                 </span>
                 <div className="flex-1">
-                  {opt && <span className="leading-relaxed">{opt}</span>}
+                  {opt.optionText && <span className="leading-relaxed">{opt.optionText}</span>}
                   {optImg && (
                     <img
                       src={optImg}
@@ -191,9 +191,9 @@ export default function PembahasanNavigator({
           <div className="bg-blue-50 rounded-xl p-4 border-l-4 border-blue-500">
             <p className="font-bold text-xs text-blue-700 mb-1">Pembahasan:</p>
             <div className="text-sm text-blue-800 leading-relaxed">{q.explanation}</div>
-            {q.explanationImg && (
+            {q.explanationImage && (
               <img
-                src={q.explanationImg}
+                src={q.explanationImage}
                 alt="pembahasan"
                 className="max-w-full max-h-52 rounded-lg mt-2 border border-blue-200 object-contain bg-white"
               />

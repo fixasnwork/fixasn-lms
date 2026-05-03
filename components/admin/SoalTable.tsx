@@ -45,7 +45,7 @@ export default function SoalTable({ questions, onEdit, onDelete }: SoalTableProp
         </thead>
         <tbody>
           {questions.map((q, idx) => {
-            const filledOpts = q.opts.filter((o) => o && o.trim().length > 0);
+            const filledOpts = q.options.filter((o) => o.optionText && o.optionText.trim().length > 0);
             return (
               <tr
                 key={q.id}
@@ -57,24 +57,24 @@ export default function SoalTable({ questions, onEdit, onDelete }: SoalTableProp
                 <td className="px-3 py-2.5">
                   <Badge
                     color={
-                      q.cat === 'TWK'
+                      q.category === 'TWK'
                         ? 'blue'
-                        : q.cat === 'TIU'
+                        : q.category === 'TIU'
                           ? 'purple'
                           : 'yellow'
                     }
                   >
-                    {q.cat}
+                    {q.category}
                   </Badge>
                 </td>
                 <td className="px-3 py-2.5">
                   <div className="max-w-sm">
                     <p className="text-sm font-medium text-gray-800 line-clamp-2">
-                      {q.q}
+                      {q.question}
                     </p>
-                    {q.qImg && (
+                    {q.questionImage && (
                       <img
-                        src={q.qImg}
+                        src={q.questionImage}
                         alt="soal"
                         className="w-12 h-12 rounded border border-gray-200 object-cover mt-1"
                       />
@@ -83,27 +83,27 @@ export default function SoalTable({ questions, onEdit, onDelete }: SoalTableProp
                 </td>
                 <td className="px-3 py-2.5 text-xs text-gray-600">
                   <div className="flex flex-col gap-0.5">
-                    {q.opts.slice(0, filledOpts.length).map((opt, i) => (
+                    {q.options.slice(0, filledOpts.length).map((opt, i) => (
                       <span key={i} className="line-clamp-1">
                         <span className="font-bold">{String.fromCharCode(65 + i)}.</span>{' '}
-                        {opt}
+                        {opt.optionText}
                       </span>
                     ))}
                   </div>
                 </td>
                 <td className="px-3 py-2.5 text-xs">
-                  {q.cat !== 'TKP' ? (
+                  {q.category !== 'TKP' ? (
                     <span className="font-bold text-green-600">
-                      {q.ans !== undefined ? String.fromCharCode(65 + q.ans) : '-'}
+                      {q.correctAnswer !== undefined && q.correctAnswer !== null ? String.fromCharCode(65 + q.correctAnswer) : '-'}
                     </span>
                   ) : (
                     <div className="flex gap-1 flex-wrap">
-                      {q.tkpVals?.map((v, i) => (
+                      {q.options.map((opt, i) => opt.tkpValue != null && (
                         <span
                           key={i}
                           className="bg-violet-100 text-violet-700 rounded px-1.5 py-0.5 font-bold"
                         >
-                          {String.fromCharCode(65 + i)}={v}
+                          {String.fromCharCode(65 + i)}={opt.tkpValue}
                         </span>
                       ))}
                     </div>

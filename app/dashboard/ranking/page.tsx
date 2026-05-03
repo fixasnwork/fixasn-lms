@@ -21,6 +21,17 @@ export default function RankingPage() {
   const router = useRouter();
   const [tab, setTab] = useState<'all' | 'weekly' | 'monthly'>('all');
 
+  const filteredRankings = (() => {
+    switch (tab) {
+      case 'weekly':
+        return RANKINGS.slice(0, 5);
+      case 'monthly':
+        return RANKINGS.slice(0, 8);
+      default:
+        return RANKINGS;
+    }
+  })();
+
   return (
     <div>
       <h2 className="font-black text-2xl text-[#1B3A6B] mb-1">🏅 Ranking Nasional</h2>
@@ -33,39 +44,39 @@ export default function RankingPage() {
         {/* 2nd place */}
         <div className="flex flex-col items-center flex-1">
           <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gray-400 to-gray-300 flex items-center justify-center text-xl font-black text-white mb-2 ring-4 ring-gray-200">
-            {RANKINGS[1].avatar}
+            {filteredRankings[1].avatar}
           </div>
           <div className="text-2xl mb-1">🥈</div>
-          <div className="font-extrabold text-sm text-gray-800 text-center">{RANKINGS[1].name.split(' ')[0]}</div>
-          <div className="font-black text-base text-gray-600">{RANKINGS[1].skor}</div>
+          <div className="font-extrabold text-sm text-gray-800 text-center">{filteredRankings[1].name.split(' ')[0]}</div>
+          <div className="font-black text-base text-gray-600">{filteredRankings[1].skor}</div>
           <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
-            <div className="bg-gradient-to-r from-gray-400 to-gray-300 h-full rounded-full" style={{ width: `${(RANKINGS[1].skor / 350) * 100}%` }} />
+            <div className="bg-gradient-to-r from-gray-400 to-gray-300 h-full rounded-full" style={{ width: `${(filteredRankings[1].skor / 350) * 100}%` }} />
           </div>
         </div>
 
         {/* 1st place */}
         <div className="flex flex-col items-center flex-1 -mt-3">
           <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-500 to-yellow-400 flex items-center justify-center text-2xl font-black text-white mb-2 ring-4 ring-amber-200 shadow-lg shadow-amber-200/50">
-            {RANKINGS[0].avatar}
+            {filteredRankings[0].avatar}
           </div>
           <div className="text-3xl mb-1">🥇</div>
-          <div className="font-extrabold text-base text-[#1B3A6B] text-center">{RANKINGS[0].name.split(' ')[0]}</div>
-          <div className="font-black text-2xl text-amber-600">{RANKINGS[0].skor}</div>
+          <div className="font-extrabold text-base text-[#1B3A6B] text-center">{filteredRankings[0].name.split(' ')[0]}</div>
+          <div className="font-black text-2xl text-amber-600">{filteredRankings[0].skor}</div>
           <div className="w-full bg-amber-100 rounded-full h-1.5 mt-1">
-            <div className="bg-gradient-to-r from-amber-500 to-yellow-400 h-full rounded-full" style={{ width: `${(RANKINGS[0].skor / 350) * 100}%` }} />
+            <div className="bg-gradient-to-r from-amber-500 to-yellow-400 h-full rounded-full" style={{ width: `${(filteredRankings[0].skor / 350) * 100}%` }} />
           </div>
         </div>
 
         {/* 3rd place */}
         <div className="flex flex-col items-center flex-1">
           <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-700 to-yellow-600 flex items-center justify-center text-xl font-black text-white mb-2 ring-4 ring-amber-100">
-            {RANKINGS[2].avatar}
+            {filteredRankings[2].avatar}
           </div>
           <div className="text-2xl mb-1">🥉</div>
-          <div className="font-extrabold text-sm text-gray-800 text-center">{RANKINGS[2].name.split(' ')[0]}</div>
-          <div className="font-black text-base text-gray-600">{RANKINGS[2].skor}</div>
+          <div className="font-extrabold text-sm text-gray-800 text-center">{filteredRankings[2].name.split(' ')[0]}</div>
+          <div className="font-black text-base text-gray-600">{filteredRankings[2].skor}</div>
           <div className="w-full bg-amber-200 rounded-full h-1.5 mt-1">
-            <div className="bg-gradient-to-r from-amber-700 to-yellow-600 h-full rounded-full" style={{ width: `${(RANKINGS[2].skor / 350) * 100}%` }} />
+            <div className="bg-gradient-to-r from-amber-700 to-yellow-600 h-full rounded-full" style={{ width: `${(filteredRankings[2].skor / 350) * 100}%` }} />
           </div>
         </div>
       </div>
@@ -90,11 +101,11 @@ export default function RankingPage() {
       {/* Ranking table */}
       <Card className="p-0 overflow-hidden">
         <div className="flex flex-col gap-0">
-          {RANKINGS.slice(3).map((r, i) => (
+          {filteredRankings.slice(3).map((r, i) => (
             <div
               key={r.rank}
               className={`flex items-center gap-3 px-4 py-3 ${
-                i !== RANKINGS.slice(3).length - 1 ? 'border-b border-gray-100' : ''
+                i !== filteredRankings.slice(3).length - 1 ? 'border-b border-gray-100' : ''
               } hover:bg-gray-50 transition-colors`}
             >
               <div className="w-8 text-center font-black text-gray-400 text-sm">{r.rank}</div>

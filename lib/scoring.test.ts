@@ -4,26 +4,56 @@ import type { Question } from './types';
 
 const twkQuestion: Question = {
   id: 1,
-  cat: 'TWK',
-  q: 'Apa rumus luas lingkaran?',
-  opts: ['2πr', 'πr²', 'πd', '2πd'],
-  ans: 1,
+  category: 'TWK',
+  question: 'Apa rumus luas lingkaran?',
+  correctAnswer: 1,
+  questionImage: null,
+  explanation: null,
+  explanationImage: null,
+  options: [
+    { id: 1, questionId: 1, optionIndex: 0, optionText: '2πr', optionImage: null, tkpValue: null },
+    { id: 2, questionId: 1, optionIndex: 1, optionText: 'πr²', optionImage: null, tkpValue: null },
+    { id: 3, questionId: 1, optionIndex: 2, optionText: 'πd', optionImage: null, tkpValue: null },
+    { id: 4, questionId: 1, optionIndex: 3, optionText: '2πd', optionImage: null, tkpValue: null },
+  ],
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-01T00:00:00Z',
 };
 
 const tiuQuestion: Question = {
   id: 2,
-  cat: 'TIU',
-  q: 'Berapa 5 + 3?',
-  opts: ['6', '7', '8', '9'],
-  ans: 2,
+  category: 'TIU',
+  question: 'Berapa 5 + 3?',
+  correctAnswer: 2,
+  questionImage: null,
+  explanation: null,
+  explanationImage: null,
+  options: [
+    { id: 5, questionId: 2, optionIndex: 0, optionText: '6', optionImage: null, tkpValue: null },
+    { id: 6, questionId: 2, optionIndex: 1, optionText: '7', optionImage: null, tkpValue: null },
+    { id: 7, questionId: 2, optionIndex: 2, optionText: '8', optionImage: null, tkpValue: null },
+    { id: 8, questionId: 2, optionIndex: 3, optionText: '9', optionImage: null, tkpValue: null },
+  ],
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-01T00:00:00Z',
 };
 
 const tkpQuestion: Question = {
   id: 3,
-  cat: 'TKP',
-  q: 'Bagaimana sikap anda terhadap atasan?',
-  opts: ['Menentang', 'Acuh', 'Menghormati', 'Mengabaikan'],
-  tkpVals: [1, 2, 5, 3],
+  category: 'TKP',
+  question: 'Bagaimana sikap anda terhadap atasan?',
+  correctAnswer: null,
+  questionImage: null,
+  explanation: null,
+  explanationImage: null,
+  options: [
+    { id: 9, questionId: 3, optionIndex: 0, optionText: 'Menentang', optionImage: null, tkpValue: 1 },
+    { id: 10, questionId: 3, optionIndex: 1, optionText: 'Acuh', optionImage: null, tkpValue: 2 },
+    { id: 11, questionId: 3, optionIndex: 2, optionText: 'Menghormati', optionImage: null, tkpValue: 5 },
+    { id: 12, questionId: 3, optionIndex: 3, optionText: 'Mengabaikan', optionImage: null, tkpValue: 3 },
+  ],
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-01T00:00:00Z',
 };
 
 describe('getScore', () => {
@@ -53,7 +83,7 @@ describe('getScore', () => {
     expect(getScore(tiuQuestion, 0)).toBe(0);
   });
 
-  it('returns TKP score based on tkpVals array', () => {
+  it('returns TKP score based on tkpValues array', () => {
     expect(getScore(tkpQuestion, 0)).toBe(1);
     expect(getScore(tkpQuestion, 1)).toBe(2);
     expect(getScore(tkpQuestion, 2)).toBe(5);
