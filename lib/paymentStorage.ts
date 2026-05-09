@@ -1,6 +1,11 @@
 // ─────────────────────────────────────────────
-// LOCALSTORAGE-BACKED PAYMENT PERSISTENCE
-// Bridges frontend payment flow until real backend exists
+// ⚠️ DEPRECATED — MIGRATED TO PRISMA-BACKED API
+//
+// This module was a localStorage fallback before the Prisma-backed
+// /api/payments route existed. All callers have been migrated to
+// TanStack Query hooks (useAdminPayments, useCreatePayment).
+//
+// Scheduled for removal. Do not add new callers.
 // ─────────────────────────────────────────────
 import type { Payment } from '@/lib/types';
 

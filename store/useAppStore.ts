@@ -121,7 +121,9 @@ const TRIAL_QUESTIONS = inputsToQuestions(
    ...QUESTIONS.filter((q) => q.category === 'TKP').slice(0, 3)]
 );
 
-const NOW = new Date().toISOString();
+// Use epoch placeholder for default dates — avoids hydration mismatch.
+// Real dates come from DB on fetch.
+const EPOCH = '1970-01-01T00:00:00.000Z';
 
 export const useAppStore = create<AppState>((set, get) => ({
   // Initial state
@@ -136,8 +138,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     isTrial: true,
     sortOrder: 0,
     questions: TRIAL_QUESTIONS,
-    createdAt: NOW,
-    updatedAt: NOW,
+    createdAt: EPOCH,
+    updatedAt: EPOCH,
   },
   logoConfig: defaultLogoConfig,
   attemptHistory: [],

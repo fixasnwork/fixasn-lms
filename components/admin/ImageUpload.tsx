@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 
 interface ImageUploadProps {
   value: string;
@@ -56,11 +57,14 @@ export default function ImageUpload({ value, onChange, label }: ImageUploadProps
         <label className="text-xs font-bold text-gray-500">{label}</label>
       )}
       {value ? (
-        <div className="relative">
-          <img
+        <div className="relative h-28">
+          <Image
             src={value}
             alt="preview"
-            className="w-full max-h-28 rounded-lg border border-gray-200 object-contain bg-white"
+            fill
+            unoptimized
+            sizes="100vw"
+            className="rounded-lg border border-gray-200 object-contain bg-white"
           />
           <button
             type="button"

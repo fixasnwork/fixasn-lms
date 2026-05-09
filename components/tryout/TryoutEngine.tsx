@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import Image from "next/image";
 import type { Question } from "@/lib/types";
 import { getScore, formatTime } from "@/lib/scoring";
 import { Logo, Button, Badge, Card, Modal } from "@/components/ui";
@@ -273,7 +274,7 @@ export default function TryoutEngine({
             <Button variant="outline" onClick={onBack} className="w-full sm:w-auto">
               ← Kembali ke Dashboard
             </Button>
-            <Button variant="primary" onClick={retry} className="w-full sm:w-auto">
+            <Button variant="primary" onClick={retry} className="w-full sm:w-auto sm:ml-auto">
               🔄 Ulangi Tryout
             </Button>
           </div>
@@ -354,7 +355,7 @@ export default function TryoutEngine({
   const timerShort = timeStr.split(":").slice(-2).join(":"); // MM:SS for mobile
 
   return (
-    <div className="min-h-screen bg-[#F8FAFF]">
+    <div className="min-h-screen bg-[#F8FAFF] w-full max-w-[100vw] overflow-x-hidden">
       {/* ── Trial Banner ── */}
       {isTrial && (
         <div className="bg-gradient-to-r from-amber-600 to-yellow-400 text-white px-3 sm:px-6 py-2 text-center font-bold text-[11px] sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-3">
@@ -431,12 +432,15 @@ export default function TryoutEngine({
               {q.question}
             </p>
             {q.questionImage && (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                src={q.questionImage}
-                alt="soal"
-                className="max-w-full max-h-36 sm:max-h-48 rounded-lg mb-4 border border-gray-200 object-contain bg-white"
-              />
+              <div className="relative w-full h-36 sm:h-48 mb-4">
+                <Image
+                  src={q.questionImage}
+                  alt="soal"
+                  fill
+                  sizes="(max-width: 640px) 100vw, 640px"
+                  className="rounded-lg border border-gray-200 object-contain bg-white"
+                />
+              </div>
             )}
 
             {/* Options */}
@@ -470,12 +474,15 @@ export default function TryoutEngine({
                         <span className="leading-relaxed">{opt.optionText}</span>
                       )}
                       {optImg && (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img
-                          src={optImg}
-                          alt={`Opsi ${String.fromCharCode(65 + j)}`}
-                          className="block max-w-full max-h-16 sm:max-h-24 rounded-lg mt-1 object-contain"
-                        />
+                        <div className="relative w-full h-16 sm:h-24 mt-1">
+                          <Image
+                            src={optImg}
+                            alt={`Opsi ${String.fromCharCode(65 + j)}`}
+                            fill
+                            sizes="(max-width: 640px) 100vw, 600px"
+                            className="rounded-lg object-contain"
+                          />
+                        </div>
                       )}
                     </div>
                   </button>

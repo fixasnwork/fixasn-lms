@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import type { Question } from '@/lib/types';
 import { getScore } from '@/lib/scoring';
 import { Button, Badge, Card } from '@/components/ui';
@@ -109,11 +110,15 @@ export default function PembahasanNavigator({
         {/* Question text */}
         <p className="font-bold text-base text-gray-800 mb-3 leading-relaxed">{q.question}</p>
         {q.questionImage && (
-          <img
-            src={q.questionImage}
-            alt="soal"
-            className="max-w-full max-h-56 rounded-lg mb-4 border border-gray-200 object-contain bg-white"
-          />
+          <div className="relative w-full h-56 mb-4">
+            <Image
+              src={q.questionImage}
+              alt="soal"
+              fill
+              sizes="(max-width: 640px) 100vw, 640px"
+              className="rounded-lg border border-gray-200 object-contain bg-white"
+            />
+          </div>
         )}
 
         {/* Answer options */}
@@ -166,11 +171,15 @@ export default function PembahasanNavigator({
                 <div className="flex-1">
                   {opt.optionText && <span className="leading-relaxed">{opt.optionText}</span>}
                   {optImg && (
-                    <img
-                      src={optImg}
-                      alt={`Opsi ${String.fromCharCode(65 + j)}`}
-                      className="block max-w-full max-h-28 rounded-lg mt-1 object-contain bg-white"
-                    />
+                    <div className="relative w-full h-28 mt-1">
+                      <Image
+                        src={optImg}
+                        alt={`Opsi ${String.fromCharCode(65 + j)}`}
+                        fill
+                        sizes="(max-width: 640px) 100vw, 600px"
+                        className="rounded-lg object-contain bg-white"
+                      />
+                    </div>
                   )}
                 </div>
                 {isUser && (
@@ -192,11 +201,15 @@ export default function PembahasanNavigator({
             <p className="font-bold text-xs text-blue-700 mb-1">Pembahasan:</p>
             <div className="text-sm text-blue-800 leading-relaxed">{q.explanation}</div>
             {q.explanationImage && (
-              <img
-                src={q.explanationImage}
-                alt="pembahasan"
-                className="max-w-full max-h-52 rounded-lg mt-2 border border-blue-200 object-contain bg-white"
-              />
+              <div className="relative w-full h-52 mt-2">
+                <Image
+                  src={q.explanationImage}
+                  alt="pembahasan"
+                  fill
+                  sizes="(max-width: 640px) 100vw, 600px"
+                  className="rounded-lg border border-blue-200 object-contain bg-white"
+                />
+              </div>
             )}
           </div>
         ) : (

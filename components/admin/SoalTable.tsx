@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import type { Question } from '@/lib/types';
 import { Badge, Button } from '@/components/ui';
 
@@ -73,11 +74,15 @@ export default function SoalTable({ questions, onEdit, onDelete }: SoalTableProp
                       {q.question}
                     </p>
                     {q.questionImage && (
-                      <img
-                        src={q.questionImage}
-                        alt="soal"
-                        className="w-12 h-12 rounded border border-gray-200 object-cover mt-1"
-                      />
+                      <div className="relative w-12 h-12 mt-1">
+                        <Image
+                          src={q.questionImage}
+                          alt="soal"
+                          width={48}
+                          height={48}
+                          className="rounded border border-gray-200 object-cover"
+                        />
+                      </div>
                     )}
                   </div>
                 </td>

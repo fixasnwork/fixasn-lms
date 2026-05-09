@@ -1,16 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import Image from 'next/image';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Payment } from '@/lib/types';
 import { Button, Badge, Card, Modal, StatCard } from '@/components/ui';
-import { getPayments, updatePaymentStatus } from '@/lib/paymentStorage';
+import { useAdminPayments } from '@/hooks/useTryoutQueries';
 
 type FilterKey = 'all' | 'pending' | 'verified' | 'blocked';
 
 export default function PaymentsPage() {
-  const [payments, setPayments] = useState<Payment[]>(() => {
-    return getPayments();
-  });
+  const { data: payments = [], isFetching } = useAdminPayments();
+  const queryClient = useQueryClient();
   const [filterPay, setFilterPay] = useState<FilterKey>('all');
   const [proofModal, setProofModal] = useState<Payment | null>(null);
   const [blockModal, setBlockModal] = useState<Payment | null>(null);
@@ -25,31 +26,34 @@ export default function PaymentsPage() {
   const verifiedCount = payments.filter((p) => p.status === 'verified').length;
   const blockedCount = payments.filter((p) => p.status === 'blocked').length;
 
+  // Mutation for updating payment status
+  const updateStatus = useMutation({
+    mutationFn: async ({ id, status, blockReason: reason }: { id: string; status: string; blockReason?: string }) => {
+      const res = await fetch('/api/payments', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status, ...(reason !== undefined ? { blockReason: reason } : {}) }),
+      });
+      if (!res.ok) throw new Error('Gagal update status');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-payments'] });
+    },
+  });
+
   const verify = (id: string) => {
-    setPayments((p) =>
-      p.map((x) => (x.id === id ? { ...x, status: 'verified', blockReason: null } : x))
-    );
-    updatePaymentStatus(id, 'verified');
+    updateStatus.mutate({ id, status: 'verified', blockReason: '' });
   };
 
   const blockUser = (pay: Payment) => {
-    setPayments((p) =>
-      p.map((x) =>
-        x.id === pay.id ? { ...x, status: 'blocked', blockReason: blockReason.trim() } : x
-      )
-    );
-    updatePaymentStatus(pay.id, 'blocked', blockReason.trim());
+    updateStatus.mutate({ id: pay.id, status: 'blocked', blockReason: blockReason.trim() });
     setBlockModal(null);
     setBlockReason('');
   };
 
   const unblock = (id: string) => {
-    setPayments((p) =>
-      p.map((x) =>
-        x.id === id ? { ...x, status: 'pending', blockReason: null } : x
-      )
-    );
-    updatePaymentStatus(id, 'pending');
+    updateStatus.mutate({ id, status: 'pending', blockReason: '' });
   };
 
   const filters: { key: FilterKey; label: string }[] = [
@@ -233,11 +237,15 @@ export default function PaymentsPage() {
             ))}
           </div>
           {proofModal.proofUrl ? (
-            <div className="rounded-xl overflow-hidden border-2 border-gray-100 mb-4">
-              <img
+            <div className="rounded-xl overflow-hidden border-2 border-gray-100 mb-4 relative">
+              <Image
                 src={proofModal.proofUrl}
                 alt="Bukti"
-                className="w-full block"
+                width={0}
+                height={0}
+                sizes="100vw"
+                className="w-full h-auto"
+                unoptimized
               />
               <div className="px-3 py-2 bg-blue-50 text-center text-xs text-gray-500">
                 📎 {proofModal.id}_bukti_transfer.jpg

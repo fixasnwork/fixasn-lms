@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import type { LogoConfig } from '@/lib/types';
 import { Logo, Button, Card } from '@/components/ui';
 import ImageUpload from '@/components/admin/ImageUpload';
@@ -199,11 +200,13 @@ export default function LogoEditor({ logoConfig, setLogoConfig }: LogoEditorProp
                 </div>
               </div>
               {draft.heroImg && (
-                <div className="rounded-lg overflow-hidden border border-gray-200 max-h-28">
-                  <img
+                <div className="rounded-lg overflow-hidden border border-gray-200 relative h-28">
+                  <Image
                     src={draft.heroImg}
                     alt="preview hero"
-                    className="w-full object-cover max-h-28"
+                    fill
+                    sizes="50vw"
+                    className="object-cover"
                   />
                 </div>
               )}

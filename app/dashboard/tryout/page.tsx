@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import type { Tryout, Package } from '@/lib/types';
 import { useSession } from 'next-auth/react';
@@ -38,12 +39,9 @@ export default function TryoutPage() {
   const { data: packages = [], isFetching: isFetchingPackages } = usePackages();
   const { data: banks = [] } = useBanks();
   const { data: tryoutBanks = {}, isFetching: isFetchingTryouts } = useTryouts();
-  const { data: userPayments = [], isFetching: isFetchingPayments } = useUserPayments(
-    session?.user?.email
-  );
-  const { data: attemptHistory = [], isFetching: isFetchingHistory } = useAttemptHistory(
-    session?.user?.email
-  );
+  const userEmail = session?.user?.email ?? undefined;
+  const { data: userPayments = [], isFetching: isFetchingPayments } = useUserPayments(userEmail);
+  const { data: attemptHistory = [], isFetching: isFetchingHistory } = useAttemptHistory(userEmail);
   const uploadProof = useUploadProof();
   const createPayment = useCreatePayment();
   const createOrResumeAttempt = useCreateOrResumeAttempt();
@@ -452,12 +450,14 @@ export default function TryoutPage() {
           />
 
           {proofFile ? (
-            <div className="border-2 border-green-400 rounded-xl overflow-hidden mb-0">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+            <div className="border-2 border-green-400 rounded-xl overflow-hidden mb-0 relative h-52">
+              <Image
                 src={proofFile.url}
                 alt="Bukti transfer preview"
-                className="w-full max-h-52 object-cover"
+                fill
+                unoptimized
+                sizes="100vw"
+                className="object-cover"
               />
               <div className="flex justify-between items-center bg-green-50 px-4 py-2.5">
                 <span className="text-sm font-bold text-green-700">

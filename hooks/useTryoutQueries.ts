@@ -31,7 +31,7 @@ export function useUserPayments(userId: string | undefined) {
 
 /* ── Create Payment (mutation) ─────────────────────────────────── */
 export interface CreatePaymentInput {
-  id: string;
+  id?: string;
   packageId: number;
   proofUrl: string;
 }
@@ -264,5 +264,19 @@ export function useAttemptHistory(userId: string | undefined) {
       }>;
     },
     enabled: !!userId,
+  });
+}
+
+/* ── Admin: All Payments ──────────────────────────────────────── */
+export function useAdminPayments() {
+  return useQuery<Payment[]>({
+    queryKey: ['admin-payments'],
+    queryFn: async () => {
+      const res = await fetch('/api/payments');
+      if (!res.ok) throw new Error('Failed to fetch payments');
+      const data = await res.json();
+      return data.payments as Payment[];
+    },
+    staleTime: 30_000,
   });
 }

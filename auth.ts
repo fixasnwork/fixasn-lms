@@ -1,19 +1,7 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import { findOrCreateUser } from "@/lib/authDb";
-import { getAuthContext, authContext } from "@/lib/authContext";
-
-function extractIP(request: Request): string | null {
-  // Check if request has .ip property (NextRequest extension)
-  const ip = (request as { ip?: string }).ip;
-  if (ip) return ip.replace(/^::ffff:/, '');
-
-  const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim().replace(/^::ffff:/, '');
-  const realIp = request.headers.get("x-real-ip");
-  if (realIp) return realIp.replace(/^::ffff:/, '');
-  return null;
-}
+import { getAuthContext } from "@/lib/authContext";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -23,15 +11,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async signIn({ request }) {
-      // Capture IP early — enterWith persists for all subsequent async calls
-      // Only override context if we actually found an IP (don't clobber with null)
-      if (request) {
-        const ip = extractIP(request);
-        if (ip) authContext.enterWith({ ip });
-      }
-      return true;
-    },
     async jwt({ token, account, profile }) {
       // On first sign-in, find/create user in DB and store role
       if (account && profile) {

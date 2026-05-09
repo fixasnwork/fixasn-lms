@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import type { LogoConfig } from '@/lib/types';
 
 interface LogoProps {
@@ -27,10 +28,12 @@ export default function Logo({ size = 'md', cfg = {}, className = '' }: LogoProp
   return (
     <div className={`flex items-center ${className}`} style={{ gap }}>
       {imgSrc ? (
-        <img 
+        <Image 
           src={imgSrc} 
           alt="logo" 
-          style={{ width: w, height: h, objectFit: 'contain' }}
+          width={w} 
+          height={h}
+          style={{ objectFit: 'contain' }}
           className="flex-shrink-0"
         />
       ) : (

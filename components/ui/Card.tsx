@@ -19,7 +19,7 @@ export default function Card({ children, className = '', style = {}, hover = fal
       onMouseLeave={() => hover && setIsHovered(false)}
       onClick={onClick}
       className={`
-        bg-white rounded-2xl p-6 border border-gray-100
+        bg-white rounded-2xl p-4 sm:p-6 border border-gray-100
         transition-all duration-250
         ${isHovered ? 'shadow-xl -translate-y-1' : 'shadow-md'}
         ${hover ? 'cursor-pointer' : ''}

@@ -323,11 +323,11 @@ export async function GET(request: NextRequest) {
     // Full query: all questions + options (heavy, only when needed)
     const fullInclude = {
       tryoutQuestions: {
-        orderBy: { sortOrder: 'asc' },
+        orderBy: { sortOrder: 'asc' as const },
         include: {
           question: {
             include: {
-              options: { orderBy: { optionIndex: 'asc' } },
+              options: { orderBy: { optionIndex: 'asc' as const } },
             },
           },
         },
@@ -337,7 +337,7 @@ export async function GET(request: NextRequest) {
 
     let tryouts = await prisma.tryout.findMany({
       where: tryoutIds ? { id: { in: tryoutIds } } : undefined,
-      orderBy: { sortOrder: 'asc' },
+      orderBy: { sortOrder: 'asc' as const },
       include: includeQuestions ? fullInclude : lightInclude,
     });
 
@@ -355,8 +355,8 @@ export async function GET(request: NextRequest) {
     }
 
     const grouped = includeQuestions
-      ? buildFullResponse(tryouts as Parameters<typeof buildFullResponse>[0])
-      : buildLightResponse(tryouts as Parameters<typeof buildLightResponse>[0]);
+      ? buildFullResponse(tryouts as unknown as Parameters<typeof buildFullResponse>[0])
+      : buildLightResponse(tryouts as unknown as Parameters<typeof buildLightResponse>[0]);
 
     return NextResponse.json({ tryouts: grouped });
   } catch (error) {

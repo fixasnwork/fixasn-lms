@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Logo, Button, Card } from '@/components/ui';
 import { useAppStore } from '@/store/useAppStore';
@@ -88,15 +90,8 @@ export function LandingPage() {
           
           {/* Right Content */}
           <div className="flex flex-col gap-3">
-            <div className="rounded-2xl overflow-hidden shadow-2xl relative min-h-[200px] bg-[#1B3A6B]">
-              <img
-                src={logoConfig.heroImg}
-                alt="Hero"
-                className="w-full h-[230px] object-cover block"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=700&q=85';
-                }}
-              />
+            <div className="rounded-2xl overflow-hidden shadow-2xl relative h-[230px] bg-[#1B3A6B]">
+              <HeroImage heroImg={logoConfig.heroImg} />
               <div className="absolute inset-0 bg-gradient-to-t from-[#0C1E45]/75 to-transparent" />
               <div className="absolute bottom-3.5 left-4 right-4">
                 <p className="font-['Montserrat',sans-serif] font-bold text-sm text-yellow-400 mb-0.5">
@@ -184,5 +179,21 @@ export function LandingPage() {
       {/* FOOTER */}
       <Footer logoConfig={logoConfig} />
     </div>
+  );
+}
+
+/** Internal component to handle hero image with fallback via next/image */
+function HeroImage({ heroImg }: { heroImg: string }) {
+  const [src, setSrc] = useState(heroImg);
+  return (
+    <Image
+      src={src}
+      alt="Hero"
+      fill
+      sizes="(max-width: 1024px) 100vw, 50vw"
+      className="object-cover"
+      priority
+      onError={() => setSrc('https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=700&q=85')}
+    />
   );
 }

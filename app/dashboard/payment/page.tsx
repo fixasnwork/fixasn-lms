@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
+import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, Card, Modal } from '@/components/ui';
 import { useAppStore } from '@/store/useAppStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { WA_LINK, WA_NUMBER } from '@/data/constants';
-import { addPayment, generatePaymentId } from '@/lib/paymentStorage';
+import { useCreatePayment, useUploadProof } from '@/hooks/useTryoutQueries';
 
 function PaymentContent() {
   const router = useRouter();
@@ -15,6 +16,7 @@ function PaymentContent() {
 
   const { user } = useAuthStore();
   const { packages, banks } = useAppStore();
+  const createPayment = useCreatePayment();
 
   const [selectedPkgId, setSelectedPkgId] = useState<number | null>(pkgIdParam ? parseInt(pkgIdParam, 10) : null);
   const [proofMethod, setProofMethod] = useState<'upload' | 'wa'>('upload');
@@ -51,15 +53,12 @@ function PaymentContent() {
       alert('Silakan upload bukti transfer terlebih dahulu');
       return;
     }
-    // Persist payment proof
+    // Persist payment proof via API
     if (selectedPkg && user) {
-      addPayment({
-        id: generatePaymentId(),
-        userId: user.email,
+      createPayment.mutate({
+        id: '',
         packageId: selectedPkg.id,
-        status: 'pending',
-        proofUrl: proofUrl || null,
-        blockReason: null,
+        proofUrl: proofUrl || '',
       });
     }
     setStep('done');
@@ -76,15 +75,12 @@ function PaymentContent() {
     );
     window.open(`https://wa.me/${WA_NUMBER}?text=${msg}`, '_blank');
     setShowWAWarning(false);
-    // Persist WA-confirmed payment
+    // Persist WA-confirmed payment via API
     if (selectedPkg && user) {
-      addPayment({
-        id: generatePaymentId(),
-        userId: user.email,
+      createPayment.mutate({
+        id: '',
         packageId: selectedPkg.id,
-        status: 'pending',
-        proofUrl: null,
-        blockReason: null,
+        proofUrl: '',
       });
     }
     setStep('done');
@@ -262,11 +258,14 @@ function PaymentContent() {
                   📸 Upload Bukti Transfer <span className="text-red-500">*</span>
                 </p>
                 {uploadedImage ? (
-                  <div className="relative rounded-xl overflow-hidden border-2 border-green-400 mb-3">
-                    <img
+                  <div className="relative rounded-xl overflow-hidden border-2 border-green-400 mb-3 h-64">
+                    <Image
                       src={uploadedImage}
                       alt="Bukti transfer"
-                      className="w-full max-h-64 object-contain bg-white"
+                      fill
+                      unoptimized
+                      sizes="100vw"
+                      className="object-contain bg-white"
                     />
                     <button
                       onClick={() => { setUploadedImage(null); setProofUrl(''); }}
