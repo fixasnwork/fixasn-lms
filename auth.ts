@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import { findOrCreateUser } from "@/lib/authDb";
 import { getAuthContext } from "@/lib/authContext";
+import prisma from "@/lib/prisma";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -12,7 +13,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     async jwt({ token, account, profile }) {
-      // On first sign-in, find/create user in DB and store role
+      // On first sign-in, find/create user in DB
       if (account && profile) {
         const ctx = getAuthContext();
         const ip = ctx?.ip || null;
@@ -25,10 +26,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           ip,
         );
         token.role = user.role;
-        token.email = profile.email!;
-        token.name = profile.name || token.name;
-        token.picture = (profile as { picture?: string }).picture || null;
       }
+
+      // Always refresh token from database so profile edits (name/avatar)
+      // are reflected in the session on next request.
+      if (token.email) {
+        const dbUser = await prisma.user.findUnique({
+          where: { email: token.email },
+          select: { name: true, avatar: true, role: true, email: true },
+        });
+        if (dbUser) {
+          token.name = dbUser.name;
+          token.picture = dbUser.avatar;
+          token.role = dbUser.role;
+          token.email = dbUser.email;
+        }
+      }
+
       return token;
     },
     async session({ session, token }) {
