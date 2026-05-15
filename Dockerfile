@@ -26,7 +26,7 @@ RUN npx prisma generate
 RUN npm run build
 
 # ── Stage 3: Runner ──────────────────────────
-FROM node:22-alpine AS runner
+FROM node:26-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
