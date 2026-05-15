@@ -1,6 +1,6 @@
 services:
   app:
-    image: ghcr.io/fixasn/fixasn-lms-app:latest
+    image: ghcr.io/fixasn/fixasn-lms-uat:latest
     ports:
       - "3000:3000"
     environment:

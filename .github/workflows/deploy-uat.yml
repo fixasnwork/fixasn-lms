@@ -2,7 +2,7 @@ name: Deploy to Oracle VM
 
 on:
   push:
-    branches: [main]
+    branches: [staging]
   workflow_dispatch:
 
 env:
@@ -11,7 +11,7 @@ env:
 
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
@@ -36,11 +36,11 @@ jobs:
           context: .
           push: true
           platforms: linux/amd64
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-uat:latest
           build-args: |
-            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-            NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-            NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
+            NEXT_PUBLIC_SUPABASE_URL=${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+            NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+            NEXT_PUBLIC_APP_URL=${{ vars.NEXT_PUBLIC_APP_URL }}
             DATABASE_URL=${{ secrets.DATABASE_URL }}
             SUPABASE_SECRET_KEY=${{ secrets.SUPABASE_SECRET_KEY }}
           cache-from: type=gha
@@ -56,12 +56,12 @@ jobs:
             set -e
             cd /home/ubuntu/fixasn-lms
 
-            # Use production compose that pulls from GHCR
-            cp docker-compose.prod.yml docker-compose.yml
+            # Use staging compose that pulls from GHCR
+            cp docker-compose.uat.yml docker-compose.yml
 
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-uat:latest
 
             docker compose up -d --remove-orphans
 
