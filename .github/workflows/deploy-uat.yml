@@ -10,7 +10,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-24.04
     environment: UAT
     permissions:
@@ -47,6 +47,11 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  deploy:
+    runs-on: ubuntu-24.04
+    environment: UAT
+
+    steps:
       - name: Deploy to server
         uses: appleboy/ssh-action@v1
         with:
