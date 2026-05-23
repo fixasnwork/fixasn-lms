@@ -14,7 +14,7 @@ export default function SoalTable({ questions, onEdit, onDelete }: SoalTableProp
   if (questions.length === 0) {
     return (
       <div className="text-center py-10 text-gray-400 text-sm">
-        Belum ada soal. Klik "+ Tambah Soal" untuk menambahkan.
+        Belum ada soal. Klik &quot;+ Tambah Soal&quot; untuk menambahkan.
       </div>
     );
   }

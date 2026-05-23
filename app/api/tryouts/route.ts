@@ -61,6 +61,7 @@ function mapTryoutLight(t: {
   name: string;
   isTrial: boolean;
   sortOrder: number;
+  durationMin: number;
   createdAt: Date;
   updatedAt: Date;
   _count: { tryoutQuestions: number };
@@ -71,6 +72,7 @@ function mapTryoutLight(t: {
     name: t.name,
     isTrial: t.isTrial,
     sortOrder: t.sortOrder,
+    durationMin: t.durationMin,
     questions: [], // light mode — questions not included
     _questionCount: t._count.tryoutQuestions,
     createdAt: t.createdAt.toISOString(),
@@ -84,6 +86,7 @@ function mapTryoutFull(t: {
   name: string;
   isTrial: boolean;
   sortOrder: number;
+  durationMin: number;
   createdAt: Date;
   updatedAt: Date;
   tryoutQuestions: {
@@ -119,6 +122,7 @@ function mapTryoutFull(t: {
     name: t.name,
     isTrial: t.isTrial,
     sortOrder: t.sortOrder,
+    durationMin: t.durationMin,
     questions,
     createdAt: t.createdAt.toISOString(),
     updatedAt: t.updatedAt.toISOString(),
@@ -148,11 +152,21 @@ async function seedFromDefaults(): Promise<boolean> {
           tryoutId = existing.id;
           await prisma.tryout.update({
             where: { id: existing.id },
-            data: { name: t.name, isTrial: t.isTrial, sortOrder: t.sortOrder },
+            data: {
+              name: t.name,
+              isTrial: t.isTrial,
+              sortOrder: t.sortOrder,
+              durationMin: t.isTrial ? 15 : 100,
+            },
           });
         } else {
           const created = await prisma.tryout.create({
-            data: { name: t.name, isTrial: t.isTrial, sortOrder: t.sortOrder },
+            data: {
+              name: t.name,
+              isTrial: t.isTrial,
+              sortOrder: t.sortOrder,
+              durationMin: t.isTrial ? 15 : 100,
+            },
           });
           tryoutId = created.id;
         }
@@ -225,6 +239,7 @@ function buildLightResponse(tryouts: {
   name: string;
   isTrial: boolean;
   sortOrder: number;
+  durationMin: number;
   createdAt: Date;
   updatedAt: Date;
   _count: { tryoutQuestions: number };
@@ -250,6 +265,7 @@ function buildFullResponse(tryouts: {
   name: string;
   isTrial: boolean;
   sortOrder: number;
+  durationMin: number;
   createdAt: Date;
   updatedAt: Date;
   tryoutQuestions: {

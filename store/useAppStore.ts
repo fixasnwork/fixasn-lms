@@ -6,17 +6,17 @@ import { create } from 'zustand';
 import type { Package, BankAccount, Question, LogoConfig, Tryout, Payment } from '@/lib/types';
 import { inputsToQuestions } from '@/lib/questionTransform';
 import { DEFAULT_PACKAGES, DEFAULT_BANK_ACCOUNTS } from '@/data/packages';
-import { DEFAULT_PACKAGE_BANKS, QUESTIONS, QUESTIONS_B } from '@/data/questions';
+import { QUESTIONS, QUESTIONS_B } from '@/data/questions';
 
 // Convert static defaults to full objects with synthetic numeric IDs
 // (real IDs come from DB after fetch)
 const DEFAULT_PACKAGES_WITH_IDS: Package[] = DEFAULT_PACKAGES.map((p, i) => ({
-  ...(p as any),
+  ...p,
   id: -(i + 1), // synthetic negative ID until DB sync
 }));
 
 const DEFAULT_BANKS_WITH_IDS: BankAccount[] = DEFAULT_BANK_ACCOUNTS.map((b, i) => ({
-  ...(b as any),
+  ...b,
   id: -(i + 1), // synthetic negative ID until DB sync
 }));
 
@@ -137,6 +137,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     name: "Trial",
     isTrial: true,
     sortOrder: 0,
+    durationMin: 15,
     questions: TRIAL_QUESTIONS,
     createdAt: EPOCH,
     updatedAt: EPOCH,
@@ -358,7 +359,8 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   // Derives completed tryout IDs per package from attempt history.
   // Used for progress bar rendering on dashboard.
-  getAttemptHistory: (userId: string) => {
+  getAttemptHistory: (_userId: string) => {
+    void _userId;
     // attemptHistory is now Payment[] — return empty until we migrate to TryoutAttempt
     const result: Record<string, number[]> = {};
     return result;

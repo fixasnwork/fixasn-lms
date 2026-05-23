@@ -3,11 +3,11 @@
 // Idempotently seeds all tryout slots from
 // DEFAULT_PACKAGE_BANKS into the database via Prisma.
 // ─────────────────────────────────────────────
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { DEFAULT_PACKAGE_BANKS } from '@/data/questions';
 
-export async function POST(_request: NextRequest) {
+export async function POST() {
   try {
     // Build name → id lookup for packages
     const packages = await prisma.package.findMany();
@@ -25,7 +25,7 @@ export async function POST(_request: NextRequest) {
       }
 
       for (const tryoutInput of tryouts) {
-        const questions: any[] = (tryoutInput as any).questions ?? [];
+        const questions = tryoutInput.questions ?? [];
 
         // Upsert tryout (match by name + sortOrder + isTrial)
         const existing = await prisma.tryout.findFirst({
@@ -37,11 +37,21 @@ export async function POST(_request: NextRequest) {
           tryoutId = existing.id;
           await prisma.tryout.update({
             where: { id: existing.id },
-            data: { name: tryoutInput.name, isTrial: tryoutInput.isTrial, sortOrder: tryoutInput.sortOrder },
+            data: {
+              name: tryoutInput.name,
+              isTrial: tryoutInput.isTrial,
+              sortOrder: tryoutInput.sortOrder,
+              durationMin: tryoutInput.isTrial ? 15 : 100,
+            },
           });
         } else {
           const created = await prisma.tryout.create({
-            data: { name: tryoutInput.name, isTrial: tryoutInput.isTrial, sortOrder: tryoutInput.sortOrder },
+            data: {
+              name: tryoutInput.name,
+              isTrial: tryoutInput.isTrial,
+              sortOrder: tryoutInput.sortOrder,
+              durationMin: tryoutInput.isTrial ? 15 : 100,
+            },
           });
           tryoutId = created.id;
         }
@@ -86,20 +96,20 @@ export async function POST(_request: NextRequest) {
           });
 
           // Options
-          const opts: any[] = q.options ?? [];
+          const opts = q.options ?? [];
           for (let oi = 0; oi < opts.length; oi++) {
             const opt = opts[oi];
-            const optText = typeof opt === 'string' ? opt : (opt.optionText ?? '');
-            const tkpVal = typeof opt === 'string' ? (q.tkpValues?.[oi] ?? null) : (opt.tkpValue ?? null);
+            const optText = opt ?? '';
+            const tkpVal = q.tkpValues?.[oi] ?? null;
 
             await prisma.questionOption.upsert({
               where: { questionId_optionIndex: { questionId, optionIndex: oi } },
-              update: { optionText: optText, tkpValue: tkpVal },
+              update: { optionText: optText, optionImage: q.optionImages?.[oi] ?? null, tkpValue: tkpVal },
               create: {
                 questionId,
                 optionIndex: oi,
                 optionText: optText,
-                optionImage: typeof opt === 'string' ? null : (opt.optionImage ?? null),
+                optionImage: q.optionImages?.[oi] ?? null,
                 tkpValue: tkpVal,
               },
             });

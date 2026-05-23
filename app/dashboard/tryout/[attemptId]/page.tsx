@@ -3,7 +3,6 @@
 import { use } from "react";
 import { useRouter } from "next/navigation";
 import { calculateScoring } from "@/lib/scoring";
-import { useAppStore } from "@/store/useAppStore";
 import TryoutEngine from "@/components/tryout/TryoutEngine";
 import { Button } from "@/components/ui";
 import { useAttempt, useUpdateAttempt } from "@/hooks/useTryoutQueries";
@@ -16,7 +15,6 @@ export default function TryoutAttemptPage({
 }) {
   const { attemptId } = use(params);
   const router = useRouter();
-  const durationMin = useAppStore((s) => s.durationMin);
 
   const { data, isFetching, error } = useAttempt(attemptId);
   const updateAttempt = useUpdateAttempt(attemptId);
@@ -97,7 +95,7 @@ export default function TryoutAttemptPage({
   return (
     <TryoutEngine
       questions={tryout.questions}
-      durationMin={tryout.isTrial ? 15 : durationMin || 100}
+      durationMin={tryout.durationMin || (tryout.isTrial ? 15 : 100)}
       setName={tryout.isTrial ? "Trial Gratis" : tryout.name}
       isTrial={tryout.isTrial}
       preloadedAnswers={attempt.answers}

@@ -165,7 +165,7 @@ async function main() {
 
     const tryoutMap = new Map<string, number>();
     for (const t of tryouts) {
-      const questions: any[] = (t as any).questions ?? [];
+      const questions = t.questions ?? [];
       const existing = await prisma.tryout.findFirst({
         where: { name: t.name, sortOrder: t.sortOrder, isTrial: t.isTrial },
         select: { id: true },
@@ -173,16 +173,20 @@ async function main() {
       let tryoutId: number;
       if (existing) {
         tryoutId = existing.id;
+        await prisma.tryout.update({
+          where: { id: existing.id },
+          data: { durationMin: t.isTrial ? 15 : 100 },
+        });
       } else {
         const created = await prisma.tryout.create({
-          data: { name: t.name, isTrial: t.isTrial, sortOrder: t.sortOrder },
+          data: { name: t.name, isTrial: t.isTrial, sortOrder: t.sortOrder, durationMin: t.isTrial ? 15 : 100 },
         });
         tryoutId = created.id;
       }
       tryoutMap.set(t.name, tryoutId);
       pkgTryoutRows.push({ packageId, tryoutId });
 
-      questions.forEach((q: any, qi: number) => {
+      questions.forEach((q, qi) => {
         if (!seenQIds.has(q.id)) {
           seenQIds.add(q.id);
           questionRows.push({
@@ -191,23 +195,14 @@ async function main() {
             correctAnswer: q.correctAnswer ?? null,
           });
 
-          const opts: any[] = q.options ?? [];
-          opts.forEach((opt: any, oi: number) => {
-            if (typeof opt === "string") {
-              optionRows.push({
-                questionId: q.id,
-                optionIndex: oi,
-                optionText: opt,
-                tkpValue: (q.tkpValues?.[oi]) ?? null,
-              });
-            } else if (opt && typeof opt === "object") {
-              optionRows.push({
-                questionId: q.id,
-                optionIndex: opt.optionIndex ?? oi,
-                optionText: opt.optionText ?? "",
-                tkpValue: opt.tkpValue ?? null,
-              });
-            }
+          const opts = q.options ?? [];
+          opts.forEach((opt, oi) => {
+            optionRows.push({
+              questionId: q.id,
+              optionIndex: oi,
+              optionText: opt,
+              tkpValue: (q.tkpValues?.[oi]) ?? null,
+            });
           });
         }
         tryoutQuestionRows.push({ tryoutId, questionId: q.id, sortOrder: qi + 1 });

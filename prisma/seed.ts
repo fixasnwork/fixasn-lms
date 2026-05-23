@@ -51,7 +51,7 @@ async function main() {
   for (const p of DEFAULT_PACKAGES) {
     await prisma.package.upsert({
       where: { name: p.name },
-      create: { name: p.name, description: p.description, price: p.price, isTrial: p.isTrial, isActive: p.isActive, tryoutCount: (p as any).tryoutCount ?? 0 },
+      create: { name: p.name, description: p.description, price: p.price, isTrial: p.isTrial, isActive: p.isActive },
       update: {},
     });
   }
@@ -78,9 +78,13 @@ async function main() {
       let tryoutId: number;
       if (existing) {
         tryoutId = existing.id;
+        await prisma.tryout.update({
+          where: { id: existing.id },
+          data: { durationMin: t.isTrial ? 15 : 100 },
+        });
       } else {
         const created = await prisma.tryout.create({
-          data: { name: t.name, isTrial: t.isTrial, sortOrder: t.sortOrder },
+          data: { name: t.name, isTrial: t.isTrial, sortOrder: t.sortOrder, durationMin: t.isTrial ? 15 : 100 },
         });
         tryoutId = created.id;
       }
@@ -105,8 +109,8 @@ async function main() {
       const tryoutId = tryoutIdByPkgName.get(pkgName)?.get(t.name);
       if (!tryoutId) continue;
 
-      const questions: any[] = (t as any).questions ?? [];
-      questions.forEach((q: any, qi: number) => {
+      const questions = t.questions ?? [];
+      questions.forEach((q, qi) => {
         if (!seen.has(q.id)) {
           seen.add(q.id);
           questionRows.push({
@@ -118,24 +122,15 @@ async function main() {
             explanationImage: q.explanationImage ?? null,
           });
 
-          const opts: any[] = q.options ?? [];
-          opts.forEach((opt: any, oi: number) => {
-            if (typeof opt === "string") {
-              optionRows.push({
-                questionId: q.id, // temporary — replaced below
-                optionIndex: oi,
-                optionText: opt,
-                tkpValue: (q.tkpValues?.[oi]) ?? null,
-              });
-            } else if (opt && typeof opt === "object") {
-              optionRows.push({
-                questionId: q.id,
-                optionIndex: opt.optionIndex ?? oi,
-                optionText: opt.optionText ?? "",
-                optionImage: opt.optionImage ?? null,
-                tkpValue: opt.tkpValue ?? null,
-              });
-            }
+          const opts = q.options ?? [];
+          opts.forEach((opt, oi) => {
+            optionRows.push({
+              questionId: q.id, // temporary — replaced below
+              optionIndex: oi,
+              optionText: opt,
+              optionImage: q.optionImages?.[oi] ?? null,
+              tkpValue: (q.tkpValues?.[oi]) ?? null,
+            });
           });
         }
         tryoutQuestionRows.push({ tryoutId, questionId: q.id, sortOrder: qi + 1 });

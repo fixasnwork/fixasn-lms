@@ -203,7 +203,7 @@ export default function TryoutPage() {
             </div>
             <div className="font-extrabold text-lg text-[#1B3A6B] mb-1.5 mt-1">Trial SKD</div>
             <div className="text-amber-800 text-sm mb-4">
-              {(trialTryout._questionCount ?? trialTryout.questions.length)} soal · 15 menit · TWK · TIU · TKP
+              {(trialTryout._questionCount ?? trialTryout.questions.length)} soal · {trialTryout.durationMin || 15} menit · TWK · TIU · TKP
             </div>
             <Button
               variant="gold"

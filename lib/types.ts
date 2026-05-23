@@ -64,6 +64,7 @@ export interface Tryout {
   name: string;
   isTrial: boolean;
   sortOrder: number;
+  durationMin: number;
   questions: Question[];
   /** Question count when questions array is empty (light query mode) */
   _questionCount?: number;

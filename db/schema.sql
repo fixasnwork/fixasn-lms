@@ -125,6 +125,7 @@ CREATE TABLE tryouts (
   name        TEXT NOT NULL,
   isTrial     BOOLEAN NOT NULL DEFAULT false,
   sortOrder   INTEGER NOT NULL DEFAULT 0,
+  "durationMin" INTEGER NOT NULL DEFAULT 100,
   createdAt   TIMESTAMPTZ NOT NULL DEFAULT now(),
   createdBy   TEXT,
   createdIP   TEXT,

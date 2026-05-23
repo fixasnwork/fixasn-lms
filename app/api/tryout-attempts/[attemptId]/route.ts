@@ -123,6 +123,7 @@ export async function GET(
       name: attempt.tryout.name,
       isTrial: attempt.tryout.isTrial,
       sortOrder: attempt.tryout.sortOrder,
+      durationMin: attempt.tryout.durationMin,
       questions,
     },
   });

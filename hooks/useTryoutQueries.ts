@@ -14,6 +14,18 @@ export function useTryouts() {
   });
 }
 
+export function useTryoutsWithQuestions() {
+  return useQuery({
+    queryKey: ['tryouts', 'questions'],
+    queryFn: async () => {
+      const res = await fetch('/api/tryouts?include=questions');
+      if (!res.ok) throw new Error('Failed to fetch tryouts');
+      const data = await res.json();
+      return data.tryouts as Record<string, Tryout[]>;
+    },
+  });
+}
+
 /* ── Payments ──────────────────────────────────────────────────── */
 export function useUserPayments(userId: string | undefined) {
   return useQuery<Payment[]>({
