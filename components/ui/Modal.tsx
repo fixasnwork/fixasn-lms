@@ -12,18 +12,18 @@ export default function Modal({ open, onClose, title, children, width = 500 }: M
   if (!open) return null;
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/55 z-50 flex items-center justify-center p-5"
+    <div
+      className="fixed inset-0 bg-black/55 z-50 flex items-center justify-center p-3 sm:p-5"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
-        className="bg-white rounded-3xl w-full max-h-[92vh] overflow-auto shadow-2xl"
+        className="bg-white rounded-2xl sm:rounded-3xl w-full max-h-[92vh] overflow-auto shadow-2xl"
         style={{ maxWidth: typeof width === 'number' ? `${width}px` : width }}
       >
-        <div className="flex items-center justify-between p-4.5 border-b border-gray-100 sticky top-0 bg-white z-10">
-          <h3 className="font-['Montserrat',sans-serif] font-extrabold text-lg text-[#1B3A6B] m-0">
+        <div className="flex items-center justify-between p-4 border-b border-gray-100 sticky top-0 bg-white z-10 gap-2">
+          <h3 className="font-['Montserrat',sans-serif] font-extrabold text-base sm:text-lg text-[#1B3A6B] m-0 break-words">
             {title}
           </h3>
           <button 
@@ -33,7 +33,7 @@ export default function Modal({ open, onClose, title, children, width = 500 }: M
             ×
           </button>
         </div>
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {children}
         </div>
       </div>

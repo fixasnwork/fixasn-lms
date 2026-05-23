@@ -3,6 +3,7 @@
 // ─────────────────────────────────────────────
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { getEmailFromSessionUser, getRoleFromSessionUser, isAdminRole } from '@/lib/deviceSession';
 import { requireActiveSession } from '@/lib/routeAuth';
 
 function mapPayment(payment: {
@@ -36,8 +37,8 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
 
   // Admin sees all; users see their own
-  const isAdmin = (session?.user as { role?: string })?.role === 'admin';
-  const userId = isAdmin ? null : searchParams.get('userId') || session?.user?.email || null;
+  const isAdmin = isAdminRole(getRoleFromSessionUser(session.user));
+  const userId = isAdmin ? null : searchParams.get('userId') || getEmailFromSessionUser(session.user);
 
   const payments = await prisma.payment.findMany({
     ...(userId ? { where: { userId } } : {}),
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'packageId is required' }, { status: 400 });
   }
 
-  const userId = session?.user?.email || body.userId;
+  const userId = getEmailFromSessionUser(session.user) || body.userId;
 
   if (!userId) {
     return NextResponse.json({ error: 'userId is required (must be logged in or provided)' }, { status: 400 });
@@ -86,8 +87,8 @@ export async function PUT(request: NextRequest) {
     return authResult.response;
   }
 
-  const role = (authResult.session.user as { role?: string }).role;
-  if (role !== 'admin') {
+  const role = getRoleFromSessionUser(authResult.session.user);
+  if (!isAdminRole(role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 

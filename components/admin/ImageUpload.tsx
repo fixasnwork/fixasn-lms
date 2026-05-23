@@ -76,7 +76,7 @@ export default function ImageUpload({ value, onChange, label }: ImageUploadProps
         </div>
       ) : (
         <div className="border-2 border-dashed border-gray-200 rounded-lg p-3 bg-gray-50">
-          <div className="flex gap-2 mb-2">
+          <div className="flex flex-col sm:flex-row gap-2 mb-2">
             <input
               type="text"
               value={inputUrl}
@@ -87,7 +87,7 @@ export default function ImageUpload({ value, onChange, label }: ImageUploadProps
             <button
               type="button"
               onClick={handleUrlSubmit}
-              className="px-3 py-1.5 bg-blue-500 text-white rounded text-xs font-bold cursor-pointer"
+              className="px-3 py-1.5 bg-blue-500 text-white rounded text-xs font-bold cursor-pointer sm:w-auto w-full"
             >
               Use URL
             </button>

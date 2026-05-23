@@ -61,7 +61,7 @@ export default function SettingsPage() {
 
   return (
     <div>
-      <h2 className="font-black text-2xl text-[#1B3A6B] mb-1">⚙️ Pengaturan</h2>
+      <h2 className="font-black text-xl sm:text-2xl text-[#1B3A6B] mb-1">⚙️ Pengaturan</h2>
       <p className="text-gray-400 text-sm mb-6">
         Kelola harga paket, jumlah tryout, dan nomor rekening pembayaran.
       </p>
@@ -74,7 +74,7 @@ export default function SettingsPage() {
 
       {/* Packages */}
       <Card className="mb-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
           <h3 className="font-extrabold text-base text-[#1B3A6B]">📦 Paket Tryout</h3>
           <Button variant="primary" size="sm" onClick={savePackages}>
             💾 Simpan Semua
@@ -118,7 +118,7 @@ export default function SettingsPage() {
                   <label className="text-xs font-bold text-gray-500 block mb-1">
                     Opsi
                   </label>
-                  <div className="flex gap-2 items-center h-[42px]">
+          <div className="flex gap-2 items-center min-h-[42px] flex-wrap">
                     <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 cursor-pointer">
                       <input
                         type="checkbox"
@@ -146,9 +146,9 @@ export default function SettingsPage() {
 
       {/* Bank Accounts */}
       <Card>
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
           <h3 className="font-extrabold text-base text-[#1B3A6B]">🏦 Rekening Pembayaran</h3>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button variant="primary" size="sm" onClick={saveBanks}>
               💾 Simpan Semua
             </Button>
@@ -184,7 +184,7 @@ export default function SettingsPage() {
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono"
                 />
               </div>
-              <div className="flex gap-2 items-end">
+              <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
                 <div className="flex-1">
                   <label className="text-xs font-bold text-gray-500 block mb-1">
                     Atas Nama

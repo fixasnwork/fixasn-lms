@@ -66,15 +66,15 @@ export default function AdminLandingPage() {
             {field('Caption Foto', draft.heroCaption || '', (v) => updateField('heroCaption', v), 'Ribuan ASN sudah lulus')}
             {field('Sub Caption', draft.heroSubCaption || '', (v) => updateField('heroSubCaption', v), 'Bergabung dan wujudkan...')}
             {field('URL Foto Hero', draft.heroImg || '', (v) => updateField('heroImg', v), 'https://images.unsplash.com/...')}
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {field('Stat 1 Nilai', draft.stat1Val || '', (v) => updateField('stat1Val', v), '15.000+')}
               {field('Stat 1 Label', draft.stat1Label || '', (v) => updateField('stat1Label', v), 'Peserta Aktif')}
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {field('Stat 2 Nilai', draft.stat2Val || '', (v) => updateField('stat2Val', v), '98%')}
               {field('Stat 2 Label', draft.stat2Label || '', (v) => updateField('stat2Label', v), 'Tingkat Kelulusan')}
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {field('Stat 3 Nilai', draft.stat3Val || '', (v) => updateField('stat3Val', v), '110')}
               {field('Stat 3 Label', draft.stat3Label || '', (v) => updateField('stat3Label', v), 'Soal per Tryout')}
             </div>
@@ -146,7 +146,7 @@ export default function AdminLandingPage() {
 
   return (
     <div>
-      <h2 className="font-black text-2xl text-[#1B3A6B] mb-1">🌐 Kelola Landing Page</h2>
+      <h2 className="font-black text-xl sm:text-2xl text-[#1B3A6B] mb-1">🌐 Kelola Landing Page</h2>
       <p className="text-gray-400 text-sm mb-6">
         Ubah logo, nama aplikasi, dan tampilan branding.
       </p>
@@ -181,7 +181,7 @@ export default function AdminLandingPage() {
         width={600}
       >
         {renderForm()}
-        <div className="flex gap-2.5 justify-end mt-5 border-t border-gray-100 pt-4">
+        <div className="flex flex-col sm:flex-row gap-2.5 justify-end mt-5 border-t border-gray-100 pt-4">
           <Button variant="ghost" onClick={closeEditor}>
             Batal
           </Button>

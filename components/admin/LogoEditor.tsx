@@ -30,7 +30,7 @@ export default function LogoEditor({ logoConfig, setLogoConfig }: LogoEditorProp
 
   return (
     <Card className="mb-6">
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-5">
         <h3 className="font-extrabold text-base text-[#1B3A6B]">🎨 Logo & Branding</h3>
         <Button variant="primary" size="sm" onClick={save}>
           💾 Simpan Perubahan
@@ -41,7 +41,7 @@ export default function LogoEditor({ logoConfig, setLogoConfig }: LogoEditorProp
         {/* Kiri: editor form */}
         <div className="flex flex-col gap-4">
           {/* Nama & Tagline */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-bold text-gray-500 block mb-1">Nama Aplikasi</label>
               <input
@@ -61,7 +61,7 @@ export default function LogoEditor({ logoConfig, setLogoConfig }: LogoEditorProp
           </div>
 
           {/* Color pickers */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div>
               <label className="text-xs font-bold text-gray-500 block mb-1">Warna Nama</label>
               <div className="flex gap-1.5 items-center">
@@ -111,7 +111,7 @@ export default function LogoEditor({ logoConfig, setLogoConfig }: LogoEditorProp
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div>
               <label className="text-xs font-bold text-gray-500 block mb-1">Warna Gradient Kanan</label>
               <div className="flex gap-1.5 items-center">
@@ -179,7 +179,7 @@ export default function LogoEditor({ logoConfig, setLogoConfig }: LogoEditorProp
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs font-bold text-gray-500 block mb-1">Caption</label>
                   <input

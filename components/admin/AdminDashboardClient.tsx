@@ -20,7 +20,7 @@ export default function AdminDashboardClient({ payments, packages }: Props) {
 
   return (
     <div>
-      <h2 className="font-black text-2xl text-[#1B3A6B] mb-5.5">
+      <h2 className="font-black text-xl sm:text-2xl text-[#1B3A6B] mb-4 sm:mb-5.5">
         📊 Dashboard Admin
       </h2>
 
@@ -32,7 +32,7 @@ export default function AdminDashboardClient({ payments, packages }: Props) {
       </div>
 
       {/* Recent Payments */}
-      <div className="bg-white rounded-2xl p-6 shadow-md border border-gray-100">
+      <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-md border border-gray-100">
         <h3 className="font-extrabold text-base text-[#1B3A6B] mb-3.5">
           💳 Pembayaran Terbaru
         </h3>
@@ -48,11 +48,11 @@ export default function AdminDashboardClient({ payments, packages }: Props) {
           return (
             <div
               key={p.id}
-              className="flex justify-between items-center py-2.5 border-b border-gray-100 last:border-0"
+              className="flex justify-between items-center gap-2 py-2.5 border-b border-gray-100 last:border-0"
             >
-              <div>
-                <div className="font-bold text-sm text-gray-800">{p.userId}</div>
-                <div className="text-xs text-gray-400">{p.packageId}</div>
+              <div className="min-w-0">
+                <div className="font-bold text-sm text-gray-800 break-all">{p.userId}</div>
+                <div className="text-xs text-gray-400 break-all">{p.packageId}</div>
               </div>
               <div className="flex items-center gap-2">
                 <span

@@ -65,12 +65,12 @@ export default function PaymentsPage() {
 
   return (
     <div>
-      <h2 className="font-black text-2xl text-[#1B3A6B] mb-5">
+      <h2 className="font-black text-xl sm:text-2xl text-[#1B3A6B] mb-4 sm:mb-5">
         💳 Verifikasi Pembayaran
       </h2>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-5">
         <StatCard icon="⏳" label="Pending" value={pendingCount} color="#D97706" />
         <StatCard icon="✅" label="Verified" value={verifiedCount} color="#16A34A" />
         <StatCard icon="🚫" label="Diblokir" value={blockedCount} color="#DC2626" />
@@ -88,7 +88,7 @@ export default function PaymentsPage() {
           <button
             key={key}
             onClick={() => setFilterPay(key)}
-            className={`px-4 py-1.5 rounded-full font-bold text-xs cursor-pointer border-2 transition-all ${
+            className={`px-3 sm:px-4 py-1.5 rounded-full font-bold text-xs cursor-pointer border-2 transition-all ${
               filterPay === key
                 ? 'border-blue-600 bg-blue-600 text-white'
                 : 'border-gray-200 bg-white text-gray-500 hover:border-blue-400'
@@ -111,8 +111,8 @@ export default function PaymentsPage() {
                 : '#F59E0B';
           return (
             <Card key={p.id} className="border-l-4" style={{ borderLeftColor: statusColor }}>
-              <div className="flex items-center justify-between gap-4 flex-wrap">
-                <div className="flex gap-3.5 items-center flex-1">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex gap-3 items-start sm:items-center flex-1 min-w-0">
                   <div
                     className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-lg flex-shrink-0 text-white"
                     style={{
@@ -126,9 +126,9 @@ export default function PaymentsPage() {
                   >
                     {p.status === 'blocked' ? '🚫' : p.userId[0].toUpperCase()}
                   </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="font-extrabold text-base text-gray-800">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                      <span className="font-extrabold text-sm sm:text-base text-gray-800 break-all">
                         {p.userId}
                       </span>
                       <Badge
@@ -147,8 +147,8 @@ export default function PaymentsPage() {
                             : '⏳ Pending'}
                       </Badge>
                     </div>
-                    <div className="text-sm text-gray-500">{p.packageId}</div>
-                    <div className="text-xs text-gray-400">
+                    <div className="text-sm text-gray-500 break-all">{p.packageId}</div>
+                    <div className="text-xs text-gray-400 break-words">
                       {new Date(p.createdAt).toLocaleDateString('id-ID')} · {p.id}
                       {p.status === 'blocked' && p.blockReason && (
                         <> · <span className="text-red-500 font-semibold">Alasan: {p.blockReason}</span></>
@@ -156,7 +156,7 @@ export default function PaymentsPage() {
                     </div>
                   </div>
                 </div>
-                <div className="flex flex-col gap-1.5 min-w-[130px]">
+                <div className="flex flex-col gap-1.5 w-full sm:w-[170px]">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -223,7 +223,7 @@ export default function PaymentsPage() {
           onClose={() => setProofModal(null)}
           width={480}
         >
-          <div className="grid grid-cols-2 gap-2.5 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-4">
             {[
               ['User ID', proofModal.userId],
               ['Paket', proofModal.packageId],
@@ -255,7 +255,7 @@ export default function PaymentsPage() {
             <p className="text-center text-gray-400 py-4">Tidak ada bukti transfer</p>
           )}
           {proofModal.status === 'pending' && (
-            <div className="flex gap-2.5">
+            <div className="flex flex-col sm:flex-row gap-2.5">
               <Button
                 variant="success"
                 className="flex-1"
@@ -318,7 +318,7 @@ export default function PaymentsPage() {
             placeholder="Contoh: Bukti transfer tidak valid..."
             className="w-full p-2.5 border border-red-200 rounded-lg text-sm resize-none mb-4"
           />
-          <div className="flex gap-2.5">
+          <div className="flex flex-col sm:flex-row gap-2.5">
             <Button
               variant="ghost"
               className="flex-1"

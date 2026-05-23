@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import type { NextAuthRequest } from "next-auth";
 import {
   buildLoginRedirectWithReason,
   clearDeviceSecretCookie,
@@ -17,7 +17,7 @@ const protectedRoutes = ["/dashboard", "/admin"];
 // Routes to redirect away from when authenticated
 const authRoutes = ["/login"];
 
-export default auth(async (req: NextRequest) => {
+export default auth(async (req: NextAuthRequest) => {
   const { pathname } = req.nextUrl;
   const session = req.auth;
   const isLoggedIn = !!session;

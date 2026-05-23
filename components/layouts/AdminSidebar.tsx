@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -18,6 +19,7 @@ export default function AdminSidebar() {
   const router = useRouter();
   const { logout } = useAuthStore();
   const logoConfig = useAppStore((state) => state.logoConfig);
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
 
   // Mock pending count for demo
   const pendingCount = 3;
@@ -29,14 +31,18 @@ export default function AdminSidebar() {
     { id: 'settings', icon: '⚙️', label: 'Pengaturan' },
     { id: 'landing', icon: '🌐', label: 'Landing Page' },
   ];
+  const primaryMobileItems = navItems.slice(0, 3);
+  const moreMobileItems = navItems.slice(3);
 
   const currentPage = pathname?.split('/').pop() || 'dashboard';
 
   const handleNav = (id: string) => {
+    setIsMoreOpen(false);
     router.push(`/admin/${id}`);
   };
 
   const handleLogout = () => {
+    setIsMoreOpen(false);
     logout();
     signOut({ callbackUrl: '/' });
   };
@@ -93,15 +99,57 @@ export default function AdminSidebar() {
         </div>
       </aside>
 
+      {isMoreOpen && (
+        <>
+          <div
+            className="md:hidden fixed inset-0 bg-black/30 z-40"
+            onClick={() => setIsMoreOpen(false)}
+          />
+          <div
+            data-testid="admin-more-menu"
+            className="md:hidden fixed left-0 right-0 z-40 bg-white rounded-t-2xl border-t border-gray-100 shadow-[0_-4px_15px_rgba(0,0,0,0.1)] p-4 pb-[calc(env(safe-area-inset-bottom,28px)+28px)] max-h-[calc(100vh-120px)] overflow-y-auto"
+            style={{ bottom: 'calc(72px + env(safe-area-inset-bottom, 0px))' }}
+          >
+            <p className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-3">Menu Lainnya</p>
+            <div className="flex flex-col gap-2">
+              {moreMobileItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => handleNav(item.id)}
+                  className={`flex items-center gap-3 p-3 rounded-xl border-none cursor-pointer text-left ${
+                    currentPage === item.id ? 'bg-blue-50 text-blue-600' : 'bg-gray-50 text-gray-600'
+                  }`}
+                >
+                  <span className="text-xl">{item.icon}</span>
+                  <span className="font-semibold text-sm">{item.label}</span>
+                  {item.count !== undefined && item.count > 0 && (
+                    <span className="ml-auto bg-red-600 text-white rounded-full min-w-5 h-5 px-1.5 inline-flex items-center justify-center text-[10px] font-extrabold">
+                      {item.count}
+                    </span>
+                  )}
+                </button>
+              ))}
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-3 p-3 rounded-xl border-none cursor-pointer bg-red-50 text-red-600 text-left"
+              >
+                <span className="text-xl">🚪</span>
+                <span className="font-semibold text-sm">Keluar</span>
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Mobile Bottom Nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-50 pb-safe">
         <div className="flex justify-around items-center py-1.5 pb-[env(safe-area-inset-bottom,6px)]">
-          {navItems.map((item) => (
+          {primaryMobileItems.map((item) => (
             <button
               key={item.id}
               onClick={() => handleNav(item.id)}
               className={`
-                flex flex-col items-center gap-0.5 bg-none border-none cursor-pointer p-1.5
+                flex flex-col items-center gap-0.5 bg-none border-none cursor-pointer p-1.5 w-20
                 font-['Montserrat',sans-serif] relative
                 ${currentPage === item.id ? 'text-[#1B3A6B]' : 'text-gray-400'}
               `}
@@ -117,6 +165,20 @@ export default function AdminSidebar() {
               )}
             </button>
           ))}
+          <button
+            data-testid="admin-more-toggle"
+            onClick={() => setIsMoreOpen((prev) => !prev)}
+            className={`
+              flex flex-col items-center gap-0.5 bg-none border-none cursor-pointer p-1.5 w-20
+              font-['Montserrat',sans-serif] relative
+              ${isMoreOpen ? 'text-[#1B3A6B]' : 'text-gray-400'}
+            `}
+          >
+            <span className="text-4.5">☰</span>
+            <span className={`text-2.25 ${isMoreOpen ? 'font-bold' : 'font-medium'}`}>
+              More
+            </span>
+          </button>
         </div>
       </nav>
     </>

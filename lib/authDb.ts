@@ -10,6 +10,8 @@ export interface DbUser {
   name: string;
   avatar: string | null;
   role: string;
+  activeSessionVersion: number | null;
+  activeDeviceSecretHash: string | null;
 }
 
 /**

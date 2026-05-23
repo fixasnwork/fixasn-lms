@@ -230,14 +230,14 @@ export default function SoalPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-5 flex-wrap gap-3">
+      <div className="flex justify-between items-start sm:items-center mb-5 flex-wrap gap-3">
         <div>
-          <h2 className="font-black text-2xl text-[#1B3A6B] mb-1">Bank Soal</h2>
+          <h2 className="font-black text-xl sm:text-2xl text-[#1B3A6B] mb-1">Bank Soal</h2>
           <p className="text-gray-400 text-sm m-0">
             Kelola soal per paket tryout secara terpisah
           </p>
         </div>
-        <div className="flex gap-2.5 items-center">
+        <div className="flex flex-wrap gap-2 items-center">
           <span className="font-bold text-sm text-gray-500">Durasi:</span>
           <input
             type="number"
@@ -246,7 +246,7 @@ export default function SoalPage() {
             max={300}
             disabled={!currentTryout || saveDurationMutation.isPending}
             onChange={(e) => setDurationDraft(Number(e.target.value))}
-            className="w-14 px-1.5 py-1 border border-gray-200 rounded-lg font-bold text-sm text-center"
+            className="w-16 px-1.5 py-1 border border-gray-200 rounded-lg font-bold text-sm text-center"
           />
           <span className="text-sm text-gray-500">menit</span>
           <Button
@@ -351,7 +351,7 @@ export default function SoalPage() {
       <Card className="p-0 overflow-hidden">
         {activePkgTab === 'trial' && (
           <div>
-            <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
+            <div className="px-4 sm:px-5 py-3.5 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <span className="font-bold text-[#1B3A6B]">Trial Gratis</span>
                 <span className="text-sm text-gray-400 ml-2">
@@ -362,7 +362,7 @@ export default function SoalPage() {
                 + Tambah Soal
               </Button>
             </div>
-            <div className="p-4">
+            <div className="p-3 sm:p-4">
               <SoalTable
                 questions={trialSet?.questions || []}
                 onEdit={(q) => openEditSoal(q)}
@@ -402,8 +402,8 @@ export default function SoalPage() {
               ))}
             </div>
 
-            <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
-              <span className="font-bold text-[#1B3A6B]">
+            <div className="px-4 sm:px-5 py-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
+              <span className="font-bold text-[#1B3A6B] break-words">
                 {activePkg?.name} - {currentTryout?.name}
                 <span className="font-normal text-gray-400 text-sm ml-2">
                   ({currentQ.length} soal · TWK:{currentQ.filter((q) => q.category === 'TWK').length}{' '}
@@ -416,7 +416,7 @@ export default function SoalPage() {
               </Button>
             </div>
 
-            <div className="p-4">
+            <div className="p-3 sm:p-4">
               <SoalTable
                 questions={currentQ}
                 onEdit={(q) => openEditSoal(q)}
@@ -442,7 +442,7 @@ export default function SoalPage() {
               <label className="text-sm font-bold text-gray-700 block mb-1.5">
                 Kategori
               </label>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {(['TWK', 'TIU', 'TKP'] as QuestionCategory[]).map((cat) => (
                   <button
                     key={cat}
@@ -492,7 +492,7 @@ export default function SoalPage() {
                     : 'border-gray-100 bg-gray-50'
                 }`}
               >
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
                   <label className="text-sm font-bold text-gray-700">
                     Pilihan {opt}
                     {soalForm.category !== 'TKP' && soalForm.correctAnswer === index && (

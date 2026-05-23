@@ -12,13 +12,13 @@ interface StatCardProps {
 export default function StatCard({ icon, label, value, color = '#1B3A6B', sub, className = '' }: StatCardProps) {
   return (
     <Card className={className}>
-      <div className="flex items-start justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
           <p className="font-['Montserrat',sans-serif] text-xs text-gray-400 mb-1.5 font-semibold">
             {label}
           </p>
           <p 
-            className="font-['Montserrat',sans-serif] text-3xl font-black m-0"
+            className="font-['Montserrat',sans-serif] text-2xl sm:text-3xl font-black m-0 break-all"
             style={{ color }}
           >
             {value}
