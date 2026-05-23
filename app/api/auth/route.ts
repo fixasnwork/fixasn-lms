@@ -2,13 +2,12 @@
 // API: Auth check (legacy — replaced by NextAuth.js)
 // Returns current session info if authenticated
 // ─────────────────────────────────────────────
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import { NextResponse } from 'next/server';
 
-export async function GET() {
+export async function GET(_request?: NextRequest) {
   const session = await auth();
-
-  if (!session?.user) {
+  if (!session?.user || (session as { isSessionStale?: boolean }).isSessionStale) {
     return NextResponse.json({ authenticated: false }, { status: 401 });
   }
 

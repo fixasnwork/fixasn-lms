@@ -3,7 +3,7 @@
 // ─────────────────────────────────────────────
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { auth } from '@/auth';
+import { requireActiveSession } from '@/lib/routeAuth';
 
 function mapPayment(payment: {
   id: string;
@@ -28,7 +28,11 @@ function mapPayment(payment: {
 }
 
 export async function GET(request: NextRequest) {
-  const session = await auth();
+  const authResult = await requireActiveSession(request);
+  if (!authResult.ok) {
+    return authResult.response;
+  }
+  const session = authResult.session;
   const searchParams = request.nextUrl.searchParams;
 
   // Admin sees all; users see their own
@@ -45,7 +49,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const session = await auth();
+  const authResult = await requireActiveSession(request);
+  if (!authResult.ok) {
+    return authResult.response;
+  }
+  const session = authResult.session;
 
   if (!body.packageId) {
     return NextResponse.json({ error: 'packageId is required' }, { status: 400 });
@@ -73,6 +81,16 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const authResult = await requireActiveSession(request);
+  if (!authResult.ok) {
+    return authResult.response;
+  }
+
+  const role = (authResult.session.user as { role?: string }).role;
+  if (role !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   const body = await request.json();
 
   if (!body.id) {

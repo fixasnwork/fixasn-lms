@@ -2,14 +2,15 @@
 // API: PATCH /api/profile — Update name & avatar
 // ─────────────────────────────────────────────
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
 import prisma from '@/lib/prisma';
+import { requireActiveSession } from '@/lib/routeAuth';
 
 export async function PATCH(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authResult = await requireActiveSession(request);
+  if (!authResult.ok) {
+    return authResult.response;
   }
+  const session = authResult.session;
 
   const body = await request.json();
   const { name, avatar } = body as { name?: string; avatar?: string | null };

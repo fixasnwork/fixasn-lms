@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn, useSession } from 'next-auth/react';
 import { Logo, Card } from '@/components/ui';
 import { useAppStore } from '@/store/useAppStore';
@@ -9,17 +9,24 @@ import { useAppStore } from '@/store/useAppStore';
 function useRedirectIfAuthenticated() {
   const router = useRouter();
   const { data: session, status } = useSession();
+  const searchParams = useSearchParams();
+  const reason = searchParams.get('reason');
 
   useEffect(() => {
-    if (status === 'authenticated' && session?.user) {
+    if (reason === 'device-replaced') return;
+
+    if (status === 'authenticated' && session?.user && !(session as { isSessionStale?: boolean }).isSessionStale) {
       const isAdmin = (session.user as { role?: string }).role === 'admin';
       router.push(isAdmin ? '/admin' : '/dashboard');
     }
-  }, [status, session, router]);
+  }, [status, session, router, reason]);
 }
 
 function LoginForm() {
   const logoConfig = useAppStore((state) => state.logoConfig);
+  const searchParams = useSearchParams();
+  const reason = searchParams.get('reason');
+  const message = searchParams.get('message');
 
   const handleGoogleSignIn = () => {
     signIn('google', { callbackUrl: '/dashboard' });
@@ -43,6 +50,12 @@ function LoginForm() {
 
         {/* Google Sign In Button */}
         <div>
+          {reason === 'device-replaced' && (
+            <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 font-['Montserrat',sans-serif] text-sm text-amber-700">
+              {message || 'Akun Anda telah masuk di perangkat lain. Silakan masuk kembali untuk melanjutkan.'}
+            </p>
+          )}
+
           <button
             onClick={handleGoogleSignIn}
             className="w-full py-3.5 px-5 border-1.5 border-gray-200 rounded-xl bg-white cursor-pointer flex items-center justify-center gap-3 font-['Montserrat',sans-serif] font-bold text-base text-gray-700 shadow-md transition-shadow duration-200 hover:shadow-lg"

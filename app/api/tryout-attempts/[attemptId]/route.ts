@@ -4,8 +4,8 @@
 // ─────────────────────────────────────────────
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { auth } from '@/auth';
 import type { Question, QuestionOption } from '@/lib/types';
+import { requireActiveSession } from '@/lib/routeAuth';
 
 /* ── Mappers (reuse logic from /api/tryouts) ── */
 function mapOption(opt: {
@@ -60,13 +60,14 @@ function mapQuestion(q: {
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ attemptId: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authResult = await requireActiveSession(request);
+  if (!authResult.ok) {
+    return authResult.response;
   }
+  const session = authResult.session;
 
   const { attemptId } = await params;
 
@@ -133,10 +134,11 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ attemptId: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authResult = await requireActiveSession(request);
+  if (!authResult.ok) {
+    return authResult.response;
   }
+  const session = authResult.session;
 
   const { attemptId } = await params;
   const body = await request.json();

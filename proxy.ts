@@ -1,6 +1,16 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import {
+  buildLoginRedirectWithReason,
+  clearDeviceSecretCookie,
+  DEVICE_SECRET_COOKIE_NAME,
+  getEmailFromSessionUser,
+  getRoleFromSessionUser,
+  getTokenSessionVersionFromSessionUser,
+  isAdminRole,
+  validateNonAdminActiveSession,
+} from "@/lib/deviceSession";
 
 // Routes that require authentication
 const protectedRoutes = ["/dashboard", "/admin"];
@@ -9,12 +19,54 @@ const authRoutes = ["/login"];
 
 export default auth(async (req: NextRequest) => {
   const { pathname } = req.nextUrl;
-  const session = await auth();
+  const session = req.auth;
   const isLoggedIn = !!session;
-  const isAdmin = (session?.user as { role?: string })?.role === "admin";
+  const role = getRoleFromSessionUser(session?.user);
+  const isAdmin = isAdminRole(role);
+  const isStale = (session as { isSessionStale?: boolean } | null)?.isSessionStale === true;
+  const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
+
+  if (isAuthRoute && req.nextUrl.searchParams.get("reason") === "device-replaced") {
+    const response = NextResponse.next();
+    clearDeviceSecretCookie(response);
+    return response;
+  }
+
+  if (isLoggedIn && !isAdmin) {
+    if (isStale) {
+      const redirect = NextResponse.redirect(buildLoginRedirectWithReason(req));
+      clearDeviceSecretCookie(redirect);
+      return redirect;
+    }
+
+    const email = getEmailFromSessionUser(session?.user);
+    const tokenSessionVersion = getTokenSessionVersionFromSessionUser(session?.user);
+    const deviceSecret = req.cookies.get(DEVICE_SECRET_COOKIE_NAME)?.value;
+
+    if (!email) {
+      const redirect = NextResponse.redirect(buildLoginRedirectWithReason(req));
+      clearDeviceSecretCookie(redirect);
+      return redirect;
+    }
+
+    const activeCheck = await validateNonAdminActiveSession({
+      email,
+      tokenSessionVersion,
+      deviceSecret,
+    });
+
+    if (!activeCheck.ok) {
+      if (activeCheck.reason === "missing-device-secret-hash") {
+        return NextResponse.next();
+      }
+      const redirect = NextResponse.redirect(buildLoginRedirectWithReason(req));
+      clearDeviceSecretCookie(redirect);
+      return redirect;
+    }
+  }
 
   // Redirect logged-in users away from /login
-  if (authRoutes.some((route) => pathname.startsWith(route)) && isLoggedIn) {
+  if (isAuthRoute && isLoggedIn) {
     return NextResponse.redirect(
       new URL(isAdmin ? "/admin" : "/dashboard", req.url)
     );

@@ -4,13 +4,14 @@
 // ─────────────────────────────────────────────
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { auth } from '@/auth';
+import { requireActiveSession } from '@/lib/routeAuth';
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authResult = await requireActiveSession(request);
+  if (!authResult.ok) {
+    return authResult.response;
   }
+  const session = authResult.session;
 
   const body = await request.json();
   const tryoutId = parseInt(body.tryoutId, 10);

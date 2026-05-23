@@ -2,8 +2,8 @@
 // API: POST Image Upload (Supabase Storage)
 // ─────────────────────────────────────────────
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
 import { supabaseServer } from '@/lib/supabaseServer';
+import { requireActiveSession } from '@/lib/routeAuth';
 
 const BUCKET = 'uploads';
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
@@ -11,10 +11,11 @@ const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png'];
 const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png'];
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authResult = await requireActiveSession(request);
+  if (!authResult.ok) {
+    return authResult.response;
   }
+  const session = authResult.session;
 
   const formData = await request.formData();
   const file = formData.get('file') as File | null;

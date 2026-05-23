@@ -16,6 +16,9 @@ export default async function DashboardLayout({
   if (!session?.user) {
     unauthorized();
   }
+  if ((session as { isSessionStale?: boolean }).isSessionStale) {
+    unauthorized();
+  }
 
   const role = (session.user as { role?: string }).role;
   if (role !== 'user') {

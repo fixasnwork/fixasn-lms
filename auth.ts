@@ -3,6 +3,7 @@ import Google from "next-auth/providers/google";
 import { findOrCreateUser } from "@/lib/authDb";
 import { getAuthContext } from "@/lib/authContext";
 import prisma from "@/lib/prisma";
+import { isAdminRole } from "@/lib/deviceSession";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -26,6 +27,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           ip,
         );
         token.role = user.role;
+        token.email = user.email;
+
+        if (!isAdminRole(user.role)) {
+          const nextSessionVersion = (user.activeSessionVersion ?? 0) + 1;
+          await prisma.user.update({
+            where: { email: user.email },
+            data: {
+              activeSessionVersion: nextSessionVersion,
+              activeDeviceSecretHash: null,
+            },
+          });
+          token.activeSessionVersion = nextSessionVersion;
+        } else {
+          delete token.activeSessionVersion;
+        }
       }
 
       // Always refresh token from database so profile edits (name/avatar)
@@ -33,13 +49,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token.email) {
         const dbUser = await prisma.user.findUnique({
           where: { email: token.email },
-          select: { name: true, avatar: true, role: true, email: true },
+          select: { name: true, avatar: true, role: true, email: true, activeSessionVersion: true },
         });
         if (dbUser) {
           token.name = dbUser.name;
           token.picture = dbUser.avatar;
           token.role = dbUser.role;
           token.email = dbUser.email;
+
+          if (!isAdminRole(dbUser.role)) {
+            const tokenVersion = typeof token.activeSessionVersion === "number"
+              ? token.activeSessionVersion
+              : null;
+            token.isSessionStale =
+              tokenVersion === null ||
+              dbUser.activeSessionVersion === null ||
+              tokenVersion !== dbUser.activeSessionVersion;
+          } else {
+            token.isSessionStale = false;
+            delete token.activeSessionVersion;
+          }
         }
       }
 
@@ -53,6 +82,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.image = (token.picture as string) || session.user.image;
         (session.user as { avatar?: string | null }).avatar = token.picture || null;
         (session.user as { role?: string }).role = token.role as string;
+        (session.user as { activeSessionVersion?: number }).activeSessionVersion =
+          typeof token.activeSessionVersion === "number" ? token.activeSessionVersion : undefined;
+        (session as { isSessionStale?: boolean }).isSessionStale = token.isSessionStale === true;
       }
       return session;
     },
