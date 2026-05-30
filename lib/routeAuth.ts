@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import type { Session } from 'next-auth';
 import { auth } from '@/auth';
+import prisma from '@/lib/prisma';
 import {
   clearDeviceSecretCookie,
   DEVICE_SECRET_COOKIE_NAME,
@@ -40,6 +41,16 @@ export async function requireActiveSession(request: NextRequest): Promise<Authen
   const role = getRoleFromSessionUser(activeSession.user);
   if (isAdminRole(role)) {
     return { ok: true, session: activeSession };
+  }
+
+  // Check if user is banned
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { isBlocked: true },
+  });
+  if (user?.isBlocked) {
+    const response = NextResponse.json({ error: 'Account blocked' }, { status: 403 });
+    return { ok: false, response };
   }
 
   if (activeSession.isSessionStale === true) {

@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
     root: __dirname,
   },
   output: "standalone",
+  experimental: {
+    authInterrupts: true,
+  },
   allowedDevOrigins: ["100.80.192.30", "macmini"], // tailscale remote IP
   images: {
     remotePatterns: [

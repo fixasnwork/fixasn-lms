@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { auth } from '@/auth';
-import { unauthorized, forbidden } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
 import prisma from '@/lib/prisma';
 import { makeQueryClient } from '@/lib/queryClient';
@@ -14,15 +14,27 @@ export default async function DashboardLayout({
   const session = await auth();
 
   if (!session?.user) {
-    unauthorized();
+    redirect('/login');
   }
   if ((session as { isSessionStale?: boolean }).isSessionStale) {
-    unauthorized();
+    redirect('/login');
   }
 
   const role = (session.user as { role?: string }).role;
   if (role !== 'user') {
-    forbidden();
+    redirect('/login');
+  }
+
+  // Check if user is banned
+  const email = session.user.email;
+  if (email) {
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: { isBlocked: true },
+    });
+    if (user?.isBlocked) {
+      redirect('/banned');
+    }
   }
 
   // Prefetch common data on server to avoid client waterfalls

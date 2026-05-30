@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { auth } from '@/auth';
-import { unauthorized, forbidden } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
 import prisma from '@/lib/prisma';
 import { makeQueryClient } from '@/lib/queryClient';
@@ -14,13 +14,13 @@ export default async function AdminLayout({
   const session = await auth();
 
   if (!session?.user) {
-    unauthorized();
+    redirect('/login');
   }
 
   // Only admins should see the admin panel
   const role = (session.user as { role?: string }).role;
   if (role !== 'admin') {
-    forbidden();
+    redirect('/');
   }
 
   // Prefetch common admin data on server

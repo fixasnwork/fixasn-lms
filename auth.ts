@@ -49,13 +49,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token.email) {
         const dbUser = await prisma.user.findUnique({
           where: { email: token.email },
-          select: { name: true, avatar: true, role: true, email: true, activeSessionVersion: true },
+          select: { name: true, avatar: true, role: true, email: true, activeSessionVersion: true, isBlocked: true },
         });
         if (dbUser) {
           token.name = dbUser.name;
           token.picture = dbUser.avatar;
           token.role = dbUser.role;
           token.email = dbUser.email;
+
+          // Reject banned user — prevent session from being issued
+          if (dbUser.isBlocked) {
+            token.isBlocked = true;
+            return token;
+          }
 
           if (!isAdminRole(dbUser.role)) {
             const tokenVersion = typeof token.activeSessionVersion === "number"
@@ -85,6 +91,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         (session.user as { activeSessionVersion?: number }).activeSessionVersion =
           typeof token.activeSessionVersion === "number" ? token.activeSessionVersion : undefined;
         (session as { isSessionStale?: boolean }).isSessionStale = token.isSessionStale === true;
+        (session as { isBlocked?: boolean }).isBlocked = token.isBlocked === true;
       }
       return session;
     },
