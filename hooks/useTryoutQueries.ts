@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Payment, Tryout, Package, BankAccount, LogoConfig } from '@/lib/types';
+import type { Payment, Tryout, Package, BankAccount, LogoConfig, Question } from '@/lib/types';
 
 /* ── Tryouts ───────────────────────────────────────────────────── */
 export function useTryouts() {
@@ -23,6 +23,20 @@ export function useTryoutsWithQuestions() {
       const data = await res.json();
       return data.tryouts as Record<string, Tryout[]>;
     },
+  });
+}
+
+export function useTryoutQuestions(tryoutId: number | null) {
+  return useQuery<Question[]>({
+    queryKey: ['tryout-questions', tryoutId],
+    queryFn: async () => {
+      const res = await fetch(`/api/tryouts/${tryoutId}/questions`);
+      if (!res.ok) throw new Error('Failed to fetch questions');
+      const data = await res.json();
+      return data.questions as Question[];
+    },
+    enabled: !!tryoutId,
+    staleTime: 5 * 60_000,
   });
 }
 

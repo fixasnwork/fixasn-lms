@@ -27,7 +27,7 @@ export default function AttemptError({
             Coba Lagi
           </button>
           <button
-            onClick={() => router.push('/dashboard/tryout')}
+            onClick={() => router.push('/tryout')}
             className="px-5 py-2.5 border border-gray-300 text-gray-600 font-bold rounded-xl hover:bg-gray-50 transition-colors"
           >
             ← Kembali

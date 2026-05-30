@@ -368,7 +368,7 @@ function PaymentContent() {
             <Button
               variant="primary"
               className="w-full"
-              onClick={() => router.push('/dashboard/tryout')}
+              onClick={() => router.push('/tryout')}
             >
               🚀 Mulai Tryout
             </Button>

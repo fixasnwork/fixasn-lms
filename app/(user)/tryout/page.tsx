@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useState, useRef } from 'react';
-import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import type { Tryout, Package } from '@/lib/types';
-import { useSession } from 'next-auth/react';
-import { Button, Card, Modal } from '@/components/ui';
+import { useState, useRef } from "react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import type { Tryout, Package } from "@/lib/types";
+import { useSession } from "next-auth/react";
+import { Button, Card, Modal } from "@/components/ui";
 import {
   usePackages,
   useBanks,
@@ -15,11 +15,13 @@ import {
   useCreatePayment,
   useCreateOrResumeAttempt,
   useAttemptHistory,
-} from '@/hooks/useTryoutQueries';
+} from "@/hooks/useTryoutQueries";
 
 /* ── Helpers ─────────────────────────────────────────────────────── */
 /** Build a reverse map: tryoutId → array of packageIds that include it. */
-function buildTryoutToPackages(packageBanks: Record<string, Tryout[]>): Record<number, number[]> {
+function buildTryoutToPackages(
+  packageBanks: Record<string, Tryout[]>,
+): Record<number, number[]> {
   const map: Record<number, number[]> = {};
   for (const [pkgIdStr, tryouts] of Object.entries(packageBanks)) {
     const pkgId = parseInt(pkgIdStr, 10);
@@ -38,17 +40,20 @@ export default function TryoutPage() {
   // ── TanStack Query hooks ──
   const { data: packages = [], isFetching: isFetchingPackages } = usePackages();
   const { data: banks = [] } = useBanks();
-  const { data: tryoutBanks = {}, isFetching: isFetchingTryouts } = useTryouts();
+  const { data: tryoutBanks = {}, isFetching: isFetchingTryouts } =
+    useTryouts();
   const userEmail = session?.user?.email ?? undefined;
-  const { data: userPayments = [], isFetching: isFetchingPayments } = useUserPayments(userEmail);
-  const { data: attemptHistory = [], isFetching: isFetchingHistory } = useAttemptHistory(userEmail);
+  const { data: userPayments = [], isFetching: isFetchingPayments } =
+    useUserPayments(userEmail);
+  const { data: attemptHistory = [], isFetching: isFetchingHistory } =
+    useAttemptHistory(userEmail);
   const uploadProof = useUploadProof();
   const createPayment = useCreatePayment();
   const createOrResumeAttempt = useCreateOrResumeAttempt();
 
   // ── Derived: owned package IDs (pending or verified = access granted) ──
   const ownedPkgIds = userPayments
-    .filter((p) => p.status === 'pending' || p.status === 'verified')
+    .filter((p) => p.status === "pending" || p.status === "verified")
     .map((p) => p.packageId);
 
   // ── Derived: all unique tryouts + tryout→packages mapping ──
@@ -72,7 +77,8 @@ export default function TryoutPage() {
   const trialTryout = allTryouts.find((t) => t.isTrial);
   const regularTryouts = allTryouts.filter((t) => !t.isTrial);
 
-  const isLoading = isFetchingTryouts || isFetchingPayments || isFetchingPackages;
+  const isLoading =
+    isFetchingTryouts || isFetchingPayments || isFetchingPackages;
 
   const isTryoutUnlocked = (tryoutId: number): boolean => {
     const pkgIds = tryoutToPackages[tryoutId] || [];
@@ -83,12 +89,16 @@ export default function TryoutPage() {
   const handleStartTryout = async (tryoutId: number) => {
     try {
       const result = await createOrResumeAttempt.mutateAsync(tryoutId);
-      router.push(`/dashboard/tryout/${result.attempt.id}`);
+      router.push(`/tryout/${result.attempt.id}`);
     } catch (err) {
       // If access denied, show payment modal instead
-      if (err instanceof Error && err.message.includes('Access denied')) {
+      if (err instanceof Error && err.message.includes("Access denied")) {
         const pkgIds = tryoutToPackages[tryoutId] || [];
-        setPaymentModal({ step: 'select-package', tryoutId, packageIds: pkgIds });
+        setPaymentModal({
+          step: "select-package",
+          tryoutId,
+          packageIds: pkgIds,
+        });
       }
     }
   };
@@ -96,13 +106,16 @@ export default function TryoutPage() {
   // ── Payment modal state ──
   type PaymentModalState =
     | null
-    | { step: 'select-package'; tryoutId: number; packageIds: number[] }
-    | { step: 'payment'; tryoutId: number; selectedPkg: Package }
-    | { step: 'success'; pkg: Package };
+    | { step: "select-package"; tryoutId: number; packageIds: number[] }
+    | { step: "payment"; tryoutId: number; selectedPkg: Package }
+    | { step: "success"; pkg: Package };
   const [paymentModal, setPaymentModal] = useState<PaymentModalState>(null);
 
   // ── Payment proof state ──
-  const [proofFile, setProofFile] = useState<{ name: string; url: string } | null>(null);
+  const [proofFile, setProofFile] = useState<{
+    name: string;
+    url: string;
+  } | null>(null);
   const [proofFileRaw, setProofFileRaw] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -113,24 +126,24 @@ export default function TryoutPage() {
 
     setUploadError(null);
 
-    const ext = file.name.split('.').pop()?.toLowerCase() || '';
-    const allowedExts = ['jpg', 'jpeg', 'png'];
+    const ext = file.name.split(".").pop()?.toLowerCase() || "";
+    const allowedExts = ["jpg", "jpeg", "png"];
     if (!allowedExts.includes(ext)) {
-      setUploadError('Hanya file .jpg dan .png yang diperbolehkan');
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      setUploadError("Hanya file .jpg dan .png yang diperbolehkan");
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
-    const allowedMimes = ['image/jpeg', 'image/png'];
+    const allowedMimes = ["image/jpeg", "image/png"];
     if (!allowedMimes.includes(file.type)) {
-      setUploadError('Hanya file gambar JPG dan PNG yang diperbolehkan');
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      setUploadError("Hanya file gambar JPG dan PNG yang diperbolehkan");
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setUploadError('Ukuran file maksimal 5MB');
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      setUploadError("Ukuran file maksimal 5MB");
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
@@ -143,7 +156,8 @@ export default function TryoutPage() {
   };
 
   const handleSubmitPayment = async () => {
-    if (!paymentModal || paymentModal.step !== 'payment' || !proofFileRaw) return;
+    if (!paymentModal || paymentModal.step !== "payment" || !proofFileRaw)
+      return;
 
     setUploadError(null);
 
@@ -156,11 +170,11 @@ export default function TryoutPage() {
       });
 
       setPaymentModal({
-        step: 'success',
+        step: "success",
         pkg: paymentModal.selectedPkg,
       });
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : 'Terjadi kesalahan');
+      setUploadError(err instanceof Error ? err.message : "Terjadi kesalahan");
     }
   };
 
@@ -174,9 +188,9 @@ export default function TryoutPage() {
   };
 
   const handlePackageSelect = (pkg: Package) => {
-    if (paymentModal && 'tryoutId' in paymentModal) {
+    if (paymentModal && "tryoutId" in paymentModal) {
       setPaymentModal({
-        step: 'payment',
+        step: "payment",
         tryoutId: paymentModal.tryoutId,
         selectedPkg: pkg,
       });
@@ -196,14 +210,17 @@ export default function TryoutPage() {
         <div className="mb-4">
           <Card
             className="border-2 border-yellow-400 bg-gradient-to-br from-amber-50 to-yellow-50 p-5 relative max-w-md"
-            style={{ borderColor: '#F5C518' }}
+            style={{ borderColor: "#F5C518" }}
           >
             <div className="absolute -top-2.5 left-4 bg-gradient-to-br from-amber-600 to-yellow-400 text-white px-3 py-0.5 rounded-full text-xs font-extrabold">
               GRATIS
             </div>
-            <div className="font-extrabold text-lg text-[#1B3A6B] mb-1.5 mt-1">Trial SKD</div>
+            <div className="font-extrabold text-lg text-[#1B3A6B] mb-1.5 mt-1">
+              Trial SKD
+            </div>
             <div className="text-amber-800 text-sm mb-4">
-              {(trialTryout._questionCount ?? trialTryout.questions.length)} soal · {trialTryout.durationMin || 15} menit · TWK · TIU · TKP
+              {trialTryout._questionCount ?? trialTryout.questions.length} soal
+              · {trialTryout.durationMin || 15} menit · TWK · TIU · TKP
             </div>
             <Button
               variant="gold"
@@ -211,7 +228,7 @@ export default function TryoutPage() {
               onClick={() => handleStartTryout(trialTryout.id)}
               disabled={createOrResumeAttempt.isPending}
             >
-              {createOrResumeAttempt.isPending ? 'Memuat...' : 'Coba Sekarang'}
+              {createOrResumeAttempt.isPending ? "Memuat..." : "Coba Sekarang"}
             </Button>
           </Card>
         </div>
@@ -228,7 +245,9 @@ export default function TryoutPage() {
       {/* ── Regular tryouts ── */}
       {!isLoading && regularTryouts.length > 0 && (
         <div>
-          <h3 className="font-extrabold text-base text-[#1B3A6B] mb-3">Tryout Tersedia</h3>
+          <h3 className="font-extrabold text-base text-[#1B3A6B] mb-3">
+            Tryout Tersedia
+          </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 mb-5">
             {regularTryouts.map((t) => {
               const unlocked = isTryoutUnlocked(t.id);
@@ -236,7 +255,7 @@ export default function TryoutPage() {
               const pkgNames = pkgIds
                 .map((pid) => packages.find((p) => p.id === pid)?.name)
                 .filter(Boolean)
-                .join(', ');
+                .join(", ");
 
               return (
                 <Card
@@ -244,23 +263,42 @@ export default function TryoutPage() {
                   hover
                   className={`p-4 relative transition-all ${
                     unlocked
-                      ? 'border-2 border-blue-500 bg-blue-50 hover:border-blue-600 hover:shadow-md cursor-pointer'
-                      : 'border border-dashed border-gray-300 bg-gray-50 hover:border-gray-400 hover:shadow-md'
+                      ? "border-2 border-blue-500 bg-blue-50 hover:border-blue-600 hover:shadow-md cursor-pointer"
+                      : "border border-dashed border-gray-300 bg-gray-50 hover:border-gray-400 hover:shadow-md"
                   }`}
                   onClick={() => unlocked && handleStartTryout(t.id)}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <div className={`font-extrabold text-base ${unlocked ? 'text-[#1B3A6B]' : 'text-gray-500'}`}>
+                    <div
+                      className={`font-extrabold text-base ${unlocked ? "text-[#1B3A6B]" : "text-gray-500"}`}
+                    >
                       {t.name}
                     </div>
-                    <div className="text-lg">{unlocked ? '🔓' : '🔒'}</div>
+                    {!unlocked && (
+                      <div
+                        className="text-lg"
+                        onClick={() =>
+                          setPaymentModal({
+                            step: "select-package",
+                            tryoutId: t.id,
+                            packageIds: pkgIds,
+                          })
+                        }
+                      >
+                        🔒
+                      </div>
+                    )}
                   </div>
-                  <div className={`text-xs mb-1.5 ${unlocked ? 'text-gray-500' : 'text-gray-400'}`}>
-                    {(t._questionCount ?? t.questions.length)} soal · 100 menit
+                  <div
+                    className={`text-xs mb-1.5 ${unlocked ? "text-gray-500" : "text-gray-400"}`}
+                  >
+                    {t._questionCount ?? t.questions.length} soal · 100 menit
                   </div>
                   {pkgNames && (
-                    <div className={`text-xs mb-3 ${unlocked ? 'text-blue-600' : 'text-gray-400'}`}>
-                      {unlocked ? '✅' : '📦'} {pkgNames}
+                    <div
+                      className={`text-xs mb-3 ${unlocked ? "text-blue-600" : "text-gray-400"}`}
+                    >
+                      {unlocked ? "✅" : "📦"} {pkgNames}
                     </div>
                   )}
                   {!unlocked && (
@@ -269,7 +307,11 @@ export default function TryoutPage() {
                       className="w-full border-gray-300 text-gray-500"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setPaymentModal({ step: 'select-package', tryoutId: t.id, packageIds: pkgIds });
+                        setPaymentModal({
+                          step: "select-package",
+                          tryoutId: t.id,
+                          packageIds: pkgIds,
+                        });
                       }}
                     >
                       Buka Paket →
@@ -297,45 +339,51 @@ export default function TryoutPage() {
       {/* ── Tryout History (from API) ── */}
       {!isFetchingHistory && attemptHistory.length > 0 && (
         <div className="mt-2">
-          <h3 className="font-extrabold text-base text-[#1B3A6B] mb-3">Riwayat Tryout</h3>
+          <h3 className="font-extrabold text-base text-[#1B3A6B] mb-3">
+            Riwayat Tryout
+          </h3>
           <div className="flex flex-col gap-2.5">
             {attemptHistory.map((h) => {
-              const tryoutName = allTryouts.find((t) => t.id === h.tryoutId)?.name || `Tryout #${h.tryoutId}`;
+              const tryoutName =
+                allTryouts.find((t) => t.id === h.tryoutId)?.name ||
+                `Tryout #${h.tryoutId}`;
               return (
                 <Card
                   key={h.id}
                   hover
                   className="flex items-center justify-between flex-wrap gap-3 p-4 cursor-pointer hover:shadow-md transition-all"
-                  onClick={() => router.push(`/dashboard/tryout/${h.id}`)}
+                  onClick={() => router.push(`/tryout/${h.id}`)}
                 >
                   <div>
                     <div className="font-bold text-sm text-[#1B3A6B] mb-0.5">
                       {tryoutName}
                     </div>
                     <div className="text-xs text-gray-400">
-                      {new Date(h.createdAt).toLocaleDateString('id-ID', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
+                      {new Date(h.createdAt).toLocaleDateString("id-ID", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
                       })}
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="font-black text-2xl text-[#1B3A6B]">
-                      {h.totalScore}{' '}
-                      <span className="text-xs font-medium text-gray-400">poin</span>
+                      {h.totalScore}{" "}
+                      <span className="text-xs font-medium text-gray-400">
+                        poin
+                      </span>
                     </div>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
-                        router.push(`/dashboard/tryout/${h.id}`);
+                        router.push(`/tryout/${h.id}`);
                       }}
                     >
-                      {h.totalScore > 0 ? 'Lihat Pembahasan' : 'Lanjutkan'}
+                      {h.totalScore > 0 ? "Lihat Pembahasan" : "Lanjutkan"}
                     </Button>
                   </div>
                 </Card>
@@ -346,10 +394,11 @@ export default function TryoutPage() {
       )}
 
       {/* ── Payment Modal: Select Package ── */}
-      {paymentModal && paymentModal.step === 'select-package' && (
+      {paymentModal && paymentModal.step === "select-package" && (
         <Modal open title="Pilih Paket" onClose={closeModal} width="max-w-lg">
           <p className="text-sm text-gray-500 mb-4">
-            Tryout ini termasuk dalam paket berikut. Pilih salah satu untuk melanjutkan:
+            Tryout ini termasuk dalam paket berikut. Pilih salah satu untuk
+            melanjutkan:
           </p>
           <div className="flex flex-col gap-2.5">
             {paymentModal.packageIds.map((pkgId) => {
@@ -363,8 +412,8 @@ export default function TryoutPage() {
                   disabled={alreadyOwned}
                   className={`flex items-center justify-between px-4 py-3.5 rounded-xl border text-left transition-all w-full ${
                     alreadyOwned
-                      ? 'border-green-300 bg-green-50 cursor-default'
-                      : 'border-gray-200 bg-white hover:border-blue-500 hover:bg-blue-50 cursor-pointer'
+                      ? "border-green-300 bg-green-50 cursor-default"
+                      : "border-gray-200 bg-white hover:border-blue-500 hover:bg-blue-50 cursor-pointer"
                   }`}
                 >
                   <div>
@@ -376,10 +425,12 @@ export default function TryoutPage() {
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-gray-400 mt-0.5">{pkg.description}</div>
+                    <div className="text-xs text-gray-400 mt-0.5">
+                      {pkg.description}
+                    </div>
                   </div>
                   <div className="font-black text-lg text-[#1B3A6B]">
-                    Rp {pkg.price.toLocaleString('id-ID')}
+                    Rp {pkg.price.toLocaleString("id-ID")}
                   </div>
                 </button>
               );
@@ -389,7 +440,7 @@ export default function TryoutPage() {
       )}
 
       {/* ── Payment Modal: Upload Proof ── */}
-      {paymentModal && paymentModal.step === 'payment' && (
+      {paymentModal && paymentModal.step === "payment" && (
         <Modal open title="Pembayaran" onClose={closeModal} width="max-w-lg">
           {/* Package info */}
           <div className="bg-blue-50 rounded-xl p-3.5 mb-4 flex justify-between items-center">
@@ -397,10 +448,12 @@ export default function TryoutPage() {
               <p className="font-extrabold text-base text-[#1B3A6B] mb-0.5">
                 {paymentModal.selectedPkg.name}
               </p>
-              <p className="text-sm text-gray-500 m-0">{paymentModal.selectedPkg.description}</p>
+              <p className="text-sm text-gray-500 m-0">
+                {paymentModal.selectedPkg.description}
+              </p>
             </div>
             <div className="font-black text-2xl text-[#1B3A6B]">
-              Rp {paymentModal.selectedPkg.price.toLocaleString('id-ID')}
+              Rp {paymentModal.selectedPkg.price.toLocaleString("id-ID")}
             </div>
           </div>
 
@@ -467,7 +520,7 @@ export default function TryoutPage() {
                   onClick={() => {
                     setProofFile(null);
                     setProofFileRaw(null);
-                    if (fileInputRef.current) fileInputRef.current.value = '';
+                    if (fileInputRef.current) fileInputRef.current.value = "";
                   }}
                   className="text-xs text-gray-500 bg-none border-none cursor-pointer underline"
                 >
@@ -496,14 +549,19 @@ export default function TryoutPage() {
             disabled={!proofFile || isSubmitting}
             onClick={handleSubmitPayment}
           >
-            {isSubmitting ? 'Mengirim...' : 'Kirim Bukti Transfer'}
+            {isSubmitting ? "Mengirim..." : "Kirim Bukti Transfer"}
           </Button>
         </Modal>
       )}
 
       {/* ── Payment Modal: Success ── */}
-      {paymentModal && paymentModal.step === 'success' && (
-        <Modal open title="Pembayaran Berhasil!" onClose={closeModal} width="max-w-lg">
+      {paymentModal && paymentModal.step === "success" && (
+        <Modal
+          open
+          title="Pembayaran Berhasil!"
+          onClose={closeModal}
+          width="max-w-lg"
+        >
           <div className="text-center py-2">
             <div className="text-6xl mb-3">🎉</div>
             <h3 className="font-black text-xl text-[#1B3A6B] mb-2">
@@ -517,7 +575,11 @@ export default function TryoutPage() {
                 {paymentModal.pkg.name}
               </p>
             </div>
-            <Button variant="primary" className="w-full mb-2.5" onClick={closeModal}>
+            <Button
+              variant="primary"
+              className="w-full mb-2.5"
+              onClick={closeModal}
+            >
               Lihat Tryout →
             </Button>
             <Button variant="ghost" className="w-full" onClick={closeModal}>

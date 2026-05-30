@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Tryout page performance', () => {
-  test('measures load performance on /dashboard/tryout', async ({ page }) => {
+  test('measures load performance on /tryout', async ({ page }) => {
     // Collect all network requests
     const requests: { url: string; method: string; status: number; timing?: number }[] = [];
 
@@ -28,7 +28,7 @@ test.describe('Tryout page performance', () => {
 
     // Navigate and measure
     const startTime = Date.now();
-    await page.goto('/dashboard/tryout', { waitUntil: 'networkidle' });
+    await page.goto('/tryout', { waitUntil: 'networkidle' });
     const loadTime = Date.now() - startTime;
 
     console.log(`\n=== Page Load: ${loadTime}ms ===`);

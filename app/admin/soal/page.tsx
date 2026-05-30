@@ -6,7 +6,7 @@ import type { Question, QuestionCategory, Tryout } from '@/lib/types';
 import { Button, Card, Modal } from '@/components/ui';
 import SoalTable from '@/components/admin/SoalTable';
 import ImageUpload from '@/components/admin/ImageUpload';
-import { usePackages, useTryoutsWithQuestions } from '@/hooks/useTryoutQueries';
+import { usePackages, useTryouts, useTryoutQuestions } from '@/hooks/useTryoutQueries';
 
 interface SoalFormState {
   category: QuestionCategory;
@@ -72,7 +72,7 @@ export default function SoalPage() {
     data: packageBanks = {},
     isFetching: isFetchingTryouts,
     error: tryoutsError,
-  } = useTryoutsWithQuestions();
+  } = useTryouts();
 
   const [activePkgTab, setActivePkgTab] = useState<string | number>('trial');
   const [activeTryoutTab, setActiveTryoutTab] = useState<number | null>(null);
@@ -111,7 +111,19 @@ export default function SoalPage() {
       ? trialSet
       : currentBank.find((t) => t.id === currentTab) ?? null;
 
-  const currentQ = currentTryout?.questions || [];
+  const currentTryoutId = currentTryout?.id ?? null;
+  const {
+    data: fetchedQuestions = [],
+    isFetching: isFetchingQuestions,
+    error: questionsError,
+  } = useTryoutQuestions(currentTryoutId);
+
+  const currentTryoutWithQuestions = useMemo(
+    () => (currentTryout ? { ...currentTryout, questions: fetchedQuestions } : null),
+    [currentTryout, fetchedQuestions]
+  );
+
+  const currentQ = currentTryoutWithQuestions?.questions || [];
   const activePkg = packages.find((p) => p.id === activePkgTab);
   const adminDuration =
     durationDraft ?? currentTryout?.durationMin ?? (currentTryout?.isTrial ? 15 : 100);
@@ -119,7 +131,7 @@ export default function SoalPage() {
   const invalidateTryouts = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['tryouts'] }),
-      queryClient.invalidateQueries({ queryKey: ['tryouts', 'questions'] }),
+      queryClient.invalidateQueries({ queryKey: ['tryout-questions', currentTryoutId] }),
       queryClient.invalidateQueries({ queryKey: ['attempt'] }),
     ]);
   };
@@ -281,7 +293,8 @@ export default function SoalPage() {
       )}
 
       {isLoading && (
-        <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4 text-gray-400 text-sm">
+        <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4 flex items-center gap-2 text-gray-400 text-sm">
+          <span className="inline-block w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
           Memuat data bank soal...
         </div>
       )}
@@ -308,7 +321,7 @@ export default function SoalPage() {
             )}
           </div>
           <div className="text-xs text-gray-400">
-            {trialSet?.questions?.length || 0} soal · {trialSet?.durationMin || 15} menit
+            {trialSet?._questionCount || 0} soal · {trialSet?.durationMin || 15} menit
           </div>
         </div>
 
@@ -316,7 +329,7 @@ export default function SoalPage() {
           .filter((p) => p.isActive && !p.isTrial)
           .map((pkg) => {
             const bank = paidPackageBanks[String(pkg.id)] || [];
-            const totalSoal = bank.reduce((sum, tryout) => sum + (tryout.questions?.length || 0), 0);
+            const totalSoal = bank.reduce((sum, tryout) => sum + (tryout._questionCount || 0), 0);
             const isActive = activePkgTab === pkg.id;
             return (
               <div
@@ -355,7 +368,7 @@ export default function SoalPage() {
               <div className="flex items-center gap-2">
                 <span className="font-bold text-[#1B3A6B]">Trial Gratis</span>
                 <span className="text-sm text-gray-400 ml-2">
-                  {trialSet?.questions?.length || 0} soal
+                  {currentTryoutWithQuestions?.questions?.length || 0} soal
                 </span>
               </div>
               <Button variant="gold" size="sm" onClick={openAddSoal} disabled={!trialSet}>
@@ -363,11 +376,18 @@ export default function SoalPage() {
               </Button>
             </div>
             <div className="p-3 sm:p-4">
-              <SoalTable
-                questions={trialSet?.questions || []}
-                onEdit={(q) => openEditSoal(q)}
-                onDelete={(id) => deleteQuestionMutation.mutate(id)}
-              />
+              {isFetchingQuestions && fetchedQuestions.length === 0 ? (
+                <div className="flex items-center gap-2 text-gray-400 text-sm py-8 justify-center">
+                  <span className="inline-block w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+                  Memuat soal...
+                </div>
+              ) : (
+                <SoalTable
+                  questions={currentTryoutWithQuestions?.questions || []}
+                  onEdit={(q) => openEditSoal(q)}
+                  onDelete={(id) => deleteQuestionMutation.mutate(id)}
+                />
+              )}
             </div>
           </div>
         )}
@@ -396,7 +416,7 @@ export default function SoalPage() {
                         : 'bg-gray-100 text-gray-400'
                     }`}
                   >
-                    {tryout.questions?.length || 0}
+                    {tryout._questionCount || 0}
                   </span>
                 </button>
               ))}
@@ -417,11 +437,18 @@ export default function SoalPage() {
             </div>
 
             <div className="p-3 sm:p-4">
-              <SoalTable
-                questions={currentQ}
-                onEdit={(q) => openEditSoal(q)}
-                onDelete={(id) => deleteQuestionMutation.mutate(id)}
-              />
+              {isFetchingQuestions && fetchedQuestions.length === 0 ? (
+                <div className="flex items-center gap-2 text-gray-400 text-sm py-8 justify-center">
+                  <span className="inline-block w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+                  Memuat soal...
+                </div>
+              ) : (
+                <SoalTable
+                  questions={currentQ}
+                  onEdit={(q) => openEditSoal(q)}
+                  onDelete={(id) => deleteQuestionMutation.mutate(id)}
+                />
+              )}
             </div>
           </div>
         )}

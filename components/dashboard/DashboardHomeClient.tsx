@@ -82,7 +82,7 @@ export default function DashboardHomeClient({ userName, packages, purchasedPkgId
             <Button
               variant="primary"
               className="w-full"
-              onClick={() => router.push('/dashboard/tryout')}
+              onClick={() => router.push('/tryout')}
               disabled={remainingTryouts <= 0 && purchasedPkgIds.length === 0}
             >
               📝 Mulai Tryout
@@ -90,14 +90,14 @@ export default function DashboardHomeClient({ userName, packages, purchasedPkgId
             <Button
               variant="gold"
               className="w-full"
-              onClick={() => router.push('/dashboard/video')}
+              onClick={() => router.push('/video')}
             >
               🎬 Video Belajar
             </Button>
             <Button
               variant="outline"
               className="w-full"
-              onClick={() => router.push('/dashboard/ranking')}
+              onClick={() => router.push('/ranking')}
             >
               🏅 Lihat Ranking
             </Button>
@@ -146,7 +146,7 @@ export default function DashboardHomeClient({ userName, packages, purchasedPkgId
                 <Button
                   variant={owned ? 'success' : 'outline'}
                   className={`w-full ${owned ? '' : 'border-gray-300 text-gray-400'}`}
-                  onClick={() => router.push(owned ? '/dashboard/tryout' : '/dashboard/buy')}
+                  onClick={() => router.push(owned ? '/tryout' : '/buy')}
                 >
                   {owned ? 'Mulai Tryout' : 'Beli Sekarang'}
                 </Button>

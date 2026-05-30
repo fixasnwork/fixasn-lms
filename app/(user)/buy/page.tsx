@@ -15,7 +15,7 @@ export default function BuyPage() {
 
   const handleBuy = (pkg: Package) => {
     if (!pkg.isActive) return;
-    router.push(`/dashboard/payment?pkg=${pkg.id}`);
+    router.push(`/payment?pkg=${pkg.id}`);
   };
 
   return (
@@ -66,7 +66,7 @@ export default function BuyPage() {
                       <Button
                         variant="success"
                         className="w-full"
-                        onClick={() => router.push('/dashboard/tryout')}
+                        onClick={() => router.push('/tryout')}
                       >
                         🚀 Mulai Tryout
                       </Button>

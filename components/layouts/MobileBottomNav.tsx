@@ -21,10 +21,11 @@ export default function MobileBottomNav() {
   const pathname = usePathname();
   const router = useRouter();
 
-  const currentPage = pathname?.split('/').pop() || 'home';
+  const segment = pathname?.split('/').pop() || '';
+  const currentPage = segment === 'dashboard' ? 'home' : segment;
 
   const handleNav = (id: string) => {
-    router.push(`/dashboard/${id === 'home' ? '' : id}`);
+    router.push(id === 'home' ? '/dashboard' : `/${id}`);
   };
 
   return (

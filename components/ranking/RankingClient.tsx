@@ -48,7 +48,7 @@ export default function RankingClient({ all, weekly, monthly }: Props) {
           <p className="text-gray-400 text-sm mb-6">
             Belum ada yang mengerjakan tryout di periode ini. Jadilah yang pertama!
           </p>
-          <Button variant="gold" onClick={() => router.push('/dashboard/tryout')}>
+          <Button variant="gold" onClick={() => router.push('/tryout')}>
             🚀 Mulai Tryout Sekarang
           </Button>
         </Card>
@@ -88,7 +88,7 @@ export default function RankingClient({ all, weekly, monthly }: Props) {
           <p className="text-white/70 text-sm mb-3">
             Rutin tryout dan naikkan skormu sekarang!
           </p>
-          <Button variant="gold" onClick={() => router.push('/dashboard/tryout')}>
+          <Button variant="gold" onClick={() => router.push('/tryout')}>
             🚀 Mulai Tryout Sekarang
           </Button>
         </Card>

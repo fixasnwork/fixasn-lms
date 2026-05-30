@@ -1,23 +1,27 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { signIn, useSession } from 'next-auth/react';
-import { Logo, Card } from '@/components/ui';
-import { useAppStore } from '@/store/useAppStore';
+import { useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { signIn, useSession } from "next-auth/react";
+import { Logo, Card } from "@/components/ui";
+import { useAppStore } from "@/store/useAppStore";
 
 function useRedirectIfAuthenticated() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const searchParams = useSearchParams();
-  const reason = searchParams.get('reason');
+  const reason = searchParams.get("reason");
 
   useEffect(() => {
-    if (reason === 'device-replaced') return;
+    if (reason === "device-replaced") return;
 
-    if (status === 'authenticated' && session?.user && !(session as { isSessionStale?: boolean }).isSessionStale) {
-      const isAdmin = (session.user as { role?: string }).role === 'admin';
-      router.push(isAdmin ? '/admin' : '/dashboard');
+    if (
+      status === "authenticated" &&
+      session?.user &&
+      !(session as { isSessionStale?: boolean }).isSessionStale
+    ) {
+      const isAdmin = (session.user as { role?: string }).role === "admin";
+      router.push(isAdmin ? "/admin/dashboard" : "/dashboard");
     }
   }, [status, session, router, reason]);
 }
@@ -25,11 +29,11 @@ function useRedirectIfAuthenticated() {
 function LoginForm() {
   const logoConfig = useAppStore((state) => state.logoConfig);
   const searchParams = useSearchParams();
-  const reason = searchParams.get('reason');
-  const message = searchParams.get('message');
+  const reason = searchParams.get("reason");
+  const message = searchParams.get("message");
 
   const handleGoogleSignIn = () => {
-    signIn('google', { callbackUrl: '/dashboard' });
+    signIn("google", { callbackUrl: "/dashboard" });
   };
 
   return (
@@ -50,9 +54,10 @@ function LoginForm() {
 
         {/* Google Sign In Button */}
         <div>
-          {reason === 'device-replaced' && (
+          {reason === "device-replaced" && (
             <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 font-['Montserrat',sans-serif] text-sm text-amber-700">
-              {message || 'Akun Anda telah masuk di perangkat lain. Silakan masuk kembali untuk melanjutkan.'}
+              {message ||
+                "Akun Anda telah masuk di perangkat lain. Silakan masuk kembali untuk melanjutkan."}
             </p>
           )}
 
@@ -82,10 +87,14 @@ function LoginForm() {
           </button>
 
           <p className="font-['Montserrat',sans-serif] text-xs text-gray-400 text-center mt-4.5 leading-relaxed">
-            Dengan masuk, kamu menyetujui <strong>Syarat & Ketentuan</strong> FIX ASN.
+            Dengan masuk, kamu menyetujui <strong>Syarat & Ketentuan</strong>{" "}
+            FIX ASN.
             <br />
-            Butuh bantuan?{' '}
-            <a href="https://wa.me/628987608379" className="text-[#1B3A6B] font-bold">
+            Butuh bantuan?{" "}
+            <a
+              href="https://wa.me/628987608379"
+              className="text-[#1B3A6B] font-bold"
+            >
               Chat WhatsApp
             </a>
           </p>
@@ -126,7 +135,7 @@ export default function LoginPage() {
 
   useRedirectIfAuthenticated();
 
-  if (status === 'loading') {
+  if (status === "loading") {
     return <LoadingScreen />;
   }
 

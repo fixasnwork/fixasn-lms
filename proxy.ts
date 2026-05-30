@@ -68,13 +68,13 @@ export default auth(async (req: NextAuthRequest) => {
   // Redirect logged-in users away from /login
   if (isAuthRoute && isLoggedIn) {
     return NextResponse.redirect(
-      new URL(isAdmin ? "/admin" : "/dashboard", req.url)
+      new URL(isAdmin ? "/admin/dashboard" : "/dashboard", req.url)
     );
   }
 
-  // Redirect admin users from /dashboard to /admin
+  // Redirect admin users from /dashboard to /admin/dashboard
   if (pathname.startsWith("/dashboard") && isLoggedIn && isAdmin) {
-    return NextResponse.redirect(new URL("/admin", req.url));
+    return NextResponse.redirect(new URL("/admin/dashboard", req.url));
   }
 
   // Protect dashboard & admin routes

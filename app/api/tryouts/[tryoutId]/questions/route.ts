@@ -101,6 +101,56 @@ function mapQuestion(row: {
   };
 }
 
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ tryoutId: string }> }
+) {
+  const { tryoutId: tryoutIdParam } = await params;
+  const tryoutId = parseTryoutId(tryoutIdParam);
+  if (!tryoutId) {
+    return NextResponse.json({ error: 'Valid tryoutId is required' }, { status: 400 });
+  }
+
+  try {
+    const tryout = await prisma.tryout.findUnique({
+      where: { id: tryoutId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!tryout) {
+      return NextResponse.json({ error: 'Tryout not found' }, { status: 404 });
+    }
+
+    const tryoutWithQuestions = await prisma.tryout.findUnique({
+      where: { id: tryoutId },
+      include: {
+        tryoutQuestions: {
+          orderBy: { sortOrder: 'asc' as const },
+          include: {
+            question: {
+              include: {
+                options: { orderBy: { optionIndex: 'asc' as const } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!tryoutWithQuestions) {
+      return NextResponse.json({ error: 'Tryout not found' }, { status: 404 });
+    }
+
+    const questions = tryoutWithQuestions.tryoutQuestions
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((tq) => mapQuestion(tq.question));
+
+    return NextResponse.json({ questions });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ tryoutId: string }> }

@@ -45,7 +45,7 @@ export default function TryoutAttemptPage({
           </p>
           <Button
             variant="primary"
-            onClick={() => router.push("/dashboard/tryout")}
+            onClick={() => router.push("/tryout")}
           >
             ← Kembali ke Daftar Tryout
           </Button>
@@ -69,7 +69,7 @@ export default function TryoutAttemptPage({
           tiu: attempt.tiuScore,
           tkp: attempt.tkpScore,
         }}
-        onBack={() => router.push("/dashboard/tryout")}
+        onBack={() => router.push("/tryout")}
         onRetry={async () => {
           // Create new attempt for the same tryout
           try {
@@ -80,11 +80,11 @@ export default function TryoutAttemptPage({
             });
             const result = await res.json();
             if (result.success) {
-              router.push(`/dashboard/tryout/${result.attempt.id}`);
+              router.push(`/tryout/${result.attempt.id}`);
             }
           } catch {
             // Fallback: just go back to list
-            router.push("/dashboard/tryout");
+            router.push("/tryout");
           }
         }}
       />
@@ -113,7 +113,7 @@ export default function TryoutAttemptPage({
           alert(err instanceof Error ? err.message : "Gagal menyimpan hasil");
         }
       }}
-      onBack={() => router.push("/dashboard/tryout")}
+      onBack={() => router.push("/tryout")}
     />
   );
 }
