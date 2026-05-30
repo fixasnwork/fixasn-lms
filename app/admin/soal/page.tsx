@@ -115,7 +115,6 @@ export default function SoalPage() {
   const {
     data: fetchedQuestions = [],
     isFetching: isFetchingQuestions,
-    error: questionsError,
   } = useTryoutQuestions(currentTryoutId);
 
   const currentTryoutWithQuestions = useMemo(

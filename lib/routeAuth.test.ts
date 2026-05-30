@@ -67,7 +67,7 @@ describe('requireActiveSession - ban check', () => {
       isBlocked: false,
     } as never);
 
-    const result = await requireActiveSession(makeRequest());
+    await requireActiveSession(makeRequest());
 
     // Will hit the stale session / active session validation next
     // At least we know it passed the ban check — so ok is true or fails on next step

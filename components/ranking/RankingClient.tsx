@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { Card, Button } from '@/components/ui';
 import type { RankingEntry } from '@/lib/ranking';
 
@@ -75,7 +76,7 @@ export default function RankingClient({ all, weekly, monthly }: Props) {
       <Card className="p-0 overflow-hidden">
         <div className="flex flex-col gap-0">
           {rest.map((entry, i) => (
-            <RankingRow key={entry.userId} entry={entry} rank={i + 1} maxScore={maxScore} />
+            <RankingRow key={entry.userId} entry={entry} rank={i + 1} />
           ))}
         </div>
       </Card>
@@ -265,9 +266,11 @@ function AvatarBlock({
 
   if (avatar) {
     return (
-      <img
+      <Image
         src={avatar}
         alt=""
+        width={size === 'lg' ? 80 : 64}
+        height={size === 'lg' ? 80 : 64}
         className={`${sizeClass} rounded-full object-cover ring-4 ${ringColor}`}
       />
     );
@@ -308,11 +311,9 @@ function ScoreBar({
 function RankingRow({
   entry,
   rank,
-  maxScore,
 }: {
   entry: RankingEntry;
   rank: number;
-  maxScore: number;
 }) {
   return (
     <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors">
@@ -321,9 +322,11 @@ function RankingRow({
 
       {/* avatar */}
       {entry.avatar ? (
-        <img
+        <Image
           src={entry.avatar}
           alt=""
+          width={40}
+          height={40}
           className="w-10 h-10 rounded-full object-cover flex-shrink-0"
         />
       ) : (

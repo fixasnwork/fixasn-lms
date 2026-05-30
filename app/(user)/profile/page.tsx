@@ -86,8 +86,8 @@ export default function ProfilePage() {
       setIsEditing(false);
       router.refresh(); // ensure server components refetch fresh data
       refreshSession(); // update JWT token so next page load has correct data
-    } catch (e: any) {
-      setError(e.message || 'Gagal menyimpan profil');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Gagal menyimpan profil');
     } finally {
       setSaving(false);
     }
@@ -155,8 +155,8 @@ export default function ProfilePage() {
       }
       router.refresh();
       refreshSession();
-    } catch (e: any) {
-      setError(e.message || 'Gagal mengupload avatar');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Gagal mengupload avatar');
     } finally {
       setUploading(false);
       // reset input so same file can be re-selected
@@ -198,8 +198,8 @@ export default function ProfilePage() {
       }
       router.refresh();
       refreshSession();
-    } catch (e: any) {
-      setError(e.message || 'Gagal menghapus avatar');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Gagal menghapus avatar');
     } finally {
       setUploading(false);
     }

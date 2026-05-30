@@ -1,17 +1,13 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Package } from '@/lib/types';
 import { Card, Badge, Button } from '@/components/ui';
 import { useAppStore } from '@/store/useAppStore';
-import { useAuthStore } from '@/store/useAuthStore';
 
 export default function BuyPage() {
   const router = useRouter();
   const { packages } = useAppStore();
-  const { user } = useAuthStore();
-  const [selectedPkg, setSelectedPkg] = useState<Package | null>(null);
 
   const handleBuy = (pkg: Package) => {
     if (!pkg.isActive) return;

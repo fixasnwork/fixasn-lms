@@ -1,4 +1,3 @@
-import { redirect } from 'next/navigation';
 import { LandingPage } from '@/components/landing/LandingPage';
 
 // Check auth status and redirect if logged in

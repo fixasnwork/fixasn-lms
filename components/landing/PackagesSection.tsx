@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { Button, Card, Badge } from '@/components/ui';
 import type { Package, LogoConfig } from '@/lib/types';
 import { WA_LINK } from '@/data/constants';
@@ -12,8 +11,6 @@ interface PackagesSectionProps {
 }
 
 export function PackagesSection({ packages, logoConfig, onRegister }: PackagesSectionProps) {
-  const [tab, setTab] = useState<'tryout' | 'video'>('tryout');
-
   const tryoutPkgs = packages.filter((p) => p.isActive && !p.isTrial);
   const shown = tryoutPkgs;
 

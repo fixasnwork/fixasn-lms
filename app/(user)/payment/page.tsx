@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Card, Modal } from "@/components/ui";
 import { useAppStore } from "@/store/useAppStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { WA_LINK, WA_NUMBER } from "@/data/constants";
-import { useCreatePayment, useUploadProof } from "@/hooks/useTryoutQueries";
+import { useCreatePayment } from "@/hooks/useTryoutQueries";
 
 function PaymentContent() {
   const router = useRouter();
@@ -28,10 +28,6 @@ function PaymentContent() {
   const [showWAWarning, setShowWAWarning] = useState(false);
 
   const selectedPkg = packages.find((p) => p.id === selectedPkgId);
-
-  useEffect(() => {
-    if (pkgIdParam) setSelectedPkgId(parseInt(pkgIdParam, 10));
-  }, [pkgIdParam]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

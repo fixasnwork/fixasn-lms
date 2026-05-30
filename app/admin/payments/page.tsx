@@ -10,7 +10,7 @@ import { useAdminPayments } from '@/hooks/useTryoutQueries';
 type FilterKey = 'all' | 'pending' | 'verified' | 'blocked';
 
 export default function PaymentsPage() {
-  const { data: payments = [], isFetching } = useAdminPayments();
+  const { data: payments = [] } = useAdminPayments();
   const queryClient = useQueryClient();
   const [filterPay, setFilterPay] = useState<FilterKey>('all');
   const [proofModal, setProofModal] = useState<Payment | null>(null);

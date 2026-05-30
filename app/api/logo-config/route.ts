@@ -6,7 +6,7 @@ export async function GET() {
     const entries = await prisma.logoConfigEntry.findMany();
     const config = Object.fromEntries(entries.map(e => [e.configKey, e.configValue]));
     return NextResponse.json({ config });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to fetch config' }, { status: 500 });
   }
 }
@@ -27,7 +27,7 @@ export async function PUT(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, config: body });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to update config' }, { status: 500 });
   }
 }

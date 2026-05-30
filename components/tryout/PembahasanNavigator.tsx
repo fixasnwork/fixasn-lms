@@ -17,7 +17,7 @@ interface PembahasanNavigatorProps {
 export default function PembahasanNavigator({
   questions,
   answers,
-  name = 'Tryout SKD',
+  name: _name,
   onBack,
   onRetry,
 }: PembahasanNavigatorProps) {
