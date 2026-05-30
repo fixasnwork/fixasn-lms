@@ -158,6 +158,8 @@ export interface Payment {
   blockReason: string | null;
   createdAt: string;
   updatedAt: string;
+  userIsBlocked?: boolean;
+  userBlockedReason?: string | null;
 }
 
 // ── User Purchases ────────────────────────────

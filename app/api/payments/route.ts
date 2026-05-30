@@ -45,7 +45,24 @@ export async function GET(request: NextRequest) {
     orderBy: { createdAt: 'desc' },
   });
 
-  return NextResponse.json({ payments: payments.map(mapPayment) });
+  // Enrich with user ban status for admin view
+  const mapped = payments.map(mapPayment);
+  if (isAdmin) {
+    const emails = [...new Set(mapped.map((p) => p.userId))];
+    const users = await prisma.user.findMany({
+      where: { email: { in: emails } },
+      select: { email: true, isBlocked: true, blockedReason: true },
+    });
+    const userMap = new Map(users.map((u) => [u.email, { isBlocked: u.isBlocked, blockedReason: u.blockedReason }]));
+    const enriched = mapped.map((p) => ({
+      ...p,
+      userIsBlocked: userMap.get(p.userId)?.isBlocked ?? false,
+      userBlockedReason: userMap.get(p.userId)?.blockedReason ?? null,
+    }));
+    return NextResponse.json({ payments: enriched });
+  }
+
+  return NextResponse.json({ payments: mapped });
 }
 
 export async function POST(request: NextRequest) {

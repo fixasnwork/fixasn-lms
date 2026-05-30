@@ -16,6 +16,8 @@ export default function PaymentsPage() {
   const [proofModal, setProofModal] = useState<Payment | null>(null);
   const [blockModal, setBlockModal] = useState<Payment | null>(null);
   const [blockReason, setBlockReason] = useState('');
+  const [banModal, setBanModal] = useState<Payment | null>(null);
+  const [banReason, setBanReason] = useState('');
 
   const filtered =
     filterPay === 'all'
@@ -54,6 +56,48 @@ export default function PaymentsPage() {
 
   const unblock = (id: string) => {
     updateStatus.mutate({ id, status: 'pending', blockReason: '' });
+  };
+
+  // Mutation for banning a user
+  const banUser = useMutation({
+    mutationFn: async ({ email, reason }: { email: string; reason: string }) => {
+      const res = await fetch('/api/users/ban', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, reason }),
+      });
+      if (!res.ok) throw new Error('Gagal memblokir user');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-payments'] });
+    },
+  });
+
+  // Mutation for unbanning a user
+  const unbanUser = useMutation({
+    mutationFn: async ({ email }: { email: string }) => {
+      const res = await fetch('/api/users/unban', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (!res.ok) throw new Error('Gagal membuka blokir user');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-payments'] });
+    },
+  });
+
+  const handleBanUser = (pay: Payment) => {
+    banUser.mutate({ email: pay.userId, reason: banReason.trim() });
+    setBanModal(null);
+    setBanReason('');
+  };
+
+  const handleUnbanUser = (pay: Payment) => {
+    unbanUser.mutate({ email: pay.userId });
   };
 
   const filters: { key: FilterKey; label: string }[] = [
@@ -131,6 +175,9 @@ export default function PaymentsPage() {
                       <span className="font-extrabold text-sm sm:text-base text-gray-800 break-all">
                         {p.userId}
                       </span>
+                      {p.userIsBlocked && (
+                        <Badge color="red">🚫 User Diblokir</Badge>
+                      )}
                       <Badge
                         color={
                           p.status === 'verified'
@@ -153,6 +200,9 @@ export default function PaymentsPage() {
                       {p.status === 'blocked' && p.blockReason && (
                         <> · <span className="text-red-500 font-semibold">Alasan: {p.blockReason}</span></>
                       )}
+                      {p.userIsBlocked && p.userBlockedReason && (
+                        <> · <span className="text-red-500 font-semibold">Akun diblokir: {p.userBlockedReason}</span></>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -164,6 +214,23 @@ export default function PaymentsPage() {
                   >
                     📄 Lihat Bukti TF
                   </Button>
+                  {!p.userIsBlocked && (
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={() => {
+                        setBanModal(p);
+                        setBanReason('');
+                      }}
+                    >
+                      🚫 Ban User
+                    </Button>
+                  )}
+                  {p.userIsBlocked && (
+                    <Button variant="success" size="sm" onClick={() => handleUnbanUser(p)}>
+                      ↩ Unban User
+                    </Button>
+                  )}
                   {p.status === 'pending' && (
                     <>
                       <Button
@@ -289,6 +356,55 @@ export default function PaymentsPage() {
               <Badge color="red">🚫 User diblokir</Badge>
             </div>
           )}
+        </Modal>
+      )}
+
+      {/* Ban User Modal */}
+      {banModal && (
+        <Modal
+          open
+          title="🚫 Konfirmasi Ban User"
+          onClose={() => {
+            setBanModal(null);
+            setBanReason('');
+          }}
+          width={420}
+        >
+          <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 mb-4">
+            <p className="font-bold text-red-600 text-sm mb-1">⚠️ Kamu akan memblokir akses user:</p>
+            <p className="font-black text-lg text-gray-800 mb-0.5">{banModal.userId}</p>
+            <p className="text-sm text-gray-500 m-0">Paket: {banModal.packageId}</p>
+          </div>
+          <label className="text-sm font-bold text-gray-700 block mb-2">
+            Alasan Ban <span className="text-red-500">*</span>
+          </label>
+          <textarea
+            rows={3}
+            value={banReason}
+            onChange={(e) => setBanReason(e.target.value)}
+            placeholder="Contoh: Bukti transfer palsu..."
+            className="w-full p-2.5 border border-red-200 rounded-lg text-sm resize-none mb-4"
+          />
+          <div className="flex flex-col sm:flex-row gap-2.5">
+            <Button
+              variant="ghost"
+              className="flex-1"
+              onClick={() => {
+                setBanModal(null);
+                setBanReason('');
+              }}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="danger"
+              className="flex-1"
+              disabled={!banReason.trim()}
+              onClick={() => handleBanUser(banModal)}
+            >
+              🚫 Ya, Ban User
+            </Button>
+          </div>
         </Modal>
       )}
 
