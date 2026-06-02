@@ -111,7 +111,7 @@ export default function DashboardHomeClient({ userName, packages, purchasedPkgId
           📦 Paket Tersedia
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          {packages.filter((p) => p.isActive && !p.isTrial).map((pkg) => {
+          {packages.filter((p) => p.isActive).map((pkg) => {
             const owned = isOwned(pkg.id);
             return (
               <Card

@@ -66,14 +66,14 @@ export default function TryoutPage() {
     .filter((p) => p.status === "pending" || p.status === "verified")
     .map((p) => p.packageId);
 
-  // ── Task 1.3: availablePackages (active, non-trial, not owned) ──
+  // ── Task 1.3: availablePackages (active, not owned) ──
   const availablePackages = packages.filter(
-    (p) => p.isActive && !p.isTrial && !ownedPkgIds.includes(p.id),
+    (p) => p.isActive && !ownedPkgIds.includes(p.id),
   );
 
-  // ── Task 1.4: ownedPackages (active, non-trial, owned) ──
+  // ── Task 1.4: ownedPackages (active, owned) ──
   const ownedPackages = packages.filter(
-    (p) => p.isActive && !p.isTrial && ownedPkgIds.includes(p.id),
+    (p) => p.isActive && ownedPkgIds.includes(p.id),
   );
 
   // ── Start / resume attempt ──

@@ -1,23 +1,36 @@
-'use client';
+"use client";
 
-import { useRouter } from 'next/navigation';
-import type { Package } from '@/lib/types';
-import { Card, Badge, Button } from '@/components/ui';
-import { useAppStore } from '@/store/useAppStore';
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import type { Package } from "@/lib/types";
+import { Card, Badge, Button } from "@/components/ui";
+import { usePackages, useUserPayments } from "@/hooks/useTryoutQueries";
 
 export default function BuyPage() {
   const router = useRouter();
-  const { packages } = useAppStore();
+  const { data: session } = useSession();
+  const { data: packages = [], isFetching: isFetchingPackages } = usePackages();
+  const { data: userPayments = [], isFetching: isFetchingPayments } =
+    useUserPayments(session?.user?.email ?? undefined);
+
+  const ownedPkgIds = userPayments
+    .filter(
+      (payment) =>
+        payment.status === "pending" || payment.status === "verified",
+    )
+    .map((payment) => payment.packageId);
 
   const handleBuy = (pkg: Package) => {
-    if (!pkg.isActive) return;
+    if (!pkg.isActive || ownedPkgIds.includes(pkg.id)) return;
     router.push(`/payment?pkg=${pkg.id}`);
   };
 
   return (
     <div>
       <div className="mb-6">
-        <h2 className="font-black text-2xl text-[#1B3A6B] mb-1">🛒 Beli Paket</h2>
+        <h2 className="font-black text-2xl text-[#1B3A6B] mb-1">
+          🛒 Beli Paket
+        </h2>
         <p className="text-gray-400 text-sm">
           Pilih paket yang sesuai kebutuhanmu
         </p>
@@ -28,19 +41,24 @@ export default function BuyPage() {
         <h3 className="font-extrabold text-base text-[#1B3A6B] mb-4 flex items-center gap-2">
           📝 Paket Tryout SKD
         </h3>
+        {(isFetchingPackages || isFetchingPayments) && (
+          <p className="text-sm text-gray-400 mb-4">Memuat paket...</p>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {packages
-            .filter((p) => p.isActive && !p.isTrial)
+            .filter((p) => p.isActive)
             .map((pkg) => {
-              const owned = false; // TODO: derive from payments
+              const owned = ownedPkgIds.includes(pkg.id);
               return (
                 <Card
                   key={pkg.id}
-                  className="relative overflow-hidden border border-gray-100"
+                  className={`relative overflow-hidden border-2 ${
+                    owned ? "border-green-200" : "border-gray-100"
+                  }`}
                 >
                   {owned && (
-                    <div className="absolute -top-2.5 left-4 bg-green-500 text-white px-3 py-0.5 rounded-full text-xs font-extrabold z-10">
-                      ✅ DIMILIKI
+                    <div className="absolute top-3 right-3 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-extrabold z-10 whitespace-nowrap shadow-sm">
+                      ✅ Dimiliki
                     </div>
                   )}
 
@@ -49,9 +67,13 @@ export default function BuyPage() {
                       <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#1B3A6B] to-[#2563EB] flex items-center justify-center text-lg">
                         📝
                       </div>
-                      <div className="font-black text-base text-[#1B3A6B]">{pkg.name}</div>
+                      <div className="font-black text-base text-[#1B3A6B]">
+                        {pkg.name}
+                      </div>
                     </div>
-                    <p className="text-xs text-gray-500 mb-3">{pkg.description}</p>
+                    <p className="text-xs text-gray-500 mb-3">
+                      {pkg.description}
+                    </p>
                     <div className="flex flex-wrap gap-1.5 mb-3">
                       <Badge color="blue">📝 Tryout SKD</Badge>
                       <Badge color="yellow">⏱ 100 menit/sesi</Badge>
@@ -59,20 +81,18 @@ export default function BuyPage() {
                     </div>
 
                     {owned ? (
-                      <Button
-                        variant="success"
-                        className="w-full"
-                        onClick={() => router.push('/tryout')}
-                      >
-                        🚀 Mulai Tryout
+                      <Button variant="success" className="w-full" disabled>
+                        ✅ Dimiliki
                       </Button>
                     ) : (
                       <div className="flex items-end justify-between gap-2">
                         <div>
                           <div className="font-black text-2xl text-[#1B3A6B]">
-                            Rp {pkg.price.toLocaleString('id-ID')}
+                            Rp {pkg.price.toLocaleString("id-ID")}
                           </div>
-                          <div className="text-xs text-gray-400">sekali bayar, akses selamanya</div>
+                          <div className="text-xs text-gray-400">
+                            sekali bayar, akses selamanya
+                          </div>
                         </div>
                         <Button
                           variant="primary"
@@ -92,3 +112,4 @@ export default function BuyPage() {
     </div>
   );
 }
+

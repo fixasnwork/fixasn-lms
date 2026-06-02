@@ -44,7 +44,10 @@ export default async function DashboardLayout({
     queryClient.prefetchQuery({
       queryKey: ['packages'],
       queryFn: async () => {
-        const data = await prisma.package.findMany({ orderBy: { id: 'asc' } });
+        const data = await prisma.package.findMany({
+          where: { deletedAt: null },
+          orderBy: { id: 'asc' },
+        });
         return data.map((p) => ({ ...p, createdAt: p.createdAt.toISOString(), updatedAt: p.updatedAt.toISOString() }));
       },
     }),

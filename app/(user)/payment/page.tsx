@@ -4,10 +4,9 @@ import { useState, Suspense } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Card, Modal } from "@/components/ui";
-import { useAppStore } from "@/store/useAppStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { WA_LINK, WA_NUMBER } from "@/data/constants";
-import { useCreatePayment } from "@/hooks/useTryoutQueries";
+import { useBanks, useCreatePayment, usePackages } from "@/hooks/useTryoutQueries";
 
 function PaymentContent() {
   const router = useRouter();
@@ -15,7 +14,8 @@ function PaymentContent() {
   const pkgIdParam = searchParams.get("pkg");
 
   const { user } = useAuthStore();
-  const { packages, banks } = useAppStore();
+  const { data: packages = [] } = usePackages();
+  const { data: banks = [] } = useBanks();
   const createPayment = useCreatePayment();
 
   const [selectedPkgId, setSelectedPkgId] = useState<number | null>(
@@ -105,7 +105,7 @@ function PaymentContent() {
           {/* Package cards */}
           <div className="flex flex-col gap-3 mb-6">
             {packages
-              .filter((p) => p.isActive && !p.isTrial)
+              .filter((p) => p.isActive)
               .map((pkg) => (
                 <Card
                   key={pkg.id}
