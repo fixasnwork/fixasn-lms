@@ -93,6 +93,7 @@ export interface Package {
   price: number;
   isTrial: boolean;
   isActive: boolean;
+  tryoutCount?: number;
   createdAt: string;
   updatedAt: string;
 }

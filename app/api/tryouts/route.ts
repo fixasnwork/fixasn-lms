@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { requireAdmin } from '@/lib/adminAuth';
 import { DEFAULT_PACKAGE_BANKS } from '@/data/questions';
 import type { Question, QuestionOption, Tryout } from '@/lib/types';
 
@@ -73,7 +74,7 @@ function mapTryoutLight(t: {
     isTrial: t.isTrial,
     sortOrder: t.sortOrder,
     durationMin: t.durationMin,
-    questions: [], // light mode — questions not included
+    questions: [],
     _questionCount: t._count.tryoutQuestions,
     createdAt: t.createdAt.toISOString(),
     updatedAt: t.updatedAt.toISOString(),
@@ -307,11 +308,12 @@ function buildFullResponse(tryouts: {
   return grouped;
 }
 
-/* ── Route handler ─────────────────────────────────────────────────── */
+/* ── Route handlers ───────────────────────────────────────────────── */
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const packageIdParam = searchParams.get('packageId');
   const includeQuestions = searchParams.get('include') === 'questions';
+  const flatScope = searchParams.get('scope') === 'all';
 
   try {
     let tryoutIds: number[] | undefined;
@@ -330,13 +332,11 @@ export async function GET(request: NextRequest) {
       tryoutIds = mappings.map((m) => m.tryoutId);
     }
 
-    // Light query: metadata + question count only (fast)
     const lightInclude = {
       _count: { select: { tryoutQuestions: true } },
       packageTryouts: { select: { packageId: true } },
     };
 
-    // Full query: all questions + options (heavy, only when needed)
     const fullInclude = {
       tryoutQuestions: {
         orderBy: { sortOrder: 'asc' as const },
@@ -352,7 +352,10 @@ export async function GET(request: NextRequest) {
     };
 
     let tryouts = await prisma.tryout.findMany({
-      where: tryoutIds ? { id: { in: tryoutIds } } : undefined,
+      where: {
+        ...(tryoutIds ? { id: { in: tryoutIds } } : {}),
+        deletedAt: null,
+      },
       orderBy: { sortOrder: 'asc' as const },
       include: includeQuestions ? fullInclude : lightInclude,
     });
@@ -360,7 +363,10 @@ export async function GET(request: NextRequest) {
     if (tryouts.length === 0) {
       await seedFromDefaults();
       tryouts = await prisma.tryout.findMany({
-        where: tryoutIds ? { id: { in: tryoutIds } } : undefined,
+        where: {
+          ...(tryoutIds ? { id: { in: tryoutIds } } : {}),
+          deletedAt: null,
+        },
         orderBy: { sortOrder: 'asc' },
         include: includeQuestions ? fullInclude : lightInclude,
       });
@@ -368,6 +374,13 @@ export async function GET(request: NextRequest) {
       if (tryouts.length === 0) {
         return NextResponse.json({ tryouts: DEFAULT_PACKAGE_BANKS });
       }
+    }
+
+    if (flatScope) {
+      const mapped = includeQuestions
+        ? (tryouts as unknown as Parameters<typeof buildFullResponse>[0]).map(mapTryoutFull)
+        : (tryouts as unknown as Parameters<typeof buildLightResponse>[0]).map(mapTryoutLight);
+      return NextResponse.json({ tryouts: mapped });
     }
 
     const grouped = includeQuestions
@@ -381,5 +394,50 @@ export async function GET(request: NextRequest) {
       { error: error instanceof Error ? error.message : 'Failed to fetch tryouts' },
       { status: 500 }
     );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
+  try {
+    const body = await request.json();
+    const name = String(body.name ?? '').trim();
+    const isTrial = Boolean(body.isTrial);
+    const sortOrder = Number.isInteger(body.sortOrder) ? Number(body.sortOrder) : 0;
+    const durationMin = Number.isInteger(body.durationMin) ? Number(body.durationMin) : 100;
+
+    if (!name) {
+      return NextResponse.json({ error: 'Tryout name is required' }, { status: 400 });
+    }
+
+    if (durationMin < 1 || durationMin > 300) {
+      return NextResponse.json({ error: 'durationMin must be between 1 and 300' }, { status: 400 });
+    }
+
+    const tryout = await prisma.tryout.create({
+      data: { name, isTrial, sortOrder, durationMin },
+    });
+
+    return NextResponse.json(
+      {
+        success: true,
+        tryout: {
+          id: tryout.id,
+          name: tryout.name,
+          isTrial: tryout.isTrial,
+          sortOrder: tryout.sortOrder,
+          durationMin: tryout.durationMin,
+          createdAt: tryout.createdAt.toISOString(),
+          updatedAt: tryout.updatedAt.toISOString(),
+          questions: [],
+        },
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

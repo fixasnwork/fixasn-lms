@@ -191,7 +191,7 @@ export function usePackages() {
   return useQuery<Package[]>({
     queryKey: ['packages'],
     queryFn: async () => {
-      const res = await fetch('/api/packages');
+      const res = await fetch('/api/packages', { cache: 'no-store' });
       if (!res.ok) throw new Error('Failed to fetch packages');
       const data = await res.json();
       return data.packages as Package[];
@@ -290,6 +290,270 @@ export function useAttemptHistory(userId: string | undefined) {
       }>;
     },
     enabled: !!userId,
+  });
+}
+
+/* ── Package Mutations ──────────────────────────────────────── */
+export function useCreatePackage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: { name: string; description?: string; price?: number; isTrial?: boolean; isActive?: boolean }) => {
+      const res = await fetch('/api/packages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to create package');
+      return json as { success: boolean; package: Package };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['packages'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-payments'] });
+    },
+  });
+}
+
+export function useUpdatePackage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: { id: number; name?: string; description?: string; price?: number; isTrial?: boolean; isActive?: boolean }) => {
+      const { id, ...body } = data;
+      const res = await fetch(`/api/packages/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to update package');
+      return json as { success: boolean; package: Package };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['packages'] });
+    },
+  });
+}
+
+export function useDeletePackage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (packageId: number) => {
+      const res = await fetch(`/api/packages/${packageId}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to delete package');
+      return json as { success: boolean };
+    },
+    onSuccess: (_data, packageId) => {
+      queryClient.setQueryData<Package[]>(['packages'], (current = []) =>
+        current.filter((pkg) => pkg.id !== packageId)
+      );
+      queryClient.invalidateQueries({ queryKey: ['packages'] });
+      queryClient.invalidateQueries({ queryKey: ['tryouts'] });
+    },
+  });
+}
+
+/* ── Tryout Mutations ─────────────────────────────────────────── */
+export function useCreateTryout() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: { name: string; isTrial?: boolean; sortOrder?: number; durationMin?: number }) => {
+      const res = await fetch('/api/tryouts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to create tryout');
+      return json as { success: boolean; tryout: Tryout };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tryouts'] });
+      queryClient.invalidateQueries({ queryKey: ['all-tryouts'] });
+    },
+  });
+}
+
+export function useUpdateTryout() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: { id: number; name?: string; isTrial?: boolean; sortOrder?: number; durationMin?: number }) => {
+      const { id, ...body } = data;
+      const res = await fetch(`/api/tryouts/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to update tryout');
+      return json as { success: boolean; tryout: Tryout };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tryouts'] });
+      queryClient.invalidateQueries({ queryKey: ['all-tryouts'] });
+    },
+  });
+}
+
+export function useDeleteTryout() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (tryoutId: number) => {
+      const res = await fetch(`/api/tryouts/${tryoutId}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to delete tryout');
+      return json as { success: boolean };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tryouts'] });
+      queryClient.invalidateQueries({ queryKey: ['all-tryouts'] });
+    },
+  });
+}
+
+/* ── Package-Tryout Assignments ───────────────────────────────── */
+export function usePackageTryouts(packageId: number | null) {
+  return useQuery<Tryout[]>({
+    queryKey: ['package-tryouts', packageId],
+    queryFn: async () => {
+      if (!packageId) return [];
+      const res = await fetch(`/api/packages/${packageId}/tryouts`);
+      if (!res.ok) throw new Error('Failed to fetch package tryouts');
+      const data = await res.json();
+      return data.tryouts as Tryout[];
+    },
+    enabled: !!packageId,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useSetPackageTryouts() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: { packageId: number; tryoutIds: number[] }) => {
+      const res = await fetch(`/api/packages/${data.packageId}/tryouts`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tryoutIds: data.tryoutIds }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to update package tryouts');
+      return json as { success: boolean; tryouts: Tryout[]; tryoutCount: number };
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['package-tryouts', variables.packageId] });
+      queryClient.invalidateQueries({ queryKey: ['tryouts'] });
+      queryClient.invalidateQueries({ queryKey: ['packages'] });
+    },
+  });
+}
+
+/* ── All tryouts (flat list for assignment UI) ────────────────── */
+export function useAllTryouts() {
+  return useQuery<Tryout[]>({
+    queryKey: ['all-tryouts'],
+    queryFn: async () => {
+      const res = await fetch('/api/tryouts?scope=all');
+      if (!res.ok) throw new Error('Failed to fetch all tryouts');
+      const data = await res.json();
+      if (Array.isArray(data.tryouts)) {
+        return (data.tryouts as Tryout[]).sort((a, b) => a.sortOrder - b.sortOrder);
+      }
+      const grouped = data.tryouts as Record<string, Tryout[]>;
+      const seen = new Set<number>();
+      const result: Tryout[] = [];
+      for (const tryouts of Object.values(grouped)) {
+        for (const t of tryouts) {
+          if (!seen.has(t.id)) {
+            seen.add(t.id);
+            result.push(t);
+          }
+        }
+      }
+      return result.sort((a, b) => a.sortOrder - b.sortOrder);
+    },
+    staleTime: 5 * 60_000,
+  });
+}
+
+/* ── Admin Bank Mutations ─────────────────────────────────────── */
+export function useAdminBanks() {
+  return useQuery<BankAccount[]>({
+    queryKey: ['banks', 'admin'],
+    queryFn: async () => {
+      const res = await fetch('/api/banks?scope=admin');
+      if (!res.ok) throw new Error('Failed to fetch admin banks');
+      const data = await res.json();
+      return data.banks as BankAccount[];
+    },
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useCreateBank() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: { bankName: string; accountNumber: string; accountHolder: string; isActive?: boolean }) => {
+      const res = await fetch('/api/banks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to create bank account');
+      return json as { success: boolean; bank: BankAccount };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['banks'] });
+      queryClient.invalidateQueries({ queryKey: ['banks', 'admin'] });
+    },
+  });
+}
+
+export function useUpdateBank() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: { id: number; bankName?: string; accountNumber?: string; accountHolder?: string; isActive?: boolean }) => {
+      const { id, ...body } = data;
+      const res = await fetch(`/api/banks/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to update bank account');
+      return json as { success: boolean; bank: BankAccount };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['banks'] });
+      queryClient.invalidateQueries({ queryKey: ['banks', 'admin'] });
+    },
+  });
+}
+
+export function useDeleteBank() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (bankId: number) => {
+      const res = await fetch(`/api/banks/${bankId}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to delete bank account');
+      return json as { success: boolean };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['banks'] });
+      queryClient.invalidateQueries({ queryKey: ['banks', 'admin'] });
+    },
   });
 }
 

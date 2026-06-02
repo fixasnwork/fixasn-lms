@@ -37,8 +37,22 @@ export default async function AdminLayout({
     queryClient.prefetchQuery({
       queryKey: ['packages'],
       queryFn: async () => {
-        const data = await prisma.package.findMany({ orderBy: { id: 'asc' } });
-        return data.map((p) => ({ ...p, createdAt: p.createdAt.toISOString(), updatedAt: p.updatedAt.toISOString() }));
+        const data = await prisma.package.findMany({
+          where: { deletedAt: null },
+          orderBy: { id: 'asc' },
+          include: { _count: { select: { packageTryouts: true } } },
+        });
+        return data.map((p) => ({
+          id: p.id,
+          name: p.name,
+          description: p.description,
+          price: p.price,
+          isTrial: p.isTrial,
+          isActive: p.isActive,
+          tryoutCount: Math.max(p.tryoutCount, p._count.packageTryouts),
+          createdAt: p.createdAt.toISOString(),
+          updatedAt: p.updatedAt.toISOString(),
+        }));
       },
     }),
   ]);
