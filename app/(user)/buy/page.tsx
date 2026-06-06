@@ -90,9 +90,6 @@ export default function BuyPage() {
                           <div className="font-black text-2xl text-[#1B3A6B]">
                             Rp {pkg.price.toLocaleString("id-ID")}
                           </div>
-                          <div className="text-xs text-gray-400">
-                            sekali bayar, akses selamanya
-                          </div>
                         </div>
                         <Button
                           variant="primary"
@@ -112,4 +109,3 @@ export default function BuyPage() {
     </div>
   );
 }
-

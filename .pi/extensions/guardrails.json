@@ -1,9 +1,11 @@
 {
-  "$schema": "https://unpkg.com/@aliou/pi-guardrails@0.13.1/schema.json",
+  "$schema": "https://unpkg.com/@aliou/pi-guardrails@0.13.2/schema.json",
   "pathAccess": {
     "allowedPaths": [
-      "/dev/",
-      "~/.pi/skills/openspec-propose/"
+      "/dev/null",
+      "~/.pi/skills/",
+      "~/.agents/skills/",
+      "~/.bun/install/global/node_modules/@earendil-works/pi-coding-agent/"
     ]
   },
   "version": "0.9.0-20260327"

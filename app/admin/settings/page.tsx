@@ -33,15 +33,20 @@ function TryoutSelectorModal({
   packageName: string;
 }) {
   const { data: allTryouts = [], isFetching: loadingList } = useAllTryouts();
-  const { data: assigned = [], isFetching: loadingAssigned } = usePackageTryouts(packageId);
+  const { data: assigned, isFetching: loadingAssigned } = usePackageTryouts(packageId);
   const setTryouts = useSetPackageTryouts();
 
-  const assignedIds = new Set(assigned.map((t) => t.id));
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(assignedIds);
+  // Stable reference to avoid new [] every render during loading (causes infinite loop)
+  const safeAssigned = assigned ?? [];
 
-  // Sync selectedIds when assigned data loads
-  if (!loadingAssigned && (selectedIds.size !== assignedIds.size || ![...selectedIds].every((id) => assignedIds.has(id)))) {
-    setSelectedIds(new Set(assignedIds));
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set(safeAssigned.map((t) => t.id)));
+  const [prevAssigned, setPrevAssigned] = useState(safeAssigned);
+
+  // Reset selectedIds only when assigned data actually loads or changes,
+  // not on every render — a user toggle would otherwise be overwritten.
+  if (!loadingAssigned && prevAssigned !== safeAssigned) {
+    setPrevAssigned(safeAssigned);
+    setSelectedIds(new Set(safeAssigned.map((t) => t.id)));
   }
 
   const toggle = (id: number) => {

@@ -3,6 +3,22 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 import SoalTable from './SoalTable';
 import type { Question } from '@/lib/types';
 
+// Mock next/image to render as <img> with data-next-image marker
+// (intentional raw <img> in test mock so we can assert next/image is used via the data attribute)
+vi.mock('next/image', () => ({
+  default: ({ src, alt, width, height, className }: { src: string; alt: string; width: number; height: number; className?: string }) => (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt={alt}
+      width={width}
+      height={height}
+      className={className}
+      data-next-image
+    />
+  ),
+}));
+
 const sampleQuestion: Question = {
   id: 1,
   category: 'TWK',
@@ -20,6 +36,25 @@ const sampleQuestion: Question = {
   ],
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
+};
+
+const sampleQuestionWithImageOption: Question = {
+  id: 2,
+  category: 'TIU',
+  question: 'Contoh pertanyaan TIU dengan gambar',
+  correctAnswer: 1,
+  questionImage: null,
+  explanation: null,
+  explanationImage: null,
+  options: [
+    { id: 6, questionId: 2, optionIndex: 0, optionText: '', optionImage: 'https://example.com/opt-a.png', tkpValue: null },
+    { id: 7, questionId: 2, optionIndex: 1, optionText: 'Jawaban B', optionImage: 'https://example.com/opt-b.png', tkpValue: null },
+    { id: 8, questionId: 2, optionIndex: 2, optionText: 'Jawaban C', optionImage: null, tkpValue: null },
+    { id: 9, questionId: 2, optionIndex: 3, optionText: '', optionImage: null, tkpValue: null },
+    { id: 10, questionId: 2, optionIndex: 4, optionText: '', optionImage: null, tkpValue: null },
+  ],
+  createdAt: '2026-01-02T00:00:00.000Z',
+  updatedAt: '2026-01-02T00:00:00.000Z',
 };
 
 describe('SoalTable', () => {
@@ -51,5 +86,53 @@ describe('SoalTable', () => {
 
     expect(onEdit).toHaveBeenCalledWith(sampleQuestion);
     expect(onDelete).toHaveBeenCalledWith(1);
+  });
+
+  // ── New tests for option image display ──────────────────────────
+
+  it('renders image-only option in mobile list', () => {
+    render(<SoalTable questions={[sampleQuestionWithImageOption]} onEdit={vi.fn()} onDelete={vi.fn()} />);
+
+    const mobileList = screen.getByTestId('soal-mobile-list');
+    // Option A has no text but has image — should still be visible
+    expect(within(mobileList).getByText((content) => content.includes('A.'))).toBeInTheDocument();
+    const optionImages = within(mobileList).getAllByRole('img');
+    // Should contain at least one option image (not questionImage, which is null)
+    const optAImg = optionImages.find((img) => (img as HTMLImageElement).src.includes('opt-a.png'));
+    expect(optAImg).toBeTruthy();
+  });
+
+  it('renders image-only option in desktop table', () => {
+    render(<SoalTable questions={[sampleQuestionWithImageOption]} onEdit={vi.fn()} onDelete={vi.fn()} />);
+
+    const desktopTable = screen.getByTestId('soal-desktop-table');
+    // Option A has no text but has image — should still be visible
+    expect(within(desktopTable).getByText((content) => content.includes('A.'))).toBeInTheDocument();
+    const optionImages = within(desktopTable).getAllByRole('img');
+    const optAImg = optionImages.find((img) => (img as HTMLImageElement).src.includes('opt-a.png'));
+    expect(optAImg).toBeTruthy();
+  });
+
+  it('renders text alongside image when both present', () => {
+    render(<SoalTable questions={[sampleQuestionWithImageOption]} onEdit={vi.fn()} onDelete={vi.fn()} />);
+
+    const mobileList = screen.getByTestId('soal-mobile-list');
+    // Option B has both text and image
+    expect(within(mobileList).getByText((content) => content.includes('Jawaban B'))).toBeInTheDocument();
+    const optionImages = within(mobileList).getAllByRole('img');
+    const optBImg = optionImages.find((img) => (img as HTMLImageElement).src.includes('opt-b.png'));
+    expect(optBImg).toBeTruthy();
+    // Must use next/image (marked with data-next-image)
+    expect(optBImg?.hasAttribute('data-next-image')).toBe(true);
+  });
+
+  it('text-only option still renders text only', () => {
+    render(<SoalTable questions={[sampleQuestion]} onEdit={vi.fn()} onDelete={vi.fn()} />);
+
+    const mobileList = screen.getByTestId('soal-mobile-list');
+    // Option A has text only, no image
+    expect(within(mobileList).getByText((content) => content.includes('Jawaban A'))).toBeInTheDocument();
+    // questionImage is null, so no img elements should exist in mobile list for this question
+    expect(within(mobileList).queryAllByRole('img')).toHaveLength(0);
   });
 });

@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { Button, Card, Badge } from '@/components/ui';
-import type { Package, LogoConfig } from '@/lib/types';
-import { WA_LINK } from '@/data/constants';
+import { Button, Card, Badge } from "@/components/ui";
+import type { Package, LogoConfig } from "@/lib/types";
+import { WA_LINK } from "@/data/constants";
 
 interface PackagesSectionProps {
   packages: Package[];
@@ -10,7 +10,11 @@ interface PackagesSectionProps {
   onRegister: () => void;
 }
 
-export function PackagesSection({ packages, logoConfig, onRegister }: PackagesSectionProps) {
+export function PackagesSection({
+  packages,
+  logoConfig,
+  onRegister,
+}: PackagesSectionProps) {
   const tryoutPkgs = packages.filter((p) => p.isActive && !p.isTrial);
   const shown = tryoutPkgs;
 
@@ -26,9 +30,7 @@ export function PackagesSection({ packages, logoConfig, onRegister }: PackagesSe
 
         {/* Tabs */}
         <div className="flex gap-2 justify-center mb-8">
-          <button
-            className="px-6.5 py-2.25 rounded-full font-bold text-sm font-['Montserrat',sans-serif] border-2 border-[#1B3A6B] bg-[#1B3A6B] text-white cursor-pointer"
-          >
+          <button className="px-6.5 py-2.25 rounded-full font-bold text-sm font-['Montserrat',sans-serif] border-2 border-[#1B3A6B] bg-[#1B3A6B] text-white cursor-pointer">
             📝 Tryout SKD
           </button>
         </div>
@@ -39,7 +41,7 @@ export function PackagesSection({ packages, logoConfig, onRegister }: PackagesSe
           style={{
             gridTemplateColumns: `repeat(${shown.length}, 1fr)`,
             maxWidth: shown.length === 1 ? 500 : undefined,
-            margin: '0 auto',
+            margin: "0 auto",
           }}
         >
           {shown.map((pkg) => (
@@ -48,12 +50,14 @@ export function PackagesSection({ packages, logoConfig, onRegister }: PackagesSe
               hover
               className="relative"
               style={{
-                border: '1px solid #F1F5F9',
+                border: "1px solid #F1F5F9",
                 paddingTop: 24,
               }}
             >
               <div className="mb-4">
-                <h3 className="font-black text-lg text-[#1B3A6B] mb-1.5">{pkg.name}</h3>
+                <h3 className="font-black text-lg text-[#1B3A6B] mb-1.5">
+                  {pkg.name}
+                </h3>
                 <p className="text-gray-600 text-sm m-0">{pkg.description}</p>
               </div>
 
@@ -66,15 +70,10 @@ export function PackagesSection({ packages, logoConfig, onRegister }: PackagesSe
               <div className="flex items-end justify-between mt-4">
                 <div>
                   <div className="text-3xl font-black text-[#1B3A6B]">
-                    Rp {pkg.price.toLocaleString('id-ID')}
+                    Rp {pkg.price.toLocaleString("id-ID")}
                   </div>
-                  <div className="text-xs text-gray-400">sekali bayar, akses selamanya</div>
                 </div>
-                <Button
-                  variant="primary"
-                  onClick={onRegister}
-                  size="sm"
-                >
+                <Button variant="primary" onClick={onRegister} size="sm">
                   Beli →
                 </Button>
               </div>
@@ -84,7 +83,7 @@ export function PackagesSection({ packages, logoConfig, onRegister }: PackagesSe
 
         <div className="text-center mt-7">
           <p className="text-gray-600 text-sm">
-            💬 Butuh bantuan memilih paket?{' '}
+            💬 Butuh bantuan memilih paket?{" "}
             <a
               href={WA_LINK}
               target="_blank"

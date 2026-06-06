@@ -23,7 +23,8 @@ export default function SoalTable({ questions, onEdit, onDelete }: SoalTableProp
     <div>
       <div data-testid="soal-mobile-list" className="md:hidden flex flex-col gap-3">
         {questions.map((q, idx) => {
-          const filledOpts = q.options.filter((o) => o.optionText && o.optionText.trim().length > 0);
+          // Sync twin: line 134 (desktop filledOpts filter) — keep in lockstep with desktop path
+          const filledOpts = q.options.filter((o) => (o.optionText && o.optionText.trim().length > 0) || o.optionImage);
           return (
             <div key={q.id} className="rounded-xl border border-gray-100 bg-white p-3">
               <div className="flex items-start justify-between gap-2 mb-2">
@@ -75,8 +76,21 @@ export default function SoalTable({ questions, onEdit, onDelete }: SoalTableProp
               <div className="text-xs text-gray-600 space-y-0.5 mb-2">
                 {q.options.slice(0, filledOpts.length).map((opt, i) => (
                   <div key={i} className="break-words">
-                    <span className="font-bold">{String.fromCharCode(65 + i)}.</span>{' '}
-                    {opt.optionText}
+                    <div>
+                      <span className="font-bold">{String.fromCharCode(65 + i)}.</span>{' '}
+                      {opt.optionText}
+                    </div>
+                    {opt.optionImage && (
+                      <div className="relative w-16 h-16 mt-1">
+                        <Image
+                          src={opt.optionImage}
+                          alt={`Opsi ${String.fromCharCode(65 + i)}`}
+                          width={64}
+                          height={64}
+                          className="rounded border border-gray-200 object-cover"
+                        />
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -130,7 +144,8 @@ export default function SoalTable({ questions, onEdit, onDelete }: SoalTableProp
         </thead>
         <tbody>
           {questions.map((q, idx) => {
-            const filledOpts = q.options.filter((o) => o.optionText && o.optionText.trim().length > 0);
+            // Sync twin: line 26 (mobile filledOpts filter) — keep in lockstep with mobile path
+            const filledOpts = q.options.filter((o) => (o.optionText && o.optionText.trim().length > 0) || o.optionImage);
             return (
               <tr
                 key={q.id}
@@ -173,10 +188,23 @@ export default function SoalTable({ questions, onEdit, onDelete }: SoalTableProp
                 <td className="px-3 py-2.5 text-xs text-gray-600">
                   <div className="flex flex-col gap-0.5">
                     {q.options.slice(0, filledOpts.length).map((opt, i) => (
-                      <span key={i} className="line-clamp-1">
-                        <span className="font-bold">{String.fromCharCode(65 + i)}.</span>{' '}
-                        {opt.optionText}
-                      </span>
+                      <div key={i} className="flex flex-col">
+                        <span className="line-clamp-1">
+                          <span className="font-bold">{String.fromCharCode(65 + i)}.</span>{' '}
+                          {opt.optionText}
+                        </span>
+                        {opt.optionImage && (
+                          <div className="relative w-12 h-12 mt-1">
+                            <Image
+                              src={opt.optionImage}
+                              alt={`Opsi ${String.fromCharCode(65 + i)}`}
+                              width={48}
+                              height={48}
+                              className="rounded border border-gray-200 object-cover"
+                            />
+                          </div>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </td>
