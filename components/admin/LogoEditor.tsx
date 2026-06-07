@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { LogoConfig } from '@/lib/types';
 import { Logo, Button, Card } from '@/components/ui';
 import ImageUpload from '@/components/admin/ImageUpload';
@@ -13,11 +13,6 @@ interface LogoEditorProps {
 
 export default function LogoEditor({ logoConfig, setLogoConfig, onSave }: LogoEditorProps) {
   const [draft, setDraft] = useState<LogoConfig>({ ...logoConfig });
-
-  // Sync draft when logoConfig prop changes (e.g., after fetchLogoConfig from DB)
-  useEffect(() => {
-    setDraft({ ...logoConfig });
-  }, [logoConfig]);
 
   const update = (field: keyof LogoConfig, value: string) => {
     setDraft((prev) => ({ ...prev, [field]: value }));

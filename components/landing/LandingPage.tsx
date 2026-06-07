@@ -191,14 +191,11 @@ const HERO_FALLBACK = 'https://images.unsplash.com/photo-1521737711867-e3b97375f
 
 /** Internal component to handle hero image with fallback via next/image */
 function HeroImage({ heroImg }: { heroImg: string }) {
-  const [hasError, setHasError] = useState(false);
+  const [errorUrl, setErrorUrl] = useState<string | null>(null);
 
-  // Reset error state when heroImg prop changes (e.g., after DB fetch or new upload)
-  useEffect(() => {
-    setHasError(false);
-  }, [heroImg]);
-
-  const src = hasError ? HERO_FALLBACK : heroImg;
+  // Use fallback only if the current heroImg URL previously errored;
+  // when heroImg changes, this naturally clears stale errors.
+  const src = errorUrl === heroImg ? HERO_FALLBACK : heroImg;
 
   return (
     <Image
@@ -208,7 +205,7 @@ function HeroImage({ heroImg }: { heroImg: string }) {
       sizes="(max-width: 1024px) 100vw, 50vw"
       className="object-cover"
       priority
-      onError={() => setHasError(true)}
+      onError={() => setErrorUrl(heroImg)}
     />
   );
 }

@@ -163,7 +163,7 @@ export default function AdminLandingPage() {
       </p>
 
       {/* Logo Editor */}
-      <LogoEditor logoConfig={logoConfig} setLogoConfig={setLogoConfig} onSave={syncLogoConfig} />
+      <LogoEditor key={JSON.stringify(logoConfig)} logoConfig={logoConfig} setLogoConfig={setLogoConfig} onSave={syncLogoConfig} />
 
       {/* Section Editors */}
       <h3 className="font-extrabold text-base text-[#1B3A6B] mb-4">📄 Section Lainnya</h3>
@@ -196,8 +196,8 @@ export default function AdminLandingPage() {
           <Button variant="ghost" onClick={closeEditor}>
             Batal
           </Button>
-          <Button variant="primary" onClick={saveSection}>
-            💾 Simpan Perubahan
+          <Button variant="primary" onClick={saveSection} disabled={saving}>
+            {saving ? '⏳ Menyimpan…' : '💾 Simpan Perubahan'}
           </Button>
         </div>
       </Modal>
