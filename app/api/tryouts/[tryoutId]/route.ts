@@ -32,10 +32,35 @@ export async function GET(
       isTrial: tryout.isTrial,
       sortOrder: tryout.sortOrder,
       durationMin: tryout.durationMin,
+      startDate: tryout.startDate?.toISOString() ?? null,
+      endDate: tryout.endDate?.toISOString() ?? null,
       createdAt: tryout.createdAt.toISOString(),
       updatedAt: tryout.updatedAt.toISOString(),
     },
   });
+}
+
+function parseOptionalDate(value: unknown): Date | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  return new Date(String(value));
+}
+
+function isInvalidDate(date: Date | null | undefined): boolean {
+  return !!date && !Number.isFinite(date.getTime());
+}
+
+function validateDateRange(startDate: Date | null | undefined, endDate: Date | null | undefined): string | null {
+  if (isInvalidDate(startDate) || isInvalidDate(endDate)) {
+    return 'startDate and endDate must be valid dates';
+  }
+  // Only validate range when both dates are set
+  if (startDate && endDate) {
+    if (startDate >= endDate) {
+      return 'startDate must be before endDate';
+    }
+  }
+  return null;
 }
 
 export async function PUT(
@@ -77,9 +102,29 @@ export async function PUT(
       );
     }
 
+    const startDate = parseOptionalDate(body.startDate);
+    const endDate = parseOptionalDate(body.endDate);
+
+    const resolvedStartDate = startDate !== undefined ? startDate : existing.startDate;
+    const resolvedEndDate = endDate !== undefined ? endDate : existing.endDate;
+    const dateError = validateDateRange(
+      resolvedStartDate ?? undefined,
+      resolvedEndDate ?? undefined
+    );
+    if (dateError) {
+      return NextResponse.json({ error: dateError }, { status: 400 });
+    }
+
     const tryout = await prisma.tryout.update({
       where: { id: tryoutId },
-      data: { name, isTrial, sortOrder, durationMin },
+      data: {
+        name,
+        isTrial,
+        sortOrder,
+        durationMin,
+        ...(startDate !== undefined ? { startDate } : {}),
+        ...(endDate !== undefined ? { endDate } : {}),
+      },
     });
 
     return NextResponse.json({
@@ -90,6 +135,8 @@ export async function PUT(
         isTrial: tryout.isTrial,
         sortOrder: tryout.sortOrder,
         durationMin: tryout.durationMin,
+        startDate: tryout.startDate?.toISOString() ?? null,
+        endDate: tryout.endDate?.toISOString() ?? null,
         createdAt: tryout.createdAt.toISOString(),
         updatedAt: tryout.updatedAt.toISOString(),
       },
@@ -137,6 +184,8 @@ export async function PATCH(
         isTrial: tryout.isTrial,
         sortOrder: tryout.sortOrder,
         durationMin: tryout.durationMin,
+        startDate: tryout.startDate?.toISOString() ?? null,
+        endDate: tryout.endDate?.toISOString() ?? null,
         createdAt: tryout.createdAt.toISOString(),
         updatedAt: tryout.updatedAt.toISOString(),
       },

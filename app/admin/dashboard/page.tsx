@@ -5,7 +5,7 @@ export default async function AdminDashboard() {
   const [payments, packages] = await Promise.all([
     prisma.payment.findMany({ orderBy: { createdAt: "desc" } }),
     prisma.package.findMany({
-      where: { isActive: true },
+      where: { deletedAt: null },
       orderBy: { id: "asc" },
     }),
   ]);
@@ -27,7 +27,8 @@ export default async function AdminDashboard() {
     description: p.description,
     price: p.price,
     isTrial: p.isTrial,
-    isActive: p.isActive,
+    startDate: p.startDate?.toISOString() ?? null,
+    endDate: p.endDate?.toISOString() ?? null,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
   }));

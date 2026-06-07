@@ -17,8 +17,9 @@ function mapPackage(pkg: {
   description: string;
   price: number;
   isTrial: boolean;
-  isActive: boolean;
   tryoutCount: number;
+  startDate: Date | null;
+  endDate: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }): PackageResponse {
@@ -28,7 +29,8 @@ function mapPackage(pkg: {
     description: pkg.description,
     price: pkg.price,
     isTrial: pkg.isTrial,
-    isActive: pkg.isActive,
+    startDate: pkg.startDate ? pkg.startDate.toISOString() : null,
+    endDate: pkg.endDate ? pkg.endDate.toISOString() : null,
     tryoutCount: pkg.tryoutCount,
     createdAt: pkg.createdAt.toISOString(),
     updatedAt: pkg.updatedAt.toISOString(),
@@ -83,15 +85,45 @@ export async function PUT(
     const description = body.description !== undefined ? String(body.description).trim() : existing.description;
     const price = body.price !== undefined ? Number(body.price) : existing.price;
     const isTrial = body.isTrial !== undefined ? Boolean(body.isTrial) : existing.isTrial;
-    const isActive = body.isActive !== undefined ? Boolean(body.isActive) : existing.isActive;
+
+    // Date fields: use body value if provided, else preserve existing
+    let startDate: Date | null | undefined = undefined;
+    let endDate: Date | null | undefined = undefined;
+    if (body.startDate !== undefined) {
+      startDate = body.startDate === null ? null : new Date(body.startDate);
+    }
+    if (body.endDate !== undefined) {
+      endDate = body.endDate === null ? null : new Date(body.endDate);
+    }
+
+    // Resolve effective values for validation
+    const effStart = startDate !== undefined ? startDate : existing.startDate;
+    const effEnd = endDate !== undefined ? endDate : existing.endDate;
 
     if (!name) {
       return NextResponse.json({ error: 'Package name cannot be empty' }, { status: 400 });
     }
 
+    // Validate range only when both dates are set
+    if (effStart && effEnd) {
+      if (!Number.isFinite(effStart.getTime()) || !Number.isFinite(effEnd.getTime())) {
+        return NextResponse.json({ error: 'startDate and endDate must be valid dates' }, { status: 400 });
+      }
+      if (effStart >= effEnd) {
+        return NextResponse.json({ error: 'startDate must be before endDate' }, { status: 400 });
+      }
+    }
+
     const pkg = await prisma.package.update({
       where: { id: packageId },
-      data: { name, description, price, isTrial, isActive },
+      data: {
+        name,
+        description,
+        price,
+        isTrial,
+        ...(startDate !== undefined ? { startDate } : {}),
+        ...(endDate !== undefined ? { endDate } : {}),
+      },
     });
 
     return NextResponse.json({ success: true, package: mapPackage(pkg) });

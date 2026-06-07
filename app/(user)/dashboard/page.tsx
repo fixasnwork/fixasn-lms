@@ -9,11 +9,13 @@ export default async function DashboardHome() {
 
   // Fetch packages from DB
   const dbPackages = await prisma.package.findMany({
-    where: { isActive: true, deletedAt: null },
+    where: { deletedAt: null },
     orderBy: { id: 'asc' },
   });
   const packages = dbPackages.map((p) => ({
     ...p,
+    startDate: p.startDate?.toISOString() ?? null,
+    endDate: p.endDate?.toISOString() ?? null,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
   }));

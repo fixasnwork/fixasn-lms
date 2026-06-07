@@ -357,7 +357,7 @@ export default function SoalPage() {
         </div>
 
         {packages
-          .filter((p) => p.isActive && !p.isTrial)
+          .filter((p) => !p.isTrial)
           .map((pkg) => {
             const bank = paidPackageBanks[String(pkg.id)] || [];
             const totalSoal = bank.reduce(

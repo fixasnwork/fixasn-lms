@@ -1,6 +1,7 @@
 'use client';
 
 import { StatCard } from '@/components/ui';
+import { isPackageAvailable } from '@/lib/availability';
 import type { Payment, Package } from '@/lib/types';
 
 interface Props {
@@ -28,7 +29,7 @@ export default function AdminDashboardClient({ payments, packages }: Props) {
         <StatCard icon="👥" label="Total Peserta" value={totalPeserta} color="#2563EB" sub={`${uniqueUsers} pembayar unik`} />
         <StatCard icon="💰" label="Pembayaran Pending" value={pendingCount} color="#D97706" />
         <StatCard icon="🚫" label="Diblokir" value={blockedCount} color="#DC2626" />
-        <StatCard icon="📦" label="Paket Aktif" value={packages.filter((p) => p.isActive).length} color="#16A34A" />
+        <StatCard icon="📦" label="Paket Tersedia" value={packages.filter((p) => isPackageAvailable(p)).length} color="#16A34A" />
       </div>
 
       {/* Recent Payments */}

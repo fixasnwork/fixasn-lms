@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { StatCard, Button, Card } from '@/components/ui';
 import type { Package } from '@/lib/types';
+import { isPackageAvailable } from '@/lib/availability';
 
 interface Props {
   userName: string;
@@ -111,7 +112,7 @@ export default function DashboardHomeClient({ userName, packages, purchasedPkgId
           📦 Paket Tersedia
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          {packages.filter((p) => p.isActive).map((pkg) => {
+          {packages.filter((p) => isPackageAvailable(p)).map((pkg) => {
             const owned = isOwned(pkg.id);
             return (
               <Card

@@ -139,6 +139,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     sortOrder: 0,
     durationMin: 15,
     questions: TRIAL_QUESTIONS,
+    startDate: null,
+    endDate: null,
     createdAt: EPOCH,
     updatedAt: EPOCH,
   },

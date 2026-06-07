@@ -63,6 +63,8 @@ function mapTryoutLight(t: {
   isTrial: boolean;
   sortOrder: number;
   durationMin: number;
+  startDate: Date | null;
+  endDate: Date | null;
   createdAt: Date;
   updatedAt: Date;
   _count: { tryoutQuestions: number };
@@ -76,6 +78,8 @@ function mapTryoutLight(t: {
     durationMin: t.durationMin,
     questions: [],
     _questionCount: t._count.tryoutQuestions,
+    startDate: t.startDate?.toISOString() ?? null,
+    endDate: t.endDate?.toISOString() ?? null,
     createdAt: t.createdAt.toISOString(),
     updatedAt: t.updatedAt.toISOString(),
   };
@@ -88,6 +92,8 @@ function mapTryoutFull(t: {
   isTrial: boolean;
   sortOrder: number;
   durationMin: number;
+  startDate: Date | null;
+  endDate: Date | null;
   createdAt: Date;
   updatedAt: Date;
   tryoutQuestions: {
@@ -125,6 +131,8 @@ function mapTryoutFull(t: {
     sortOrder: t.sortOrder,
     durationMin: t.durationMin,
     questions,
+    startDate: t.startDate?.toISOString() ?? null,
+    endDate: t.endDate?.toISOString() ?? null,
     createdAt: t.createdAt.toISOString(),
     updatedAt: t.updatedAt.toISOString(),
   };
@@ -241,6 +249,8 @@ function buildLightResponse(tryouts: {
   isTrial: boolean;
   sortOrder: number;
   durationMin: number;
+  startDate: Date | null;
+  endDate: Date | null;
   createdAt: Date;
   updatedAt: Date;
   _count: { tryoutQuestions: number };
@@ -261,12 +271,18 @@ function buildLightResponse(tryouts: {
   return grouped;
 }
 
+function _isInvalidDate(date: Date | null): boolean {
+  return !!date && !Number.isFinite(date.getTime());
+}
+
 function buildFullResponse(tryouts: {
   id: number;
   name: string;
   isTrial: boolean;
   sortOrder: number;
   durationMin: number;
+  startDate: Date | null;
+  endDate: Date | null;
   createdAt: Date;
   updatedAt: Date;
   tryoutQuestions: {
@@ -408,6 +424,9 @@ export async function POST(request: NextRequest) {
     const sortOrder = Number.isInteger(body.sortOrder) ? Number(body.sortOrder) : 0;
     const durationMin = Number.isInteger(body.durationMin) ? Number(body.durationMin) : 100;
 
+    const startDate: Date | null = body.startDate ? new Date(body.startDate) : null;
+    const endDate: Date | null = body.endDate ? new Date(body.endDate) : null;
+
     if (!name) {
       return NextResponse.json({ error: 'Tryout name is required' }, { status: 400 });
     }
@@ -416,8 +435,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'durationMin must be between 1 and 300' }, { status: 400 });
     }
 
+    // Validate dates only when both are provided
+    if (startDate && endDate) {
+      if (!Number.isFinite(startDate.getTime()) || !Number.isFinite(endDate.getTime())) {
+        return NextResponse.json({ error: 'startDate and endDate must be valid dates' }, { status: 400 });
+      }
+      if (startDate >= endDate) {
+        return NextResponse.json({ error: 'startDate must be before endDate' }, { status: 400 });
+      }
+    } else if (startDate && !Number.isFinite(startDate.getTime())) {
+      return NextResponse.json({ error: 'startDate must be a valid date' }, { status: 400 });
+    } else if (endDate && !Number.isFinite(endDate.getTime())) {
+      return NextResponse.json({ error: 'endDate must be a valid date' }, { status: 400 });
+    }
+
     const tryout = await prisma.tryout.create({
-      data: { name, isTrial, sortOrder, durationMin },
+      data: { name, isTrial, sortOrder, durationMin, startDate, endDate },
     });
 
     return NextResponse.json(
@@ -429,6 +462,8 @@ export async function POST(request: NextRequest) {
           isTrial: tryout.isTrial,
           sortOrder: tryout.sortOrder,
           durationMin: tryout.durationMin,
+          startDate: tryout.startDate?.toISOString() ?? null,
+          endDate: tryout.endDate?.toISOString() ?? null,
           createdAt: tryout.createdAt.toISOString(),
           updatedAt: tryout.updatedAt.toISOString(),
           questions: [],

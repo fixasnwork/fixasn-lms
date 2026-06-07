@@ -132,8 +132,8 @@ async function main() {
   for (const p of DEFAULT_PACKAGES) {
     await prisma.package.upsert({
       where: { name: p.name },
-      create: { name: p.name, description: p.description, price: p.price, isTrial: p.isTrial, isActive: p.isActive },
-      update: {},
+      create: { name: p.name, description: p.description, price: p.price, isTrial: p.isTrial, startDate: p.startDate ? new Date(p.startDate) : null, endDate: p.endDate ? new Date(p.endDate) : null },
+      update: { startDate: p.startDate ? new Date(p.startDate) : undefined, endDate: p.endDate ? new Date(p.endDate) : undefined },
     });
   }
   const allPackages = await prisma.package.findMany();
@@ -178,8 +178,10 @@ async function main() {
           data: { durationMin: t.isTrial ? 15 : 100 },
         });
       } else {
+        const now = new Date();
+        const farFuture = new Date('2099-12-31T23:59:59Z');
         const created = await prisma.tryout.create({
-          data: { name: t.name, isTrial: t.isTrial, sortOrder: t.sortOrder, durationMin: t.isTrial ? 15 : 100 },
+          data: { name: t.name, isTrial: t.isTrial, sortOrder: t.sortOrder, durationMin: t.isTrial ? 15 : 100, startDate: now, endDate: farFuture },
         });
         tryoutId = created.id;
       }

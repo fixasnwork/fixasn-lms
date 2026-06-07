@@ -99,7 +99,8 @@ model Package {
   price       Int      @default(0)
   description String   @default("") @db.Text
   isTrial     Boolean  @default(false)
-  isActive    Boolean  @default(true)
+  startDate   DateTime? @db.Timestamptz(6)
+  endDate     DateTime? @db.Timestamptz(6)
 
   createdAt   DateTime  @default(now()) @db.Timestamptz(6)
   createdBy   String?   @db.Text
@@ -123,6 +124,8 @@ model Tryout {
   isTrial   Boolean  @default(false)
   sortOrder Int      @default(0)
   durationMin Int    @default(100)
+  startDate DateTime? @db.Timestamptz(6)
+  endDate   DateTime? @db.Timestamptz(6)
 
   createdAt DateTime  @default(now()) @db.Timestamptz(6)
   createdBy String?   @db.Text

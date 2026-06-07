@@ -298,7 +298,7 @@ export function useCreatePackage() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { name: string; description?: string; price?: number; isTrial?: boolean; isActive?: boolean }) => {
+    mutationFn: async (data: { name: string; description?: string; price?: number; isTrial?: boolean; startDate?: string; endDate?: string }) => {
       const res = await fetch('/api/packages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -319,7 +319,7 @@ export function useUpdatePackage() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { id: number; name?: string; description?: string; price?: number; isTrial?: boolean; isActive?: boolean }) => {
+    mutationFn: async (data: { id: number; name?: string; description?: string; price?: number; isTrial?: boolean; startDate?: string; endDate?: string }) => {
       const { id, ...body } = data;
       const res = await fetch(`/api/packages/${id}`, {
         method: 'PUT',
@@ -361,7 +361,7 @@ export function useCreateTryout() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { name: string; isTrial?: boolean; sortOrder?: number; durationMin?: number }) => {
+    mutationFn: async (data: { name: string; isTrial?: boolean; sortOrder?: number; durationMin?: number; startDate?: string; endDate?: string }) => {
       const res = await fetch('/api/tryouts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -382,7 +382,7 @@ export function useUpdateTryout() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { id: number; name?: string; isTrial?: boolean; sortOrder?: number; durationMin?: number }) => {
+    mutationFn: async (data: { id: number; name?: string; isTrial?: boolean; sortOrder?: number; durationMin?: number; startDate?: string; endDate?: string }) => {
       const { id, ...body } = data;
       const res = await fetch(`/api/tryouts/${id}`, {
         method: 'PUT',

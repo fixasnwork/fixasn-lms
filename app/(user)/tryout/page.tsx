@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Button, Card } from "@/components/ui";
+import { isPackageAvailable, isAvailable } from "@/lib/availability";
 import {
   usePackages,
   useTryouts,
@@ -46,8 +47,11 @@ export default function TryoutPage() {
     return result;
   })();
 
+  // Filter tryouts by availability
+  const availableTryouts = allTryouts.filter((t) => isAvailable(t));
+
   // Separate trial from regular tryouts
-  const trialTryout = allTryouts.find((t) => t.isTrial);
+  const trialTryout = availableTryouts.find((t) => t.isTrial);
 
   const isLoading =
     isFetchingTryouts || isFetchingPayments || isFetchingPackages;
@@ -66,14 +70,14 @@ export default function TryoutPage() {
     .filter((p) => p.status === "pending" || p.status === "verified")
     .map((p) => p.packageId);
 
-  // ── Task 1.3: availablePackages (active, not owned) ──
+  // ── Task 1.3: availablePackages (date-available, not owned) ──
   const availablePackages = packages.filter(
-    (p) => p.isActive && !ownedPkgIds.includes(p.id),
+    (p) => isPackageAvailable(p) && !ownedPkgIds.includes(p.id),
   );
 
-  // ── Task 1.4: ownedPackages (active, owned) ──
+  // ── Task 1.4: ownedPackages (date-available, owned) ──
   const ownedPackages = packages.filter(
-    (p) => p.isActive && ownedPkgIds.includes(p.id),
+    (p) => isPackageAvailable(p) && ownedPkgIds.includes(p.id),
   );
 
   // ── Start / resume attempt ──
@@ -188,7 +192,7 @@ export default function TryoutPage() {
               <div className="flex gap-5 overflow-x-auto pt-4 pb-2 -mx-1 px-1">
                 {ownedPackages.map((pkg) => {
                   // Get tryouts for this package
-                  const pkgTryouts = tryoutBanks[pkg.id] || [];
+                  const pkgTryouts = (tryoutBanks[pkg.id] || []).filter((t) => isAvailable(t));
                   const completedCount = pkgTryouts.filter((t) =>
                     bestScores.has(t.id),
                   ).length;
@@ -222,6 +226,11 @@ export default function TryoutPage() {
                       <div className="h-1.5 rounded-full bg-[#BFDBFE] mb-4" />
 
                       {/* Tryout list */}
+                      {pkgTryouts.length === 0 ? (
+                        <div className="text-sm text-gray-400 py-4">
+                          Tidak ada tryout aktif
+                        </div>
+                      ) : (
                       <div className="flex flex-col gap-2">
                         {pkgTryouts.map((t) => {
                           const score = bestScores.get(t.id);
@@ -267,7 +276,8 @@ export default function TryoutPage() {
                           );
                         })}
                       </div>
-                      {selectedTryout && (
+                      )}
+                      {selectedTryout && pkgTryouts.length > 0 && (
                         <Button
                           variant="primary"
                           className="mt-4 w-full text-base py-3"

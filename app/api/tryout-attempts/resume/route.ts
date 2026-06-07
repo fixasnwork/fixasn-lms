@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { requireActiveSession } from '@/lib/routeAuth';
+import { isAvailable, isPackageAvailable } from '@/lib/availability';
 
 export async function POST(request: NextRequest) {
   const authResult = await requireActiveSession(request);
@@ -19,9 +20,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'tryoutId is required' }, { status: 400 });
   }
 
-  // Verify the tryout exists
+  // Verify the tryout exists (include packages for availability gate)
   const tryout = await prisma.tryout.findUnique({
     where: { id: tryoutId, deletedAt: null },
+    include: { packageTryouts: { include: { package: true } } },
   });
   if (!tryout) {
     return NextResponse.json({ error: 'Tryout not found' }, { status: 404 });
@@ -66,6 +68,27 @@ export async function POST(request: NextRequest) {
       },
     });
   }
+
+  // ── Availability gate (new attempts only; in-progress resumes are not blocked) ──
+  if (!isAvailable(tryout)) {
+      return NextResponse.json(
+        { error: 'tryout_unavailable', reason: 'out_of_window', retryable: true },
+        { status: 403 }
+      );
+    }
+
+    for (const pt of tryout.packageTryouts) {
+      if (!isPackageAvailable(pt.package)) {
+        return NextResponse.json(
+          {
+            error: 'tryout_unavailable',
+            reason: 'package_closed',
+            retryable: true,
+          },
+          { status: 403 }
+        );
+      }
+    }
 
   // Otherwise, create a new blank attempt
   const newAttempt = await prisma.tryoutAttempt.create({

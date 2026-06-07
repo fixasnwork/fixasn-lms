@@ -68,6 +68,8 @@ export interface Tryout {
   questions: Question[];
   /** Question count when questions array is empty (light query mode) */
   _questionCount?: number;
+  startDate: string | null;
+  endDate: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -92,8 +94,9 @@ export interface Package {
   description: string;
   price: number;
   isTrial: boolean;
-  isActive: boolean;
   tryoutCount?: number;
+  startDate: string | null;
+  endDate: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -4,6 +4,7 @@ import { useState, Suspense } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Card, Modal } from "@/components/ui";
+import { isPackageAvailable } from "@/lib/availability";
 import { useAuthStore } from "@/store/useAuthStore";
 import { WA_LINK, WA_NUMBER } from "@/data/constants";
 import { useBanks, useCreatePayment, usePackages } from "@/hooks/useTryoutQueries";
@@ -27,7 +28,7 @@ function PaymentContent() {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [showWAWarning, setShowWAWarning] = useState(false);
 
-  const selectedPkg = packages.find((p) => p.id === selectedPkgId);
+  const selectedPkg = packages.find((p) => p.id === selectedPkgId && isPackageAvailable(p));
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -105,7 +106,7 @@ function PaymentContent() {
           {/* Package cards */}
           <div className="flex flex-col gap-3 mb-6">
             {packages
-              .filter((p) => p.isActive)
+              .filter((p) => isPackageAvailable(p))
               .map((pkg) => (
                 <Card
                   key={pkg.id}
@@ -157,8 +158,10 @@ function PaymentContent() {
           <Button
             variant="primary"
             className="w-full"
-            disabled={!selectedPkgId}
-            onClick={() => setStep("pay")}
+            disabled={!selectedPkg}
+            onClick={() => {
+              if (selectedPkg) setStep("pay");
+            }}
           >
             Lanjut ke Pembayaran →
           </Button>

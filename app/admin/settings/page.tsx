@@ -1,7 +1,38 @@
 'use client';
 
 import { useState } from 'react';
+
+/** Convert ISO string to local datetime-local input value */
+function isoToLocalDatetime(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** Convert local datetime-local input value to ISO string */
+function localDatetimeToIso(localDatetime: string): string | undefined {
+  if (!localDatetime) return undefined;
+  const d = new Date(localDatetime);
+  return isNaN(d.getTime()) ? undefined : d.toISOString();
+}
 import type { Package, Tryout, BankAccount } from '@/lib/types';
+import { getEntityStatus, type EntityStatus } from '@/lib/availability';
+
+const STATUS_LABELS: Record<EntityStatus, string> = {
+  active: 'Aktif',
+  scheduled: 'Terjadwal',
+  expired: 'Kedaluwarsa',
+  inactive: 'Tidak Aktif',
+};
+
+const STATUS_COLORS: Record<EntityStatus, string> = {
+  active: 'text-green-700 bg-green-50',
+  scheduled: 'text-blue-700 bg-blue-50',
+  expired: 'text-gray-500 bg-gray-100',
+  inactive: 'text-red-700 bg-red-50',
+};
 import { Button, Card, Modal } from '@/components/ui';
 import {
   usePackages,
@@ -19,6 +50,53 @@ import {
   useUpdateBank,
   useDeleteBank,
 } from '@/hooks/useTryoutQueries';
+
+interface DateRangeFieldProps {
+  startDate: string;
+  endDate: string;
+  onStartDateChange: (value: string) => void;
+  onEndDateChange: (value: string) => void;
+  startTestId: string;
+  endTestId: string;
+  required?: boolean;
+}
+
+function DateRangeField({
+  startDate,
+  endDate,
+  onStartDateChange,
+  onEndDateChange,
+  startTestId,
+  endTestId,
+  required = false,
+}: DateRangeFieldProps) {
+  return (
+    <>
+      <div>
+        <label className="text-xs font-bold text-gray-500 block mb-1">Tanggal Mulai</label>
+        <input
+          type="datetime-local"
+          value={startDate}
+          onChange={(e) => onStartDateChange(e.target.value)}
+          data-testid={startTestId}
+          required={required}
+          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+        />
+      </div>
+      <div>
+        <label className="text-xs font-bold text-gray-500 block mb-1">Tanggal Selesai</label>
+        <input
+          type="datetime-local"
+          value={endDate}
+          onChange={(e) => onEndDateChange(e.target.value)}
+          data-testid={endTestId}
+          required={required}
+          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+        />
+      </div>
+    </>
+  );
+}
 
 /* ── Small tryout selector modal ──────────────────────────────── */
 function TryoutSelectorModal({
@@ -125,12 +203,21 @@ function TryoutManageModal({
   const [isTrial, setIsTrial] = useState(editTryout?.isTrial ?? false);
   const [sortOrder, setSortOrder] = useState(editTryout?.sortOrder ?? 0);
   const [durationMin, setDurationMin] = useState(editTryout?.durationMin ?? 100);
+  const [startDate, setStartDate] = useState(isoToLocalDatetime(editTryout?.startDate));
+  const [endDate, setEndDate] = useState(isoToLocalDatetime(editTryout?.endDate));
 
   const isEditing = !!editTryout;
 
   const save = () => {
     if (!name.trim()) return;
-    const data = { name: name.trim(), isTrial, sortOrder, durationMin };
+    const data = {
+      name: name.trim(),
+      isTrial,
+      sortOrder,
+      durationMin,
+      startDate: localDatetimeToIso(startDate),
+      endDate: localDatetimeToIso(endDate),
+    };
     if (isEditing) {
       updateTryout.mutate(
         { id: editTryout.id, ...data },
@@ -191,6 +278,14 @@ function TryoutManageModal({
               </label>
             </div>
           </div>
+          <DateRangeField
+            startDate={startDate}
+            endDate={endDate}
+            onStartDateChange={setStartDate}
+            onEndDateChange={setEndDate}
+            startTestId="tryout-start-date"
+            endTestId="tryout-end-date"
+          />
         </div>
         {createTryout.error && (
           <div className="text-xs text-red-600 bg-red-50 p-2 rounded-lg">{createTryout.error.message}</div>
@@ -214,13 +309,31 @@ function PackageCreateModal({ open, onClose }: { open: boolean; onClose: () => v
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState(0);
   const [isTrial, setIsTrial] = useState(false);
-  const [isActive, setIsActive] = useState(true);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const save = () => {
     if (!name.trim()) return;
     createPackage.mutate(
-      { name: name.trim(), description: description.trim(), price, isTrial, isActive },
-      { onSuccess: () => { onClose(); setName(''); setDescription(''); setPrice(0); setIsTrial(false); setIsActive(true); } }
+      {
+        name: name.trim(),
+        description: description.trim(),
+        price,
+        isTrial,
+        startDate: localDatetimeToIso(startDate),
+        endDate: localDatetimeToIso(endDate),
+      },
+      {
+        onSuccess: () => {
+          onClose();
+          setName('');
+          setDescription('');
+          setPrice(0);
+          setIsTrial(false);
+          setStartDate('');
+          setEndDate('');
+        },
+      }
     );
   };
 
@@ -246,11 +359,18 @@ function PackageCreateModal({ open, onClose }: { open: boolean; onClose: () => v
               <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 cursor-pointer">
                 <input type="checkbox" checked={isTrial} onChange={(e) => setIsTrial(e.target.checked)} className="w-4 h-4" /> Trial
               </label>
-              <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 cursor-pointer">
-                <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="w-4 h-4" /> Aktif
-              </label>
             </div>
           </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <DateRangeField
+            startDate={startDate}
+            endDate={endDate}
+            onStartDateChange={setStartDate}
+            onEndDateChange={setEndDate}
+            startTestId="pkg-start-date"
+            endTestId="pkg-end-date"
+          />
         </div>
         {createPackage.error && <div className="text-xs text-red-600 bg-red-50 p-2 rounded-lg">{createPackage.error.message}</div>}
         <Button variant="primary" onClick={save} disabled={createPackage.isPending || !name.trim()}>
@@ -279,14 +399,23 @@ function PackageCard({
   const [description, setDescription] = useState(pkg.description);
   const [price, setPrice] = useState(pkg.price);
   const [isTrial, setIsTrial] = useState(pkg.isTrial);
-  const [isActive, setIsActive] = useState(pkg.isActive);
+  const [startDate, setStartDate] = useState(isoToLocalDatetime(pkg.startDate));
+  const [endDate, setEndDate] = useState(isoToLocalDatetime(pkg.endDate));
   const [showConfirm, setShowConfirm] = useState(false);
   const [showTryoutSelector, setShowTryoutSelector] = useState(false);
 
   const saveEdit = () => {
     if (!name.trim()) return;
     updatePackage.mutate(
-      { id: pkg.id, name: name.trim(), description: description.trim(), price, isTrial, isActive },
+      {
+        id: pkg.id,
+        name: name.trim(),
+        description: description.trim(),
+        price,
+        isTrial,
+        startDate: localDatetimeToIso(startDate),
+        endDate: localDatetimeToIso(endDate),
+      },
       { onSuccess: () => { setEditing(false); onUpdated(); } }
     );
   };
@@ -317,13 +446,18 @@ function PackageCard({
             <label className="text-xs font-bold text-gray-500 block mb-1">Opsi</label>
             <div className="flex gap-2 items-center flex-wrap">
               <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 cursor-pointer">
-                <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="w-4 h-4" /> Aktif
-              </label>
-              <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 cursor-pointer">
                 <input type="checkbox" checked={isTrial} onChange={(e) => setIsTrial(e.target.checked)} className="w-4 h-4" /> Trial
               </label>
             </div>
           </div>
+          <DateRangeField
+            startDate={startDate}
+            endDate={endDate}
+            onStartDateChange={setStartDate}
+            onEndDateChange={setEndDate}
+            startTestId="pkg-start-date"
+            endTestId="pkg-end-date"
+          />
           <div className="flex items-end gap-2">
             <Button variant="primary" size="sm" onClick={saveEdit} disabled={updatePackage.isPending}>
               {updatePackage.isPending ? 'Menyimpan...' : 'Simpan'}
@@ -342,7 +476,7 @@ function PackageCard({
             <div className="text-xs text-gray-400">{pkg.tryoutCount ?? 0} tryout</div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {!pkg.isActive && <span className="text-xs font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-md">Nonaktif</span>}
+            <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${STATUS_COLORS[getEntityStatus(pkg)]}`}>{STATUS_LABELS[getEntityStatus(pkg)]}</span>
             {pkg.isTrial && <span className="text-xs font-bold text-amber-500 bg-amber-50 px-2 py-0.5 rounded-md">Trial</span>}
             <Button variant="outline" size="sm" onClick={() => setEditing(true)}>✏️</Button>
             <Button variant="outline" size="sm" onClick={() => setShowTryoutSelector(true)}>🎯 Tryout</Button>
@@ -467,7 +601,7 @@ function TryoutCard({
       <div className="flex items-center justify-between p-3 border border-gray-100 rounded-xl bg-gray-50">
         <div>
           <div className="font-bold text-sm text-[#1B3A6B]">
-            {tryout.name} {tryout.isTrial && <span className="text-amber-500 text-xs">(Trial)</span>}
+            {tryout.name} {tryout.isTrial && <span className="text-amber-500 text-xs">(Trial)</span>} <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${STATUS_COLORS[getEntityStatus(tryout)]}`}>{STATUS_LABELS[getEntityStatus(tryout)]}</span>
           </div>
           <div className="text-xs text-gray-400">
             {tryout.durationMin} menit · {tryout._questionCount || 0} soal · Urutan {tryout.sortOrder}

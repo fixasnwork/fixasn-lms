@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import type { Package } from "@/lib/types";
 import { Card, Badge, Button } from "@/components/ui";
+import { isPackageAvailable } from "@/lib/availability";
 import { usePackages, useUserPayments } from "@/hooks/useTryoutQueries";
 
 export default function BuyPage() {
@@ -21,7 +22,7 @@ export default function BuyPage() {
     .map((payment) => payment.packageId);
 
   const handleBuy = (pkg: Package) => {
-    if (!pkg.isActive || ownedPkgIds.includes(pkg.id)) return;
+    if (!isPackageAvailable(pkg) || ownedPkgIds.includes(pkg.id)) return;
     router.push(`/payment?pkg=${pkg.id}`);
   };
 
@@ -46,7 +47,7 @@ export default function BuyPage() {
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {packages
-            .filter((p) => p.isActive)
+            .filter((p) => isPackageAvailable(p))
             .map((pkg) => {
               const owned = ownedPkgIds.includes(pkg.id);
               return (

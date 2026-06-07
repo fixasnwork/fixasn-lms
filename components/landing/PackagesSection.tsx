@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Card, Badge } from "@/components/ui";
+import { isPackageAvailable } from "@/lib/availability";
 import type { Package, LogoConfig } from "@/lib/types";
 import { WA_LINK } from "@/data/constants";
 
@@ -15,7 +16,7 @@ export function PackagesSection({
   logoConfig,
   onRegister,
 }: PackagesSectionProps) {
-  const tryoutPkgs = packages.filter((p) => p.isActive && !p.isTrial);
+  const tryoutPkgs = packages.filter((p) => isPackageAvailable(p) && !p.isTrial);
   const shown = tryoutPkgs;
 
   return (

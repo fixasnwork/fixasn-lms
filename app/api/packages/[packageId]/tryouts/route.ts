@@ -17,6 +17,8 @@ function mapTryout(t: {
   isTrial: boolean;
   sortOrder: number;
   durationMin: number;
+  startDate: Date | null;
+  endDate: Date | null;
   createdAt: Date;
   updatedAt: Date;
   _count?: { tryoutQuestions: number };
@@ -29,6 +31,8 @@ function mapTryout(t: {
     durationMin: t.durationMin,
     questions: [],
     _questionCount: t._count?.tryoutQuestions ?? 0,
+    startDate: t.startDate?.toISOString() ?? null,
+    endDate: t.endDate?.toISOString() ?? null,
     createdAt: t.createdAt.toISOString(),
     updatedAt: t.updatedAt.toISOString(),
   };

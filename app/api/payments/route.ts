@@ -3,6 +3,7 @@
 // ─────────────────────────────────────────────
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { isPackageAvailable } from '@/lib/availability';
 import { getEmailFromSessionUser, getRoleFromSessionUser, isAdminRole } from '@/lib/deviceSession';
 import { requireActiveSession } from '@/lib/routeAuth';
 
@@ -83,10 +84,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'userId is required (must be logged in or provided)' }, { status: 400 });
   }
 
+  const packageId = parseInt(body.packageId, 10);
+  if (!Number.isInteger(packageId) || packageId <= 0) {
+    return NextResponse.json({ error: 'Valid packageId is required' }, { status: 400 });
+  }
+
+  const pkg = await prisma.package.findFirst({
+    where: { id: packageId, deletedAt: null },
+  });
+
+  if (!pkg || !isPackageAvailable(pkg)) {
+    return NextResponse.json({ error: 'package_unavailable', reason: 'package_closed' }, { status: 403 });
+  }
+
   const data = await prisma.payment.create({
     data: {
       userId,
-      packageId: parseInt(body.packageId, 10),
+      packageId,
       status: 'pending',
       proofUrl: body.proofUrl || null,
     },

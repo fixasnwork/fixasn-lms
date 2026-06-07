@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import type { AttemptAnswer } from '@/lib/types';
+import { isAvailable, isPackageAvailable } from '@/lib/availability';
 
 /**
  * GET /api/tryout-attempts?userId=X
@@ -52,6 +53,38 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const tryoutId = parseInt(body.tryoutId, 10);
+
+  // ── Availability gate ──────────────────────────────────────────
+    const tryout = await prisma.tryout.findUnique({
+      where: { id: tryoutId, deletedAt: null },
+      include: { packageTryouts: { include: { package: true } } },
+    });
+
+    if (!tryout) {
+      return NextResponse.json({ error: 'Tryout not found' }, { status: 404 });
+    }
+
+    if (!isAvailable(tryout)) {
+      return NextResponse.json(
+        { error: 'tryout_unavailable', reason: 'out_of_window', retryable: true },
+        { status: 403 }
+      );
+    }
+
+    for (const pt of tryout.packageTryouts) {
+      if (!isPackageAvailable(pt.package)) {
+        return NextResponse.json(
+          {
+            error: 'tryout_unavailable',
+            reason: 'package_closed',
+            retryable: true,
+          },
+          { status: 403 }
+        );
+      }
+    }
+
   // Convert answers to the correct format for the relation table
   let answerRows: Array<{ questionIndex: number; selectedOption: number }> = [];
 
@@ -75,7 +108,7 @@ export async function POST(request: NextRequest) {
     data: {
       userId: body.userId,
       userName: body.userName,
-      tryoutId: parseInt(body.tryoutId, 10),
+      tryoutId,
       twkScore: body.twkScore ?? 0,
       tiuScore: body.tiuScore ?? 0,
       tkpScore: body.tkpScore ?? 0,
