@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import LogoEditor from '@/components/admin/LogoEditor';
 import { Button, Card, Modal } from '@/components/ui';
+import ImageUpload from '@/components/admin/ImageUpload';
 import type { LogoConfig } from '@/lib/types';
 
 type SectionKey = 'hero' | 'skd' | 'testimoni' | 'kontak' | 'promo';
@@ -29,9 +30,15 @@ const field = (label: string, value: string, onChange: (v: string) => void, plac
 );
 
 export default function AdminLandingPage() {
-  const { logoConfig, setLogoConfig } = useAppStore();
+  const { logoConfig, setLogoConfig, syncLogoConfig, fetchLogoConfig } = useAppStore();
   const [editingSection, setEditingSection] = useState<SectionKey | null>(null);
   const [draft, setDraft] = useState<Partial<LogoConfig>>({});
+  const [saving, setSaving] = useState(false);
+
+  // Load DB-stored config on mount (overrides hardcoded defaults)
+  useEffect(() => {
+    fetchLogoConfig();
+  }, [fetchLogoConfig]);
 
   const openEditor = (section: SectionKey) => {
     setDraft({ ...logoConfig });
@@ -47,8 +54,12 @@ export default function AdminLandingPage() {
     setDraft((prev) => ({ ...prev, [f]: value }));
   };
 
-  const saveSection = () => {
+  const saveSection = async () => {
     setLogoConfig((prev) => ({ ...prev, ...draft }));
+    setSaving(true);
+    const ok = await syncLogoConfig();
+    setSaving(false);
+    alert(ok ? '✅ Konfigurasi berhasil disimpan!' : '❌ Gagal menyimpan konfigurasi.');
     closeEditor();
   };
 
@@ -65,7 +76,7 @@ export default function AdminLandingPage() {
             {field('Deskripsi Hero', draft.heroDesc || '', (v) => updateField('heroDesc', v), 'Tryout SKD paling mirip...')}
             {field('Caption Foto', draft.heroCaption || '', (v) => updateField('heroCaption', v), 'Ribuan ASN sudah lulus')}
             {field('Sub Caption', draft.heroSubCaption || '', (v) => updateField('heroSubCaption', v), 'Bergabung dan wujudkan...')}
-            {field('URL Foto Hero', draft.heroImg || '', (v) => updateField('heroImg', v), 'https://images.unsplash.com/...')}
+            <ImageUpload value={draft.heroImg || ''} onChange={(v) => updateField('heroImg', v)} label="Foto Hero" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {field('Stat 1 Nilai', draft.stat1Val || '', (v) => updateField('stat1Val', v), '15.000+')}
               {field('Stat 1 Label', draft.stat1Label || '', (v) => updateField('stat1Label', v), 'Peserta Aktif')}
@@ -152,7 +163,7 @@ export default function AdminLandingPage() {
       </p>
 
       {/* Logo Editor */}
-      <LogoEditor logoConfig={logoConfig} setLogoConfig={setLogoConfig} />
+      <LogoEditor logoConfig={logoConfig} setLogoConfig={setLogoConfig} onSave={syncLogoConfig} />
 
       {/* Section Editors */}
       <h3 className="font-extrabold text-base text-[#1B3A6B] mb-4">📄 Section Lainnya</h3>

@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import Image from 'next/image';
+import { useState, useEffect } from 'react';
 import type { LogoConfig } from '@/lib/types';
 import { Logo, Button, Card } from '@/components/ui';
 import ImageUpload from '@/components/admin/ImageUpload';
@@ -9,17 +8,27 @@ import ImageUpload from '@/components/admin/ImageUpload';
 interface LogoEditorProps {
   logoConfig: LogoConfig;
   setLogoConfig: (config: LogoConfig | ((prev: LogoConfig) => LogoConfig)) => void;
+  onSave?: () => Promise<boolean>;
 }
 
-export default function LogoEditor({ logoConfig, setLogoConfig }: LogoEditorProps) {
+export default function LogoEditor({ logoConfig, setLogoConfig, onSave }: LogoEditorProps) {
   const [draft, setDraft] = useState<LogoConfig>({ ...logoConfig });
+
+  // Sync draft when logoConfig prop changes (e.g., after fetchLogoConfig from DB)
+  useEffect(() => {
+    setDraft({ ...logoConfig });
+  }, [logoConfig]);
 
   const update = (field: keyof LogoConfig, value: string) => {
     setDraft((prev) => ({ ...prev, [field]: value }));
   };
 
-  const save = () => {
+  const save = async () => {
     setLogoConfig((prev) => ({ ...prev, ...draft }));
+    if (onSave) {
+      const ok = await onSave();
+      alert(ok ? '✅ Konfigurasi berhasil disimpan!' : '❌ Gagal menyimpan konfigurasi.');
+    }
   };
 
   const presets = [
@@ -170,15 +179,11 @@ export default function LogoEditor({ logoConfig, setLogoConfig }: LogoEditorProp
               📸 Hero Landing Page
             </p>
             <div className="flex flex-col gap-2">
-              <div>
-                <label className="text-xs font-bold text-gray-500 block mb-1">URL Foto Hero</label>
-                <input
-                  value={draft.heroImg || ''}
-                  onChange={(e) => update('heroImg', e.target.value)}
-                  placeholder="https://... (URL gambar dari internet)"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs"
-                />
-              </div>
+              <ImageUpload
+                value={draft.heroImg || ''}
+                onChange={(v) => update('heroImg', v)}
+                label="Foto Hero"
+              />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs font-bold text-gray-500 block mb-1">Caption</label>
@@ -199,17 +204,6 @@ export default function LogoEditor({ logoConfig, setLogoConfig }: LogoEditorProp
                   />
                 </div>
               </div>
-              {draft.heroImg && (
-                <div className="rounded-lg overflow-hidden border border-gray-200 relative h-28">
-                  <Image
-                    src={draft.heroImg}
-                    alt="preview hero"
-                    fill
-                    sizes="50vw"
-                    className="object-cover"
-                  />
-                </div>
-              )}
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Logo, Button, Card } from '@/components/ui';
@@ -12,7 +12,12 @@ import { CTASection, Footer } from './CTASection';
 
 export function LandingPage() {
   const router = useRouter();
-  const { packages, logoConfig } = useAppStore();
+  const { packages, logoConfig, fetchLogoConfig } = useAppStore();
+
+  // Load DB-stored config on mount so hero image, text, etc. reflect admin changes
+  useEffect(() => {
+    fetchLogoConfig();
+  }, [fetchLogoConfig]);
 
   const handleLogin = () => router.push('/login');
   const handleRegister = () => router.push('/login?action=register');
@@ -182,9 +187,19 @@ export function LandingPage() {
   );
 }
 
+const HERO_FALLBACK = 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=700&q=85';
+
 /** Internal component to handle hero image with fallback via next/image */
 function HeroImage({ heroImg }: { heroImg: string }) {
-  const [src, setSrc] = useState(heroImg);
+  const [hasError, setHasError] = useState(false);
+
+  // Reset error state when heroImg prop changes (e.g., after DB fetch or new upload)
+  useEffect(() => {
+    setHasError(false);
+  }, [heroImg]);
+
+  const src = hasError ? HERO_FALLBACK : heroImg;
+
   return (
     <Image
       src={src}
@@ -193,7 +208,7 @@ function HeroImage({ heroImg }: { heroImg: string }) {
       sizes="(max-width: 1024px) 100vw, 50vw"
       className="object-cover"
       priority
-      onError={() => setSrc('https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=700&q=85')}
+      onError={() => setHasError(true)}
     />
   );
 }
