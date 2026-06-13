@@ -84,7 +84,7 @@ export default async function AdminLayout({
         <Suspense fallback={<div className="hidden md:flex w-60 fixed h-screen top-0 bg-gradient-to-b from-brand-dark to-brand" />}>
           <AdminSidebar />
         </Suspense>
-        <main className="min-w-0 px-4 py-4 pb-24 sm:px-5 sm:py-5 sm:pb-24 md:ml-60 md:px-6 md:py-6 md:pb-6 md:max-w-[calc(100vw-240px)]">
+        <main className="min-w-0 px-4 py-4 pb-32 sm:px-5 sm:py-5 sm:pb-24 md:ml-60 md:px-6 md:py-6 md:pb-6 md:max-w-[calc(100vw-240px)]">
           <HydrationBoundary state={dehydrate(queryClient)}>
             {children}
           </HydrationBoundary>

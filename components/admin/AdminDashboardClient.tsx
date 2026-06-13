@@ -2,14 +2,16 @@
 
 import { StatCard } from '@/components/ui';
 import { isPackageAvailable } from '@/lib/availability';
-import type { Payment, Package } from '@/lib/types';
+import PackagePopularityCard from '@/components/dashboard/PackagePopularityCard';
+import type { Payment, Package, PackagePopularityItem } from '@/lib/types';
 
 interface Props {
   payments: Payment[];
   packages: Package[];
+  popularity: PackagePopularityItem[];
 }
 
-export default function AdminDashboardClient({ payments, packages }: Props) {
+export default function AdminDashboardClient({ payments, packages, popularity }: Props) {
   const pendingCount = payments.filter((p) => p.status === 'pending').length;
   const blockedCount = payments.filter((p) => p.status === 'blocked').length;
   const uniqueUsers = new Set(payments.map((p) => p.userId)).size;
@@ -32,8 +34,9 @@ export default function AdminDashboardClient({ payments, packages }: Props) {
         <StatCard icon="📦" label="Paket Tersedia" value={packages.filter((p) => isPackageAvailable(p)).length} color="#16A34A" />
       </div>
 
-      {/* Recent Payments */}
-      <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-md border border-gray-100">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5.5">
+        {/* Recent Payments */}
+        <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-md border border-gray-100">
         <h3 className="font-extrabold text-base text-brand mb-3.5">
           💳 Pembayaran Terbaru
         </h3>
@@ -68,6 +71,12 @@ export default function AdminDashboardClient({ payments, packages }: Props) {
         {recentPayments.length === 0 && (
           <p className="text-gray-400 text-sm text-center py-4">Belum ada pembayaran</p>
         )}
+      </div>
+
+        {/* Package Popularity */}
+        <div>
+          <PackagePopularityCard items={popularity} />
+        </div>
       </div>
     </div>
   );

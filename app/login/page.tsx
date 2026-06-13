@@ -20,8 +20,12 @@ function useRedirectIfAuthenticated() {
       session?.user &&
       !(session as { isSessionStale?: boolean }).isSessionStale
     ) {
-      const isAdmin = (session.user as { role?: string }).role === "admin";
-      router.push(isAdmin ? "/admin/dashboard" : "/dashboard");
+      const role = (session.user as { role?: string }).role;
+      if (role === 'admin') {
+        router.push('/admin/dashboard');
+      } else {
+        router.push('/dashboard');
+      }
     }
   }, [status, session, router, reason]);
 }

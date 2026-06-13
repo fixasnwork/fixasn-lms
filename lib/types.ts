@@ -260,6 +260,14 @@ export interface ReviewMode {
   name: string;
 }
 
+// ── Package Popularity (admin/staff dashboard) ──
+export interface PackagePopularityItem {
+  packageId: number;
+  packageName: string;
+  purchaseCount: number;
+  purchaseShare: number; // whole percent, 0-100
+}
+
 // ── Scoring ───────────────────────────────────
 export interface ScoringResult {
   TWK: number;

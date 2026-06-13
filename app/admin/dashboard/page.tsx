@@ -1,13 +1,15 @@
 import prisma from "@/lib/prisma";
 import AdminDashboardClient from "@/components/admin/AdminDashboardClient";
+import { getPackagePopularity } from "@/lib/packagePopularity";
 
 export default async function AdminDashboard() {
-  const [payments, packages] = await Promise.all([
+  const [payments, packages, popularity] = await Promise.all([
     prisma.payment.findMany({ orderBy: { createdAt: "desc" } }),
     prisma.package.findMany({
       where: { deletedAt: null },
       orderBy: { id: "asc" },
     }),
+    getPackagePopularity(),
   ]);
 
   const serializedPayments = payments.map((p) => ({
@@ -37,6 +39,7 @@ export default async function AdminDashboard() {
     <AdminDashboardClient
       payments={serializedPayments}
       packages={serializedPackages}
+      popularity={popularity}
     />
   );
 }
