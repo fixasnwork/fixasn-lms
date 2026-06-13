@@ -248,6 +248,9 @@ export interface LogoConfig {
   testimonial3Name: string;
   testimonial3Role: string;
   testimonial3Text: string;
+  themePrimary: string;
+  themeSecondary: string;
+  themeDark: string;
 }
 
 // ── Review Mode (for tryout review UI) ────────

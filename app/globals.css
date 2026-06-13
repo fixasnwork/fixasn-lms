@@ -1,5 +1,19 @@
 @import "tailwindcss";
 
+/* ── Brand Color CSS Variables ──────────────────────────────────── */
+:root {
+  --brand-primary: #1B3A6B;
+  --brand-secondary: #2563EB;
+  --brand-dark: #0C1E45;
+}
+
+/* ── Tailwind v4 Theme Integration ──────────────────────────────── */
+@theme inline {
+  --color-brand: var(--brand-primary, #1B3A6B);
+  --color-brand-secondary: var(--brand-secondary, #2563EB);
+  --color-brand-dark: var(--brand-dark, #0C1E45);
+}
+
 /* Custom utilities */
 @utility pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 0px);

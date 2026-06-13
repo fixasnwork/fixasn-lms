@@ -16,7 +16,7 @@ export function TestimonialsSection({ logoConfig }: TestimonialsSectionProps) {
   return (
     <section className="py-12 px-5 bg-white w-full box-border">
       <div className="max-w-[1180px] mx-auto">
-        <h2 className="text-center text-4xl font-black text-[#1B3A6B] mb-10">
+        <h2 className="text-center text-4xl font-black text-brand mb-10">
           Mereka yang Sudah Lolos 🎉
         </h2>
 
@@ -31,11 +31,11 @@ export function TestimonialsSection({ logoConfig }: TestimonialsSectionProps) {
                 &ldquo;{t.text}&rdquo;
               </p>
               <div className="flex items-center gap-3">
-                <div className="w-9.5 h-9.5 rounded-full bg-gradient-to-br from-[#1B3A6B] to-[#2563EB] flex items-center justify-center text-white font-extrabold flex-shrink-0">
+                <div className="w-9.5 h-9.5 rounded-full bg-gradient-to-br from-brand to-brand-secondary flex items-center justify-center text-white font-extrabold flex-shrink-0">
                   {t.name[0]}
                 </div>
                 <div>
-                  <div className="font-bold text-sm text-[#1B3A6B]">{t.name}</div>
+                  <div className="font-bold text-sm text-brand">{t.name}</div>
                   <div className="text-xs text-gray-400">ASN {t.role}</div>
                 </div>
               </div>

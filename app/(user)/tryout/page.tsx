@@ -89,7 +89,7 @@ export default function TryoutPage() {
   // ── Render ──
   return (
     <div className="mx-auto w-full">
-      <h2 className="font-black text-2xl text-[#1B3A6B] mb-1 text-center">
+      <h2 className="font-black text-2xl text-brand mb-1 text-center">
         📝 Tryout SKD
       </h2>
       <p className="text-gray-400 text-sm mb-6 text-center">
@@ -116,7 +116,7 @@ export default function TryoutPage() {
                 <div className="absolute -top-3 left-6 bg-gradient-to-br from-amber-600 to-yellow-400 text-white px-4 py-1 rounded-full text-xs font-extrabold">
                   GRATIS
                 </div>
-                <div className="font-extrabold text-xl text-[#1B3A6B] mb-4 mt-2">
+                <div className="font-extrabold text-xl text-brand mb-4 mt-2">
                   Trial SKD
                 </div>
                 <div className="text-amber-800 text-sm sm:text-base mb-7">
@@ -186,7 +186,7 @@ export default function TryoutPage() {
           {/* ── Paket Tryout Kamu (owned packages) ── */}
           {ownedPackages.length > 0 && (
             <div>
-              <h3 className="font-extrabold text-lg text-[#1B3A6B] mb-5 text-center">
+              <h3 className="font-extrabold text-lg text-brand mb-5 text-center">
                 Paket Tryout Kamu
               </h3>
               <div className="flex gap-5 overflow-x-auto pt-4 pb-2 -mx-1 px-1">
@@ -209,12 +209,12 @@ export default function TryoutPage() {
                       className="relative p-6 sm:p-8 border-2 border-blue-400 bg-gradient-to-br from-blue-50 to-blue-100 w-full sm:min-w-[440px] sm:max-w-[560px] shrink-0 text-center shadow-[0_14px_30px_rgba(38,99,235,0.08)] overflow-visible"
                       style={{ borderColor: "#2663EB" }}
                     >
-                      <div className="absolute -top-3 left-6 z-10 bg-[#2563EB] text-white px-4 py-1 rounded-full text-xs font-extrabold">
+                      <div className="absolute -top-3 left-6 z-10 bg-brand-secondary text-white px-4 py-1 rounded-full text-xs font-extrabold">
                         DIMILIKI
                       </div>
                       {/* Package header */}
                       <div className="mb-4 pt-4 text-center">
-                        <div className="font-black text-xl text-[#1B3A6B] mb-3">
+                        <div className="font-black text-xl text-brand mb-3">
                           {pkg.name}
                         </div>
                         <div className="text-sm text-gray-500">
@@ -251,9 +251,9 @@ export default function TryoutPage() {
                               disabled={createOrResumeAttempt.isPending}
                               className={`flex min-h-12 w-full items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 text-left transition-colors ${
                                 isSelected
-                                  ? "border-[#2563EB] bg-[#DBEAFE] text-[#2563EB]"
+                                  ? "border-brand-secondary bg-[#DBEAFE] text-brand-secondary"
                                   : "border-gray-200 bg-white text-gray-600 shadow-sm"
-                              } ${createOrResumeAttempt.isPending ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-[#2563EB]/70"}`}
+                              } ${createOrResumeAttempt.isPending ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-brand-secondary/70"}`}
                             >
                               <div>
                                 <div className="font-extrabold text-sm">
@@ -268,7 +268,7 @@ export default function TryoutPage() {
                                 )}
                               </div>
                               <span
-                                className={`text-lg leading-none ${isSelected ? "text-[#2563EB]" : "text-gray-400"}`}
+                                className={`text-lg leading-none ${isSelected ? "text-brand-secondary" : "text-gray-400"}`}
                               >
                                 {isSelected ? "▶" : "○"}
                               </span>

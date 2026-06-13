@@ -56,18 +56,40 @@ export default async function AdminLayout({
         }));
       },
     }),
+    queryClient.prefetchQuery({
+      queryKey: ['logo-config'],
+      queryFn: async () => {
+        const entries = await prisma.logoConfigEntry.findMany();
+        return Object.fromEntries(entries.map(e => [e.configKey, e.configValue]));
+      },
+    }),
   ]);
 
+  // Read brand colors from prefetched data for server-side CSS var injection
+  const logoConfigData = queryClient.getQueryData(['logo-config']) as Record<string, string | null> | undefined;
+  const brandPrimary = logoConfigData?.themePrimary || '#1B3A6B';
+  const brandSecondary = logoConfigData?.themeSecondary || '#2563EB';
+  const brandDark = logoConfigData?.themeDark || '#0C1E45';
+
   return (
-    <div className="min-h-screen bg-[#F0F4FF]">
-      <Suspense fallback={<div className="hidden md:flex w-60 fixed h-screen top-0 bg-gradient-to-b from-[#0C1E45] to-[#1B3A6B]" />}>
-        <AdminSidebar />
-      </Suspense>
-      <main className="min-w-0 px-4 py-4 pb-24 sm:px-5 sm:py-5 sm:pb-24 md:ml-60 md:px-6 md:py-6 md:pb-6 md:max-w-[calc(100vw-240px)]">
-        <HydrationBoundary state={dehydrate(queryClient)}>
-          {children}
-        </HydrationBoundary>
-      </main>
-    </div>
+    <>
+      <style>{`
+        :root {
+          --brand-primary: ${brandPrimary};
+          --brand-secondary: ${brandSecondary};
+          --brand-dark: ${brandDark};
+        }
+      `}</style>
+      <div className="min-h-screen bg-[#F0F4FF]">
+        <Suspense fallback={<div className="hidden md:flex w-60 fixed h-screen top-0 bg-gradient-to-b from-brand-dark to-brand" />}>
+          <AdminSidebar />
+        </Suspense>
+        <main className="min-w-0 px-4 py-4 pb-24 sm:px-5 sm:py-5 sm:pb-24 md:ml-60 md:px-6 md:py-6 md:pb-6 md:max-w-[calc(100vw-240px)]">
+          <HydrationBoundary state={dehydrate(queryClient)}>
+            {children}
+          </HydrationBoundary>
+        </main>
+      </div>
+    </>
   );
 }

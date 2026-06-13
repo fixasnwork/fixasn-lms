@@ -23,7 +23,7 @@ export default function Modal({ open, onClose, title, children, width = 500 }: M
         style={{ maxWidth: typeof width === 'number' ? `${width}px` : width }}
       >
         <div className="flex items-center justify-between p-4 border-b border-gray-100 sticky top-0 bg-white z-10 gap-2">
-          <h3 className="font-['Montserrat',sans-serif] font-extrabold text-base sm:text-lg text-[#1B3A6B] m-0 break-words">
+          <h3 className="font-['Montserrat',sans-serif] font-extrabold text-base sm:text-lg text-brand m-0 break-words">
             {title}
           </h3>
           <button 

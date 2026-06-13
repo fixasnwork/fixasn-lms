@@ -36,7 +36,7 @@ export default function RankingClient({ all, weekly, monthly }: Props) {
   if (data.length === 0) {
     return (
       <div>
-        <h2 className="font-black text-2xl text-[#1B3A6B] mb-1">🏅 Ranking Nasional</h2>
+        <h2 className="font-black text-2xl text-brand mb-1">🏅 Ranking Nasional</h2>
         <p className="text-gray-400 text-sm mb-5">
           Bersaing dan pantau posisimu di ranking nasional
         </p>
@@ -45,7 +45,7 @@ export default function RankingClient({ all, weekly, monthly }: Props) {
 
         <Card className="p-12 text-center">
           <div className="text-5xl mb-4">📭</div>
-          <h3 className="font-black text-lg text-[#1B3A6B] mb-2">Belum ada ranking</h3>
+          <h3 className="font-black text-lg text-brand mb-2">Belum ada ranking</h3>
           <p className="text-gray-400 text-sm mb-6">
             Belum ada yang mengerjakan tryout di periode ini. Jadilah yang pertama!
           </p>
@@ -63,7 +63,7 @@ export default function RankingClient({ all, weekly, monthly }: Props) {
 
   return (
     <div>
-      <h2 className="font-black text-2xl text-[#1B3A6B] mb-1">🏅 Ranking Nasional</h2>
+      <h2 className="font-black text-2xl text-brand mb-1">🏅 Ranking Nasional</h2>
       <p className="text-gray-400 text-sm mb-5">
         Bersaing dan pantau posisimu di ranking nasional
       </p>
@@ -83,7 +83,7 @@ export default function RankingClient({ all, weekly, monthly }: Props) {
 
       {/* CTA */}
       <div className="mt-6 text-center">
-        <Card className="bg-gradient-to-br from-[#0C1E45] to-[#2563EB] text-white p-6">
+        <Card className="bg-gradient-to-br from-brand-dark to-brand-secondary text-white p-6">
           <div className="text-3xl mb-2">💪</div>
           <h3 className="font-black text-lg mb-1">Ingin masuk Top 3?</h3>
           <p className="text-white/70 text-sm mb-3">
@@ -140,7 +140,7 @@ function Podium({ top3, maxScore }: { top3: RankingEntry[]; maxScore: number }) 
             gradient="from-amber-500 to-yellow-400"
           />
           <div className="text-3xl mb-1">🥇</div>
-          <div className="font-extrabold text-base text-[#1B3A6B] text-center">
+          <div className="font-extrabold text-base text-brand text-center">
             {top3[0].name.split(' ')[0]}
           </div>
           <div className="font-black text-2xl text-amber-600">{top3[0].totalScore}</div>
@@ -181,7 +181,7 @@ function Podium({ top3, maxScore }: { top3: RankingEntry[]; maxScore: number }) 
             gradient="from-amber-500 to-yellow-400"
           />
           <div className="text-3xl mb-1">🥇</div>
-          <div className="font-extrabold text-base text-[#1B3A6B] text-center">
+          <div className="font-extrabold text-base text-brand text-center">
             {top3[0].name.split(' ')[0]}
           </div>
           <div className="font-black text-2xl text-amber-600">{top3[0].totalScore}</div>
@@ -221,7 +221,7 @@ function Podium({ top3, maxScore }: { top3: RankingEntry[]; maxScore: number }) 
           gradient="from-amber-500 to-yellow-400"
         />
         <div className="text-3xl mb-1">🥇</div>
-        <div className="font-extrabold text-base text-[#1B3A6B] text-center">
+        <div className="font-extrabold text-base text-brand text-center">
           {top3[0].name.split(' ')[0]}
         </div>
         <div className="font-black text-2xl text-amber-600">{top3[0].totalScore}</div>
@@ -349,7 +349,7 @@ function RankingRow({
 
       {/* score */}
       <div className="flex flex-col items-end flex-shrink-0">
-        <div className="font-black text-base text-[#1B3A6B]">{entry.totalScore}</div>
+        <div className="font-black text-base text-brand">{entry.totalScore}</div>
         <div className="text-[10px] text-gray-400">poin</div>
       </div>
     </div>

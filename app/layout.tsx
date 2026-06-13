@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Montserrat } from 'next/font/google';
 import { SessionProvider as NextAuthSessionProvider } from 'next-auth/react';
+import { Toaster } from 'sonner';
 import AuthHydrator from '@/components/SessionProvider';
 import QueryProvider from '@/components/QueryProvider';
 import './globals.css';
@@ -29,6 +30,7 @@ export default function RootLayout({
             <AuthHydrator>
               {children}
             </AuthHydrator>
+            <Toaster position="bottom-right" richColors />
           </QueryProvider>
         </NextAuthSessionProvider>
       </body>

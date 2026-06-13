@@ -29,7 +29,7 @@ export default function BuyPage() {
   return (
     <div>
       <div className="mb-6">
-        <h2 className="font-black text-2xl text-[#1B3A6B] mb-1">
+        <h2 className="font-black text-2xl text-brand mb-1">
           🛒 Beli Paket
         </h2>
         <p className="text-gray-400 text-sm">
@@ -39,7 +39,7 @@ export default function BuyPage() {
 
       {/* Tryout packages */}
       <div className="mb-8">
-        <h3 className="font-extrabold text-base text-[#1B3A6B] mb-4 flex items-center gap-2">
+        <h3 className="font-extrabold text-base text-brand mb-4 flex items-center gap-2">
           📝 Paket Tryout SKD
         </h3>
         {(isFetchingPackages || isFetchingPayments) && (
@@ -65,10 +65,10 @@ export default function BuyPage() {
 
                   <div className="pt-3">
                     <div className="flex items-center gap-2 mb-2">
-                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#1B3A6B] to-[#2563EB] flex items-center justify-center text-lg">
+                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand to-brand-secondary flex items-center justify-center text-lg">
                         📝
                       </div>
-                      <div className="font-black text-base text-[#1B3A6B]">
+                      <div className="font-black text-base text-brand">
                         {pkg.name}
                       </div>
                     </div>
@@ -88,7 +88,7 @@ export default function BuyPage() {
                     ) : (
                       <div className="flex items-end justify-between gap-2">
                         <div>
-                          <div className="font-black text-2xl text-[#1B3A6B]">
+                          <div className="font-black text-2xl text-brand">
                             Rp {pkg.price.toLocaleString("id-ID")}
                           </div>
                         </div>

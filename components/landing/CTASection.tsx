@@ -12,7 +12,7 @@ interface CTASectionProps {
 
 export function CTASection({ logoConfig, onRegister }: CTASectionProps) {
   return (
-    <section className="bg-gradient-to-br from-[#1B3A6B] to-[#2563EB] py-12 px-5 text-center text-white">
+    <section className="bg-gradient-to-br from-brand to-brand-secondary py-12 px-5 text-center text-white">
       <h2 className="text-5xl font-black mb-3.5">
         {logoConfig.ctaTitle}
       </h2>
@@ -41,7 +41,7 @@ export function CTASection({ logoConfig, onRegister }: CTASectionProps) {
 
 export function Footer({ logoConfig }: { logoConfig: LogoConfig }) {
   return (
-    <footer className="bg-[#0C1E45] text-white/55 py-9 px-6 text-center">
+    <footer className="bg-brand-dark text-white/55 py-9 px-6 text-center">
       <Logo size="sm" cfg={logoConfig} />
       <p className="mt-3.5 text-xs">© 2024 FIX ASN · Sukses Lolos CPNS Indonesia</p>
       <p className="text-xs mt-1.5">

@@ -67,7 +67,7 @@ export default function VideoPage() {
 
   return (
     <div>
-      <h2 className="font-black text-2xl text-[#1B3A6B] mb-1">🎬 Video Belajar</h2>
+      <h2 className="font-black text-2xl text-brand mb-1">🎬 Video Belajar</h2>
       <p className="text-gray-400 text-sm mb-6">
         Materi lengkap TWK, TIU, TKP + Modul PDF download
       </p>
@@ -84,7 +84,7 @@ export default function VideoPage() {
             </div>
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-black text-lg text-[#1B3A6B]">
+                <h3 className="font-black text-lg text-brand">
                   Paket Video Belajar Komplit
                 </h3>
                 <span className="bg-amber-200 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full">
@@ -153,7 +153,7 @@ export default function VideoPage() {
         title={playingVideo?.title || 'Video Player'}
         width={720}
       >
-        <div className="aspect-video bg-[#0C1E45] rounded-xl flex flex-col items-center justify-center gap-4">
+        <div className="aspect-video bg-brand-dark rounded-xl flex flex-col items-center justify-center gap-4">
           <div className="text-6xl">🎬</div>
           <p className="text-white/80 text-base font-bold text-center px-8">
             Video &ldquo;{playingVideo?.title}&rdquo; akan segera hadir.

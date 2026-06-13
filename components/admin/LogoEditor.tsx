@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import type { LogoConfig } from '@/lib/types';
 import { Logo, Button, Card } from '@/components/ui';
 import ImageUpload from '@/components/admin/ImageUpload';
@@ -13,17 +14,24 @@ interface LogoEditorProps {
 
 export default function LogoEditor({ logoConfig, setLogoConfig, onSave }: LogoEditorProps) {
   const [draft, setDraft] = useState<LogoConfig>({ ...logoConfig });
+  const [saving, setSaving] = useState(false);
 
   const update = (field: keyof LogoConfig, value: string) => {
     setDraft((prev) => ({ ...prev, [field]: value }));
   };
 
   const save = async () => {
+    setSaving(true);
     setLogoConfig((prev) => ({ ...prev, ...draft }));
     if (onSave) {
       const ok = await onSave();
-      alert(ok ? '✅ Konfigurasi berhasil disimpan!' : '❌ Gagal menyimpan konfigurasi.');
+      if (ok) {
+        toast.success('Konfigurasi berhasil disimpan!');
+      } else {
+        toast.error('Gagal menyimpan konfigurasi.');
+      }
     }
+    setSaving(false);
   };
 
   const presets = [
@@ -35,9 +43,9 @@ export default function LogoEditor({ logoConfig, setLogoConfig, onSave }: LogoEd
   return (
     <Card className="mb-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-5">
-        <h3 className="font-extrabold text-base text-[#1B3A6B]">🎨 Logo & Branding</h3>
-        <Button variant="primary" size="sm" onClick={save}>
-          💾 Simpan Perubahan
+        <h3 className="font-extrabold text-base text-brand">🎨 Logo & Branding</h3>
+        <Button variant="primary" size="sm" onClick={save} disabled={saving}>
+          {saving ? '⏳ Menyimpan…' : '💾 Simpan Perubahan'}
         </Button>
       </div>
 
@@ -65,7 +73,7 @@ export default function LogoEditor({ logoConfig, setLogoConfig, onSave }: LogoEd
           </div>
 
           {/* Color pickers */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             <div>
               <label className="text-xs font-bold text-gray-500 block mb-1">Warna Nama</label>
               <div className="flex gap-1.5 items-center">
@@ -73,12 +81,12 @@ export default function LogoEditor({ logoConfig, setLogoConfig, onSave }: LogoEd
                   type="color"
                   value={draft.warnaNama}
                   onChange={(e) => update('warnaNama', e.target.value)}
-                  className="w-8 h-8 rounded cursor-pointer border-0 p-0"
+                  className="w-10 h-10 rounded cursor-pointer border border-gray-300 p-0.5 flex-shrink-0"
                 />
                 <input
                   value={draft.warnaNama}
                   onChange={(e) => update('warnaNama', e.target.value)}
-                  className="flex-1 px-2 py-1.5 border border-gray-200 rounded-lg text-xs font-mono"
+                  className="flex-1 min-w-0 px-2 py-1.5 border border-gray-200 rounded-lg text-xs font-mono"
                 />
               </div>
             </div>
@@ -89,12 +97,12 @@ export default function LogoEditor({ logoConfig, setLogoConfig, onSave }: LogoEd
                   type="color"
                   value={draft.warnaTag}
                   onChange={(e) => update('warnaTag', e.target.value)}
-                  className="w-8 h-8 rounded cursor-pointer border-0 p-0"
+                  className="w-10 h-10 rounded cursor-pointer border border-gray-300 p-0.5 flex-shrink-0"
                 />
                 <input
                   value={draft.warnaTag}
                   onChange={(e) => update('warnaTag', e.target.value)}
-                  className="flex-1 px-2 py-1.5 border border-gray-200 rounded-lg text-xs font-mono"
+                  className="flex-1 min-w-0 px-2 py-1.5 border border-gray-200 rounded-lg text-xs font-mono"
                 />
               </div>
             </div>
@@ -105,17 +113,15 @@ export default function LogoEditor({ logoConfig, setLogoConfig, onSave }: LogoEd
                   type="color"
                   value={draft.warnaKiri}
                   onChange={(e) => update('warnaKiri', e.target.value)}
-                  className="w-8 h-8 rounded cursor-pointer border-0 p-0"
+                  className="w-10 h-10 rounded cursor-pointer border border-gray-300 p-0.5 flex-shrink-0"
                 />
                 <input
                   value={draft.warnaKiri}
                   onChange={(e) => update('warnaKiri', e.target.value)}
-                  className="flex-1 px-2 py-1.5 border border-gray-200 rounded-lg text-xs font-mono"
+                  className="flex-1 min-w-0 px-2 py-1.5 border border-gray-200 rounded-lg text-xs font-mono"
                 />
               </div>
             </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div>
               <label className="text-xs font-bold text-gray-500 block mb-1">Warna Gradient Kanan</label>
               <div className="flex gap-1.5 items-center">
@@ -123,12 +129,12 @@ export default function LogoEditor({ logoConfig, setLogoConfig, onSave }: LogoEd
                   type="color"
                   value={draft.warnaKanan}
                   onChange={(e) => update('warnaKanan', e.target.value)}
-                  className="w-8 h-8 rounded cursor-pointer border-0 p-0"
+                  className="w-10 h-10 rounded cursor-pointer border border-gray-300 p-0.5 flex-shrink-0"
                 />
                 <input
                   value={draft.warnaKanan}
                   onChange={(e) => update('warnaKanan', e.target.value)}
-                  className="flex-1 px-2 py-1.5 border border-gray-200 rounded-lg text-xs font-mono"
+                  className="flex-1 min-w-0 px-2 py-1.5 border border-gray-200 rounded-lg text-xs font-mono"
                 />
               </div>
             </div>
@@ -139,23 +145,25 @@ export default function LogoEditor({ logoConfig, setLogoConfig, onSave }: LogoEd
                   type="color"
                   value={draft.warnaInner}
                   onChange={(e) => update('warnaInner', e.target.value)}
-                  className="w-8 h-8 rounded cursor-pointer border-0 p-0"
+                  className="w-10 h-10 rounded cursor-pointer border border-gray-300 p-0.5 flex-shrink-0"
                 />
                 <input
                   value={draft.warnaInner}
                   onChange={(e) => update('warnaInner', e.target.value)}
-                  className="flex-1 px-2 py-1.5 border border-gray-200 rounded-lg text-xs font-mono"
+                  className="flex-1 min-w-0 px-2 py-1.5 border border-gray-200 rounded-lg text-xs font-mono"
                 />
               </div>
             </div>
-            <div>
-              <label className="text-xs font-bold text-gray-500 block mb-1">Custom Image</label>
-              <input
-                type="checkbox"
-                checked={!!draft.customImg}
-                onChange={(e) => update('customImg', e.target.checked ? '' : '')}
-                className="w-4 h-4"
-              />
+            <div className="flex items-end">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={!!draft.customImg}
+                  onChange={(e) => update('customImg', e.target.checked ? '' : '')}
+                  className="w-4 h-4 rounded border-gray-300"
+                />
+                <span className="text-xs font-bold text-gray-500">Custom Image</span>
+              </label>
             </div>
           </div>
 

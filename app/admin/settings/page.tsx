@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 
 /** Convert ISO string to local datetime-local input value */
 function isoToLocalDatetime(iso: string | null | undefined): string {
@@ -19,6 +20,9 @@ function localDatetimeToIso(localDatetime: string): string | undefined {
 }
 import type { Package, Tryout, BankAccount } from '@/lib/types';
 import { getEntityStatus, type EntityStatus } from '@/lib/availability';
+import { useLogoConfig } from '@/hooks/useTryoutQueries';
+import { useAppStore } from '@/store/useAppStore';
+import { useQueryClient } from '@tanstack/react-query';
 
 const STATUS_LABELS: Record<EntityStatus, string> = {
   active: 'Aktif',
@@ -165,7 +169,7 @@ function TryoutSelectorModal({
                 className="w-4 h-4"
               />
               <div className="flex-1">
-                <div className="font-bold text-sm text-[#1B3A6B]">
+                <div className="font-bold text-sm text-brand">
                   {t.name} {t.isTrial && <span className="text-amber-500 text-xs">(Trial)</span>}
                 </div>
                 <div className="text-xs text-gray-400">
@@ -468,7 +472,7 @@ function PackageCard({
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-4 border border-gray-100 rounded-xl bg-gray-50">
           <div>
-            <div className="font-extrabold text-sm text-[#1B3A6B]">{pkg.name}</div>
+            <div className="font-extrabold text-sm text-brand">{pkg.name}</div>
             <div className="text-xs text-gray-400 mt-0.5">{pkg.description || '—'}</div>
           </div>
           <div>
@@ -600,7 +604,7 @@ function TryoutCard({
     <>
       <div className="flex items-center justify-between p-3 border border-gray-100 rounded-xl bg-gray-50">
         <div>
-          <div className="font-bold text-sm text-[#1B3A6B]">
+          <div className="font-bold text-sm text-brand">
             {tryout.name} {tryout.isTrial && <span className="text-amber-500 text-xs">(Trial)</span>} <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${STATUS_COLORS[getEntityStatus(tryout)]}`}>{STATUS_LABELS[getEntityStatus(tryout)]}</span>
           </div>
           <div className="text-xs text-gray-400">
@@ -635,7 +639,13 @@ function TryoutCard({
 
 /* ── Main page ─────────────────────────────────────────────────── */
 export default function SettingsPage() {
+  const { fetchLogoConfig } = useAppStore();
   const { data: packages = [], isFetching: loadingPkgs, error: pkgsError } = usePackages();
+
+  // Load DB config on mount so brand colors (CSS vars) apply on hard refresh
+  useEffect(() => {
+    fetchLogoConfig();
+  }, [fetchLogoConfig]);
   const { data: banks = [], isFetching: loadingBanks, error: banksError } = useAdminBanks();
   const { data: allTryouts = [], isFetching: loadingTryouts } = useAllTryouts();
 
@@ -655,7 +665,7 @@ export default function SettingsPage() {
   if (isLoading) {
     return (
       <div>
-        <h2 className="font-black text-xl sm:text-2xl text-[#1B3A6B] mb-1">⚙️ Pengaturan</h2>
+        <h2 className="font-black text-xl sm:text-2xl text-brand mb-1">⚙️ Pengaturan</h2>
         <p className="text-gray-400 text-sm mb-6">Kelola paket, tryout, dan rekening pembayaran.</p>
         <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-2 text-gray-400 text-sm">
           <span className="inline-block w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
@@ -667,7 +677,7 @@ export default function SettingsPage() {
 
   return (
     <div>
-      <h2 className="font-black text-xl sm:text-2xl text-[#1B3A6B] mb-1">⚙️ Pengaturan</h2>
+      <h2 className="font-black text-xl sm:text-2xl text-brand mb-1">⚙️ Pengaturan</h2>
       <p className="text-gray-400 text-sm mb-6">
         Kelola paket, tryout, dan rekening pembayaran.
       </p>
@@ -685,7 +695,7 @@ export default function SettingsPage() {
       {/* ── Packages Section ──────────────────────────────────── */}
       <Card className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-          <h3 className="font-extrabold text-base text-[#1B3A6B]">📦 Paket Tryout</h3>
+          <h3 className="font-extrabold text-base text-brand">📦 Paket Tryout</h3>
           <Button variant="primary" size="sm" onClick={() => setShowCreatePkg(true)}>
             + Tambah Paket
           </Button>
@@ -711,7 +721,7 @@ export default function SettingsPage() {
       {/* ── Tryout Management Section ─────────────────────────── */}
       <Card className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-          <h3 className="font-extrabold text-base text-[#1B3A6B]">🎯 Kelola Tryout</h3>
+          <h3 className="font-extrabold text-base text-brand">🎯 Kelola Tryout</h3>
           <Button variant="primary" size="sm" onClick={() => { setEditTryout(null); setShowCreateTryout(true); }}>
             + Tambah Tryout
           </Button>
@@ -739,10 +749,13 @@ export default function SettingsPage() {
         editTryout={editTryout}
       />
 
+      {/* ── Brand Colors Section ───────────────────────────────── */}
+      <BrandColorsCard />
+
       {/* ── Bank Accounts Section ─────────────────────────────── */}
       <Card>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-          <h3 className="font-extrabold text-base text-[#1B3A6B]">🏦 Rekening Pembayaran</h3>
+          <h3 className="font-extrabold text-base text-brand">🏦 Rekening Pembayaran</h3>
           <div className="flex gap-2">
             <Button variant="gold" size="sm" onClick={() => { setMsg(''); setShowCreateBank(true); }}>
               + Tambah Rekening
@@ -772,6 +785,195 @@ export default function SettingsPage() {
         />
       </Card>
     </div>
+  );
+}
+
+/* ── Brand Colors Card ──────────────────────────────────────────── */
+function BrandColorsCard() {
+  const { data: logoConfig } = useLogoConfig();
+  const { syncLogoConfig, fetchLogoConfig } = useAppStore();
+  const queryClient = useQueryClient();
+
+  // User overrides (null = not yet edited, fall back to DB/default)
+  const [userPrimary, setUserPrimary] = useState<string | null>(null);
+  const [userSecondary, setUserSecondary] = useState<string | null>(null);
+  const [userDark, setUserDark] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const themePrimary = userPrimary ?? logoConfig?.themePrimary ?? '#1B3A6B';
+  const themeSecondary = userSecondary ?? logoConfig?.themeSecondary ?? '#2563EB';
+  const themeDark = userDark ?? logoConfig?.themeDark ?? '#0C1E45';
+
+  const presets = [
+    { name: 'FIX ASN Default', primary: '#1B3A6B', secondary: '#2563EB', dark: '#0C1E45' },
+    { name: 'Hijau', primary: '#065F46', secondary: '#10B981', dark: '#022C22' },
+    { name: 'Ungu', primary: '#5B21B6', secondary: '#8B5CF6', dark: '#2E1065' },
+    { name: 'Merah', primary: '#991B1B', secondary: '#EF4444', dark: '#450A0A' },
+  ];
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const { setLogoConfig } = useAppStore.getState();
+      setLogoConfig((prev) => ({
+        ...prev,
+        themePrimary,
+        themeSecondary,
+        themeDark,
+      }));
+      const ok = await syncLogoConfig();
+      if (ok) {
+        await fetchLogoConfig();
+        queryClient.invalidateQueries({ queryKey: ['logo-config'] });
+        setUserPrimary(null);
+        setUserSecondary(null);
+        setUserDark(null);
+        toast.success('Warna brand berhasil disimpan!');
+      } else {
+        toast.error('Gagal menyimpan konfigurasi.');
+      }
+    } catch {
+      toast.error('Gagal menyimpan konfigurasi.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card className="mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+        <h3 className="font-extrabold text-base text-brand">🎨 Warna Brand</h3>
+        <Button variant="primary" size="sm" onClick={handleSave} disabled={saving}>
+          {saving ? '⏳ Menyimpan…' : '💾 Simpan'}
+        </Button>
+      </div>
+
+      <p className="text-xs text-gray-400 mb-5">
+        Ubah warna utama yang digunakan di seluruh halaman. Perubahan langsung terlihat setelah disimpan.
+      </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-5">
+        {/* Primary Color */}
+        <div>
+          <label className="text-xs font-bold text-gray-500 block mb-1">Warna Primer</label>
+          <div className="flex gap-1.5 items-center">
+            <input
+              type="color"
+              value={themePrimary}
+              onChange={(e) => setUserPrimary(e.target.value)}
+              className="w-10 h-10 rounded cursor-pointer border border-gray-300 p-0.5 flex-shrink-0"
+            />
+            <input
+              value={themePrimary}
+              onChange={(e) => setUserPrimary(e.target.value)}
+              className="flex-1 min-w-0 px-2 py-1.5 border border-gray-200 rounded-lg text-xs font-mono"
+            />
+          </div>
+        </div>
+
+        {/* Secondary Color */}
+        <div>
+          <label className="text-xs font-bold text-gray-500 block mb-1">Warna Sekunder</label>
+          <div className="flex gap-1.5 items-center">
+            <input
+              type="color"
+              value={themeSecondary}
+              onChange={(e) => setUserSecondary(e.target.value)}
+              className="w-10 h-10 rounded cursor-pointer border border-gray-300 p-0.5 flex-shrink-0"
+            />
+            <input
+              value={themeSecondary}
+              onChange={(e) => setUserSecondary(e.target.value)}
+              className="flex-1 min-w-0 px-2 py-1.5 border border-gray-200 rounded-lg text-xs font-mono"
+            />
+          </div>
+        </div>
+
+        {/* Dark Color */}
+        <div>
+          <label className="text-xs font-bold text-gray-500 block mb-1">Warna Gelap</label>
+          <div className="flex gap-1.5 items-center">
+            <input
+              type="color"
+              value={themeDark}
+              onChange={(e) => setUserDark(e.target.value)}
+              className="w-10 h-10 rounded cursor-pointer border border-gray-300 p-0.5 flex-shrink-0"
+            />
+            <input
+              value={themeDark}
+              onChange={(e) => setUserDark(e.target.value)}
+              className="flex-1 min-w-0 px-2 py-1.5 border border-gray-200 rounded-lg text-xs font-mono"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Live preview strip */}
+      <div className="mb-5">
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">👁 Preview</p>
+        <div className="flex flex-col sm:flex-row gap-2">
+          {/* Primary swatch */}
+          <div
+            className="flex-1 rounded-xl p-4 flex flex-col gap-1.5"
+            style={{ background: `linear-gradient(135deg, ${themePrimary}, ${themeSecondary})` }}
+          >
+            <span className="text-xs text-white/60 font-bold">Gradient Hero</span>
+            <span className="text-sm font-extrabold text-white">Judul Halaman</span>
+            <span className="text-[10px] text-white/70">Subjudul dan deskripsi konten</span>
+          </div>
+          {/* Dark swatch */}
+          <div
+            className="sm:w-32 rounded-xl p-4 flex flex-col gap-1.5"
+            style={{ background: `linear-gradient(180deg, ${themeDark}, ${themePrimary})` }}
+          >
+            <span className="text-[10px] text-white/50 font-bold">Sidebar</span>
+            <div className="flex flex-col gap-1">
+              <div className="h-1.5 rounded bg-white/15 w-full" />
+              <div className="h-1.5 rounded bg-white/10 w-3/4" />
+              <div className="h-1.5 rounded bg-white/10 w-1/2" />
+            </div>
+          </div>
+          {/* Button swatch */}
+          <div className="sm:w-28 rounded-xl border border-gray-100 p-3 flex flex-col gap-1.5 items-center justify-center">
+            <span className="text-[10px] text-gray-400 font-bold">Button</span>
+            <div
+              className="px-3 py-1.5 rounded-lg text-xs font-bold text-white"
+              style={{ background: `linear-gradient(135deg, ${themePrimary}, ${themeSecondary})` }}
+            >
+              CTA
+            </div>
+            <div
+              className="px-3 py-1 rounded-lg text-[10px] font-bold border"
+              style={{ borderColor: themePrimary, color: themePrimary }}
+            >
+              Outline
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Presets */}
+      <div>
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
+          🎨 Preset Cepat
+        </p>
+        <div className="flex gap-2 flex-wrap">
+          {presets.map((p) => (
+            <button
+              key={p.name}
+              onClick={() => {
+                setUserPrimary(p.primary);
+                setUserSecondary(p.secondary);
+                setUserDark(p.dark);
+              }}
+              className="px-3 py-1.5 border border-gray-200 rounded-full text-xs font-bold bg-white cursor-pointer hover:border-blue-400 transition-colors"
+            >
+              {p.name}
+            </button>
+          ))}
+        </div>
+      </div>
+    </Card>
   );
 }
 

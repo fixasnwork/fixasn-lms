@@ -61,7 +61,7 @@ export default function UserSidebar() {
               className="rounded-full object-cover flex-shrink-0"
             />
           ) : (
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#1B3A6B] to-[#2563EB] flex items-center justify-center text-white font-extrabold text-sm flex-shrink-0">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand to-brand-secondary flex items-center justify-center text-white font-extrabold text-sm flex-shrink-0">
               {userInitial}
             </div>
           )}
@@ -127,7 +127,7 @@ export default function UserSidebar() {
                   alt="User"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#1B3A6B] to-[#2563EB] text-white flex items-center justify-center font-bold">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand to-brand-secondary text-white flex items-center justify-center font-bold">
                   {userInitial}
                 </div>
               )}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { useAppStore } from '@/store/useAppStore';
 import LogoEditor from '@/components/admin/LogoEditor';
 import { Button, Card, Modal } from '@/components/ui';
@@ -55,11 +56,15 @@ export default function AdminLandingPage() {
   };
 
   const saveSection = async () => {
-    setLogoConfig((prev) => ({ ...prev, ...draft }));
     setSaving(true);
+    setLogoConfig((prev) => ({ ...prev, ...draft }));
     const ok = await syncLogoConfig();
     setSaving(false);
-    alert(ok ? '✅ Konfigurasi berhasil disimpan!' : '❌ Gagal menyimpan konfigurasi.');
+    if (ok) {
+      toast.success('Konfigurasi berhasil disimpan!');
+    } else {
+      toast.error('Gagal menyimpan konfigurasi.');
+    }
     closeEditor();
   };
 
@@ -157,7 +162,7 @@ export default function AdminLandingPage() {
 
   return (
     <div>
-      <h2 className="font-black text-xl sm:text-2xl text-[#1B3A6B] mb-1">🌐 Kelola Landing Page</h2>
+      <h2 className="font-black text-xl sm:text-2xl text-brand mb-1">🌐 Kelola Landing Page</h2>
       <p className="text-gray-400 text-sm mb-6">
         Ubah logo, nama aplikasi, dan tampilan branding.
       </p>
@@ -166,7 +171,7 @@ export default function AdminLandingPage() {
       <LogoEditor key={JSON.stringify(logoConfig)} logoConfig={logoConfig} setLogoConfig={setLogoConfig} onSave={syncLogoConfig} />
 
       {/* Section Editors */}
-      <h3 className="font-extrabold text-base text-[#1B3A6B] mb-4">📄 Section Lainnya</h3>
+      <h3 className="font-extrabold text-base text-brand mb-4">📄 Section Lainnya</h3>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
         {SECTIONS.map((s) => (
           <Card key={s.key} hover className="flex items-center gap-3.5 p-4">
@@ -174,7 +179,7 @@ export default function AdminLandingPage() {
               {s.icon}
             </div>
             <div className="flex-1">
-              <h4 className="font-extrabold text-sm text-[#1B3A6B] mb-0.5">{s.title}</h4>
+              <h4 className="font-extrabold text-sm text-brand mb-0.5">{s.title}</h4>
               <p className="text-xs text-gray-400 m-0">{s.desc}</p>
             </div>
             <Button variant="outline" size="sm" onClick={() => openEditor(s.key)}>

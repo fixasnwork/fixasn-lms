@@ -44,7 +44,7 @@ function LoginForm() {
           <div className="flex justify-center mb-3">
             <Logo size="md" cfg={logoConfig} />
           </div>
-          <h2 className="font-['Montserrat',sans-serif] font-black text-2xl text-[#1B3A6B] mb-1 m-0">
+          <h2 className="font-['Montserrat',sans-serif] font-black text-2xl text-brand mb-1 m-0">
             Masuk ke FIX ASN
           </h2>
           <p className="font-['Montserrat',sans-serif] text-sm text-gray-400 m-0">
@@ -93,7 +93,7 @@ function LoginForm() {
             Butuh bantuan?{" "}
             <a
               href="https://wa.me/628987608379"
-              className="text-[#1B3A6B] font-bold"
+              className="text-brand font-bold"
             >
               Chat WhatsApp
             </a>
@@ -113,14 +113,14 @@ function LoadingScreen() {
         <div className="flex justify-center mb-3">
           <Logo size="md" cfg={logoConfig} />
         </div>
-        <h2 className="font-['Montserrat',sans-serif] font-black text-2xl text-[#1B3A6B] mb-1 m-0">
+        <h2 className="font-['Montserrat',sans-serif] font-black text-2xl text-brand mb-1 m-0">
           Memeriksa sesi...
         </h2>
         <div className="flex gap-1.5 justify-center mt-4">
           {[0, 1, 2].map((i) => (
             <div
               key={i}
-              className="w-2 h-2 rounded-full bg-[#2563EB] opacity-70 animate-bounce"
+              className="w-2 h-2 rounded-full bg-brand-secondary opacity-70 animate-bounce"
               style={{ animationDelay: `${i * 0.2}s` }}
             />
           ))}

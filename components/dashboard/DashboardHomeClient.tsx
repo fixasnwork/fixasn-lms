@@ -25,7 +25,7 @@ export default function DashboardHomeClient({ userName, packages, purchasedPkgId
     <div>
       {/* Welcome */}
       <div className="mb-5.5">
-        <h2 className="font-black text-2xl text-[#1B3A6B] mb-0.5">
+        <h2 className="font-black text-2xl text-brand mb-0.5">
           Selamat Datang, {userName.split(' ')[0]}! 👋
         </h2>
         <p className="text-gray-400 m-0 text-sm">
@@ -49,7 +49,7 @@ export default function DashboardHomeClient({ userName, packages, purchasedPkgId
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <Card className="lg:col-span-2">
-          <h3 className="font-extrabold text-base text-[#1B3A6B] mb-4">
+          <h3 className="font-extrabold text-base text-brand mb-4">
             📈 Progress Per Materi
           </h3>
           {[
@@ -76,7 +76,7 @@ export default function DashboardHomeClient({ userName, packages, purchasedPkgId
 
         {/* Quick Actions */}
         <Card>
-          <h3 className="font-extrabold text-sm text-[#1B3A6B] mb-3.5">
+          <h3 className="font-extrabold text-sm text-brand mb-3.5">
             ⚡ Aksi Cepat
           </h3>
           <div className="flex flex-col gap-2.5">
@@ -108,7 +108,7 @@ export default function DashboardHomeClient({ userName, packages, purchasedPkgId
 
       {/* Packages Teaser */}
       <div className="mt-8">
-        <h3 className="font-black text-lg text-[#1B3A6B] mb-4">
+        <h3 className="font-black text-lg text-brand mb-4">
           📦 Paket Tersedia
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">

@@ -109,7 +109,7 @@ export default function PaymentsPage() {
 
   return (
     <div>
-      <h2 className="font-black text-xl sm:text-2xl text-[#1B3A6B] mb-4 sm:mb-5">
+      <h2 className="font-black text-xl sm:text-2xl text-brand mb-4 sm:mb-5">
         💳 Verifikasi Pembayaran
       </h2>
 
@@ -299,7 +299,7 @@ export default function PaymentsPage() {
             ].map(([label, val]) => (
               <div key={label} className="bg-blue-50 rounded-lg p-2.5">
                 <div className="text-xs text-gray-400 font-bold mb-0.5">{label}</div>
-                <div className="text-sm font-extrabold text-[#1B3A6B]">{val}</div>
+                <div className="text-sm font-extrabold text-brand">{val}</div>
               </div>
             ))}
           </div>

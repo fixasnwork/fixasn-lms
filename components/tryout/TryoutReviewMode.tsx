@@ -43,14 +43,14 @@ export default function TryoutReviewMode({
           <Button variant="outline" onClick={onBack}>
             ← Kembali
           </Button>
-          <h2 className="font-black text-xl text-[#1B3A6B] m-0">
+          <h2 className="font-black text-xl text-brand m-0">
             Pembahasan — {name}
           </h2>
           <div className="sm:ml-auto flex flex-wrap gap-3 text-sm font-bold w-full sm:w-auto mt-2 sm:mt-0">
             <span className="text-blue-600">TWK: {scores.twk}</span>
             <span className="text-purple-600">TIU: {scores.tiu}</span>
             <span className="text-yellow-600">TKP: {scores.tkp}</span>
-            <span className="text-[#1B3A6B]">
+            <span className="text-brand">
               Total: {scores.twk + scores.tiu + scores.tkp}
             </span>
           </div>
@@ -84,7 +84,7 @@ export default function TryoutReviewMode({
                   key={i}
                   onClick={() => setIdx(i)}
                   className={`w-7 h-7 rounded border-none cursor-pointer text-xs font-semibold transition-all ${
-                    i === idx ? "ring-2 ring-offset-1 ring-[#1B3A6B]" : ""
+                    i === idx ? "ring-2 ring-offset-1 ring-brand" : ""
                   }`}
                   style={{
                     background: i === idx ? "#1B3A6B" : bg,
@@ -135,7 +135,7 @@ export default function TryoutReviewMode({
             </span>
             <span className="text-xs font-bold text-gray-500 sm:ml-auto w-full sm:w-auto mt-2 sm:mt-0">
               Nilai kamu:{" "}
-              <span className="font-black text-[#1B3A6B]">{score}</span> poin
+              <span className="font-black text-brand">{score}</span> poin
             </span>
           </div>
 

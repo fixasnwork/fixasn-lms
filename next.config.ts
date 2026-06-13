@@ -8,7 +8,11 @@ const nextConfig: NextConfig = {
   experimental: {
     authInterrupts: true,
   },
-  allowedDevOrigins: ["100.80.192.30", "macmini"], // tailscale remote IP
+  allowedDevOrigins: [
+    "100.80.192.30",
+    "macmini",
+    "macmini.ling-antares.ts.net",
+  ], // tailscale remote IPs
   images: {
     remotePatterns: [
       {

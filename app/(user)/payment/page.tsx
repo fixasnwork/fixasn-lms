@@ -88,7 +88,7 @@ function PaymentContent() {
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-6">
-        <h2 className="font-black text-2xl text-[#1B3A6B] mb-1">
+        <h2 className="font-black text-2xl text-brand mb-1">
           {step === "done" ? "🎉" : "💳"} Pembayaran
         </h2>
         <p className="text-gray-400 text-sm">
@@ -131,12 +131,12 @@ function PaymentContent() {
                       )}
                     </div>
                     <div className="flex items-center gap-3 flex-1">
-                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#1B3A6B] to-[#2563EB] flex items-center justify-center text-lg flex-shrink-0">
+                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-brand to-brand-secondary flex items-center justify-center text-lg flex-shrink-0">
                         📝
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="font-extrabold text-sm text-[#1B3A6B]">
+                          <span className="font-extrabold text-sm text-brand">
                             {pkg.name}
                           </span>
                         </div>
@@ -146,7 +146,7 @@ function PaymentContent() {
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <div className="font-black text-xl text-[#1B3A6B]">
+                      <div className="font-black text-xl text-brand">
                         Rp {pkg.price.toLocaleString("id-ID")}
                       </div>
                     </div>
@@ -175,11 +175,11 @@ function PaymentContent() {
           <Card className="mb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#1B3A6B] to-[#2563EB] flex items-center justify-center text-lg">
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-brand to-brand-secondary flex items-center justify-center text-lg">
                   📝
                 </div>
                 <div>
-                  <p className="font-extrabold text-base text-[#1B3A6B] m-0">
+                  <p className="font-extrabold text-base text-brand m-0">
                     {selectedPkg.name}
                   </p>
                   <p className="text-sm text-gray-500 m-0">
@@ -188,7 +188,7 @@ function PaymentContent() {
                 </div>
               </div>
               <div className="text-right">
-                <div className="font-black text-2xl text-[#1B3A6B]">
+                <div className="font-black text-2xl text-brand">
                   Rp {selectedPkg.price.toLocaleString("id-ID")}
                 </div>
               </div>
@@ -197,7 +197,7 @@ function PaymentContent() {
 
           {/* Transfer instructions */}
           <Card className="mb-4">
-            <h3 className="font-extrabold text-base text-[#1B3A6B] mb-3">
+            <h3 className="font-extrabold text-base text-brand mb-3">
               📋 Transfer ke Rekening Berikut
             </h3>
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 mb-4">
@@ -219,7 +219,7 @@ function PaymentContent() {
                         {b.accountHolder}
                       </div>
                     </div>
-                    <span className="font-mono font-black text-base text-[#1B3A6B] tracking-wider">
+                    <span className="font-mono font-black text-base text-brand tracking-wider">
                       {b.accountNumber}
                     </span>
                   </div>
@@ -232,7 +232,7 @@ function PaymentContent() {
               <p className="text-xs text-blue-600 font-bold mb-1">
                 Nominal yang harus ditransfer:
               </p>
-              <p className="font-black text-2xl text-[#1B3A6B] m-0">
+              <p className="font-black text-2xl text-brand m-0">
                 Rp {selectedPkg.price.toLocaleString("id-ID")}
               </p>
             </div>
@@ -325,7 +325,7 @@ function PaymentContent() {
                 <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center text-3xl mx-auto mb-3">
                   💬
                 </div>
-                <h4 className="font-black text-lg text-[#1B3A6B] mb-1">
+                <h4 className="font-black text-lg text-brand mb-1">
                   Konfirmasi via WhatsApp
                 </h4>
                 <p className="text-sm text-gray-500 mb-4 leading-relaxed">
@@ -360,7 +360,7 @@ function PaymentContent() {
       {step === "done" && selectedPkg && (
         <Card className="text-center py-8">
           <div className="text-6xl mb-4">🎉</div>
-          <h3 className="font-black text-2xl text-[#1B3A6B] mb-2">
+          <h3 className="font-black text-2xl text-brand mb-2">
             Bukti Terkirim!
           </h3>
           <p className="text-gray-500 text-sm mb-4 leading-relaxed max-w-sm mx-auto">

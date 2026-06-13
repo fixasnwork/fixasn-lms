@@ -35,7 +35,7 @@ export default function TryoutAttemptPage({
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="text-4xl mb-3">⚠️</div>
-          <h2 className="font-black text-xl text-[#1B3A6B] mb-2">
+          <h2 className="font-black text-xl text-brand mb-2">
             Tryout Tidak Ditemukan
           </h2>
           <p className="text-sm text-gray-400 mb-4">

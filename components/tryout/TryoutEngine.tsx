@@ -40,12 +40,12 @@ function QuestionGrid({
 
   return (
     <>
-      <p className="font-extrabold text-xs text-[#1B3A6B] mb-2">
+      <p className="font-extrabold text-xs text-brand mb-2">
         📊 {answered}/{totalQuestions} dijawab
       </p>
       <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-4">
         <div
-          className="h-full bg-gradient-to-r from-[#1B3A6B] to-blue-500 rounded-full transition-all duration-500"
+          className="h-full bg-gradient-to-r from-brand to-blue-500 rounded-full transition-all duration-500"
           style={{ width: `${(answered / totalQuestions) * 100}%` }}
         />
       </div>
@@ -220,10 +220,10 @@ export default function TryoutEngine({
     return (
       <div className="min-h-screen bg-[#F8FAFF] flex items-center justify-center p-4 sm:p-6">
         <Card className="max-w-xl w-full p-6 sm:p-8 lg:p-10 text-center">
-          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-[#1B3A6B] to-[#2563EB] flex items-center justify-center text-2xl sm:text-3xl mx-auto mb-4 sm:mb-5">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-brand to-brand-secondary flex items-center justify-center text-2xl sm:text-3xl mx-auto mb-4 sm:mb-5">
             📋
           </div>
-          <h2 className="font-black text-xl sm:text-2xl text-[#1B3A6B] mb-1 sm:mb-1.5">
+          <h2 className="font-black text-xl sm:text-2xl text-brand mb-1 sm:mb-1.5">
             {setName}
           </h2>
           <p className="text-gray-500 text-xs sm:text-sm mb-2 sm:mb-3">
@@ -242,7 +242,7 @@ export default function TryoutEngine({
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
             {tips.map((t, i) => (
               <div key={i} className="flex flex-col items-center gap-1.5 sm:gap-2">
-                <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-[#1B3A6B] flex items-center justify-center text-xl sm:text-2xl">
+                <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-brand flex items-center justify-center text-xl sm:text-2xl">
                   {t.icon}
                 </div>
                 <span className="text-[11px] sm:text-xs font-semibold text-gray-700 text-center leading-tight">
@@ -279,7 +279,7 @@ export default function TryoutEngine({
             </Button>
           </div>
 
-          <Card className="bg-gradient-to-br from-[#0C1E45] to-[#2563EB] text-white text-center p-5 sm:p-8 mb-5 sm:mb-6">
+          <Card className="bg-gradient-to-br from-brand-dark to-brand-secondary text-white text-center p-5 sm:p-8 mb-5 sm:mb-6">
             <div className="text-4xl sm:text-5xl lg:text-6xl mb-2 sm:mb-3">
               {totalScore >= 298 ? "🎉" : "💪"}
             </div>

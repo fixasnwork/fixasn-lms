@@ -39,13 +39,13 @@ export default function Button({
 
   const variantStyles = {
     primary:
-      "bg-gradient-to-br from-[#1B3A6B] to-[#2563EB] text-white shadow-lg shadow-blue-500/30",
+      "bg-gradient-to-br from-brand to-brand-secondary text-white shadow-lg shadow-blue-500/30",
     gold: "bg-gradient-to-br from-[#B8860B] to-[#F5C518] text-white shadow-lg shadow-yellow-500/30",
-    outline: "bg-transparent text-[#1B3A6B] border-2 border-[#1B3A6B]",
+    outline: "bg-transparent text-brand border-2 border-brand",
     danger: "bg-[#DC2626] text-white",
     success: "bg-[#16A34A] text-white",
     ghost: "bg-transparent text-gray-500 border border-gray-200",
-    white: "bg-white text-[#1B3A6B] shadow-md shadow-black/12",
+    white: "bg-white text-brand shadow-md shadow-black/12",
   }[variant];
 
   return (

@@ -255,6 +255,9 @@ const DEFAULT_LOGO_CONFIG: LogoConfig = {
   testimonial3Name: '',
   testimonial3Role: '',
   testimonial3Text: '',
+  themePrimary: '#1B3A6B',
+  themeSecondary: '#2563EB',
+  themeDark: '#0C1E45',
 };
 
 export function useLogoConfig() {

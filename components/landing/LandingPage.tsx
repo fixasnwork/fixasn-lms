@@ -40,7 +40,7 @@ export function LandingPage() {
       </nav>
 
       {/* HERO */}
-      <section className="bg-gradient-to-br from-[#0C1E45] via-[#1B3A6B] to-[#1e4da0] text-white py-14 px-5 relative overflow-hidden">
+      <section className="bg-gradient-to-br from-brand-dark via-brand to-[#1e4da0] text-white py-14 px-5 relative overflow-hidden">
         <div className="absolute -top-30 -right-5 w-[300px] h-[300px] rounded-full bg-yellow-400/7 pointer-events-none" />
         
         <div className="max-w-[1180px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
@@ -95,9 +95,9 @@ export function LandingPage() {
           
           {/* Right Content */}
           <div className="flex flex-col gap-3">
-            <div className="rounded-2xl overflow-hidden shadow-2xl relative h-[230px] bg-[#1B3A6B]">
+            <div className="rounded-2xl overflow-hidden shadow-2xl relative h-[230px] bg-brand">
               <HeroImage heroImg={logoConfig.heroImg} />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0C1E45]/75 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/75 to-transparent" />
               <div className="absolute bottom-3.5 left-4 right-4">
                 <p className="font-['Montserrat',sans-serif] font-bold text-sm text-yellow-400 mb-0.5">
                   🏆 {logoConfig.heroCaption}
@@ -134,7 +134,7 @@ export function LandingPage() {
       {/* SKD INFO */}
       <section className="py-11 px-5 bg-white w-full box-border">
         <div className="max-w-[1180px] mx-auto">
-          <h2 className="text-center text-4xl font-black text-[#1B3A6B] mb-2">
+          <h2 className="text-center text-4xl font-black text-brand mb-2">
             {logoConfig.skdTitle}
           </h2>
           <p className="text-center text-gray-400 mb-9">

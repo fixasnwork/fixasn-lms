@@ -207,7 +207,7 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-lg">
-      <h2 className="font-black text-2xl text-[#1B3A6B] mb-5">👤 Profil Saya</h2>
+      <h2 className="font-black text-2xl text-brand mb-5">👤 Profil Saya</h2>
 
       {/* Error banner */}
       {error && (
@@ -230,7 +230,7 @@ export default function ProfilePage() {
                 className="w-16 h-16 rounded-full object-cover ring-2 ring-gray-100"
               />
             ) : (
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#1B3A6B] to-[#2563EB] flex items-center justify-center text-2xl text-white font-extrabold ring-2 ring-gray-100">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-brand to-brand-secondary flex items-center justify-center text-2xl text-white font-extrabold ring-2 ring-gray-100">
                 {userInitial}
               </div>
             )}
@@ -255,7 +255,7 @@ export default function ProfilePage() {
           </div>
 
           <div className="flex-1 min-w-0">
-            <h3 className="font-black text-lg text-[#1B3A6B] m-0 truncate">
+            <h3 className="font-black text-lg text-brand m-0 truncate">
               {user?.name || 'Pengguna'}
             </h3>
             <p className="text-gray-400 text-sm m-0 truncate">{user?.email || ''}</p>

@@ -12,13 +12,13 @@ export default function GlobalError({
         <div className="min-h-screen flex items-center justify-center bg-[#F8FAFF] p-6">
           <div className="text-center max-w-md">
             <div className="text-5xl mb-4">💥</div>
-            <h1 className="font-black text-2xl text-[#1B3A6B] mb-2">Kesalahan Sistem</h1>
+            <h1 className="font-black text-2xl text-brand mb-2">Kesalahan Sistem</h1>
             <p className="text-sm text-gray-400 mb-6">
               Maaf, terjadi kesalahan fatal. Silakan coba lagi nanti.
             </p>
             <button
               onClick={reset}
-              className="px-6 py-3 bg-[#2563EB] text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
+              className="px-6 py-3 bg-brand-secondary text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
             >
               Coba Lagi
             </button>

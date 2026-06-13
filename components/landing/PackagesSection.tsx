@@ -22,7 +22,7 @@ export function PackagesSection({
   return (
     <section className="py-12 px-5 bg-[#F8FAFF] w-full box-border">
       <div className="max-w-[1180px] mx-auto">
-        <h2 className="text-center text-[32px] font-black text-[#1B3A6B] mb-2.5">
+        <h2 className="text-center text-[32px] font-black text-brand mb-2.5">
           {logoConfig.paketTitle}
         </h2>
         <p className="text-center text-gray-400 mb-8">
@@ -31,7 +31,7 @@ export function PackagesSection({
 
         {/* Tabs */}
         <div className="flex gap-2 justify-center mb-8">
-          <button className="px-6.5 py-2.25 rounded-full font-bold text-sm font-['Montserrat',sans-serif] border-2 border-[#1B3A6B] bg-[#1B3A6B] text-white cursor-pointer">
+          <button className="px-6.5 py-2.25 rounded-full font-bold text-sm font-['Montserrat',sans-serif] border-2 border-brand bg-brand text-white cursor-pointer">
             📝 Tryout SKD
           </button>
         </div>
@@ -56,7 +56,7 @@ export function PackagesSection({
               }}
             >
               <div className="mb-4">
-                <h3 className="font-black text-lg text-[#1B3A6B] mb-1.5">
+                <h3 className="font-black text-lg text-brand mb-1.5">
                   {pkg.name}
                 </h3>
                 <p className="text-gray-600 text-sm m-0">{pkg.description}</p>
@@ -70,7 +70,7 @@ export function PackagesSection({
 
               <div className="flex items-end justify-between mt-4">
                 <div>
-                  <div className="text-3xl font-black text-[#1B3A6B]">
+                  <div className="text-3xl font-black text-brand">
                     Rp {pkg.price.toLocaleString("id-ID")}
                   </div>
                 </div>
@@ -89,7 +89,7 @@ export function PackagesSection({
               href={WA_LINK}
               target="_blank"
               rel="noreferrer"
-              className="text-[#1B3A6B] font-bold no-underline"
+              className="text-brand font-bold no-underline"
             >
               Chat WhatsApp kami →
             </a>

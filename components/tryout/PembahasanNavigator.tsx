@@ -66,7 +66,7 @@ export default function PembahasanNavigator({
                   onClick={() => setIdx(i)}
                   className={`
                     w-7 h-7 rounded border-none cursor-pointer text-xs font-semibold transition-all
-                    ${i === idx ? 'ring-2 ring-offset-1 ring-[#1B3A6B]' : ''}
+                    ${i === idx ? 'ring-2 ring-offset-1 ring-brand' : ''}
                   `}
                   style={{
                     background: i === idx ? '#1B3A6B' : bg,
@@ -103,7 +103,7 @@ export default function PembahasanNavigator({
           </span>
           <span className="text-xs font-bold text-gray-500 ml-auto">
             Nilai kamu:{' '}
-            <span className="font-black text-[#1B3A6B]">{score}</span> poin
+            <span className="font-black text-brand">{score}</span> poin
           </span>
         </div>
 

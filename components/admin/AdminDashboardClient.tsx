@@ -21,7 +21,7 @@ export default function AdminDashboardClient({ payments, packages }: Props) {
 
   return (
     <div>
-      <h2 className="font-black text-xl sm:text-2xl text-[#1B3A6B] mb-4 sm:mb-5.5">
+      <h2 className="font-black text-xl sm:text-2xl text-brand mb-4 sm:mb-5.5">
         📊 Dashboard Admin
       </h2>
 
@@ -34,7 +34,7 @@ export default function AdminDashboardClient({ payments, packages }: Props) {
 
       {/* Recent Payments */}
       <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-md border border-gray-100">
-        <h3 className="font-extrabold text-base text-[#1B3A6B] mb-3.5">
+        <h3 className="font-extrabold text-base text-brand mb-3.5">
           💳 Pembayaran Terbaru
         </h3>
         {recentPayments.map((p) => {

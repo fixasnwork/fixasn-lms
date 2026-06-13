@@ -268,7 +268,7 @@ export default function SoalPage() {
     <div>
       <div className="flex justify-between items-start sm:items-center mb-5 flex-wrap gap-3">
         <div>
-          <h2 className="font-black text-xl sm:text-2xl text-[#1B3A6B] mb-1">
+          <h2 className="font-black text-xl sm:text-2xl text-brand mb-1">
             Bank Soal
           </h2>
           <p className="text-gray-400 text-sm m-0">
@@ -380,7 +380,7 @@ export default function SoalPage() {
                 }`}
               >
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="font-bold text-sm text-[#1B3A6B]">
+                  <span className="font-bold text-sm text-brand">
                     {pkg.name}
                   </span>
                   {isActive && (
@@ -402,7 +402,7 @@ export default function SoalPage() {
           <div>
             <div className="px-4 sm:px-5 py-3.5 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">
-                <span className="font-bold text-[#1B3A6B]">Trial Gratis</span>
+                <span className="font-bold text-brand">Trial Gratis</span>
                 <span className="text-sm text-gray-400 ml-2">
                   {currentTryoutWithQuestions?.questions?.length || 0} soal
                 </span>
@@ -469,7 +469,7 @@ export default function SoalPage() {
             </div>
 
             <div className="px-4 sm:px-5 py-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
-              <span className="font-bold text-[#1B3A6B] break-words">
+              <span className="font-bold text-brand break-words">
                 {activePkg?.name} - {currentTryout?.name}
                 <span className="font-normal text-gray-400 text-sm ml-2">
                   ({currentQ.length} soal · TWK:

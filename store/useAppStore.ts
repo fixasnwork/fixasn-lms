@@ -111,6 +111,9 @@ const defaultLogoConfig: LogoConfig = {
   testimonial3Name: "Doni P.",
   testimonial3Role: "BPS Jawa Timur",
   testimonial3Text: "Fitur ranking bikin saya terpacu. Tahu posisi nasional sendiri sangat memotivasi untuk terus berlatih!",
+  themePrimary: "#1B3A6B",
+  themeSecondary: "#2563EB",
+  themeDark: "#0C1E45",
 };
 
 // Convert static QuestionInput data to Question[] for the store
@@ -206,7 +209,19 @@ export const useAppStore = create<AppState>((set, get) => ({
       const data = await res.json();
       if (data.config) {
         // Merge DB config over defaults so empty DB doesn't wipe hero text/images
-        set({ logoConfig: { ...defaultLogoConfig, ...data.config } });
+        const merged = { ...defaultLogoConfig, ...data.config };
+        set({ logoConfig: merged });
+        
+        // Inject brand colors as CSS variables for runtime theming
+        if (merged.themePrimary) {
+          document.documentElement.style.setProperty('--brand-primary', merged.themePrimary);
+        }
+        if (merged.themeSecondary) {
+          document.documentElement.style.setProperty('--brand-secondary', merged.themeSecondary);
+        }
+        if (merged.themeDark) {
+          document.documentElement.style.setProperty('--brand-dark', merged.themeDark);
+        }
       }
     } catch (e) {
       console.warn('Failed to fetch logo config from API, using local data:', e);

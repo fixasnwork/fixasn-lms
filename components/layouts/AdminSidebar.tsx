@@ -50,7 +50,7 @@ export default function AdminSidebar() {
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col w-60 bg-gradient-to-b from-[#0C1E45] to-[#1B3A6B] fixed h-screen top-0 z-50">
+      <aside className="hidden md:flex flex-col w-60 bg-gradient-to-b from-brand-dark to-brand fixed h-screen top-0 z-50">
         {/* Logo */}
         <div className="p-4.5 border-b border-white/10">
           <Logo size="sm" cfg={logoConfig} className="mb-2.5" />
@@ -151,7 +151,7 @@ export default function AdminSidebar() {
               className={`
                 flex flex-col items-center gap-0.5 bg-none border-none cursor-pointer p-1.5 w-20
                 font-['Montserrat',sans-serif] relative
-                ${currentPage === item.id ? 'text-[#1B3A6B]' : 'text-gray-400'}
+                ${currentPage === item.id ? 'text-brand' : 'text-gray-400'}
               `}
             >
               <span className="text-4.5">{item.icon}</span>
@@ -171,7 +171,7 @@ export default function AdminSidebar() {
             className={`
               flex flex-col items-center gap-0.5 bg-none border-none cursor-pointer p-1.5 w-20
               font-['Montserrat',sans-serif] relative
-              ${isMoreOpen ? 'text-[#1B3A6B]' : 'text-gray-400'}
+              ${isMoreOpen ? 'text-brand' : 'text-gray-400'}
             `}
           >
             <span className="text-4.5">☰</span>
