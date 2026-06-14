@@ -223,6 +223,23 @@ export function queueFlagUpdate(attemptId: string, update: FlagUpdate, delayMs =
   flagDebouncers.set(attemptId, { timer, latest: next });
 }
 
+/* ── Update Attempt Answers (autosave mutation) ────────────────── */
+// Fire-and-forget: no optimistic cache update, no invalidation on settle.
+// The server is source of truth on next mount/focus/visibility re-fetch.
+export function useUpdateAttemptAnswers(attemptId: string) {
+  return useMutation({
+    mutationFn: async (answers: Record<number, number>) => {
+      const res = await fetch(`/api/tryout-attempts/${attemptId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answers }),
+      });
+      if (!res.ok) throw new Error('Gagal menyimpan jawaban');
+      return res.json() as Promise<{ success: boolean; attempt: { id: string } }>;
+    },
+  });
+}
+
 export function useUpdateAttemptFlags(attemptId: string) {
   const queryClient = useQueryClient();
 

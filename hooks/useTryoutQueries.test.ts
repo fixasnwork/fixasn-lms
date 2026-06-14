@@ -13,6 +13,7 @@ vi.stubGlobal('fetch', mockFetch);
 import {
   queueFlagUpdate,
   useUpdateAttemptFlags,
+  useUpdateAttemptAnswers,
 } from './useTryoutQueries';
 
 describe('queueFlagUpdate — debounced flag writer', () => {
@@ -140,6 +141,102 @@ describe('useUpdateAttemptFlags — optimistic mutation', () => {
     ]);
     // Rollback to original value
     expect(cached?.attempt.raguRagu).toEqual({ 0: false });
+  });
+});
+
+describe('useUpdateAttemptAnswers — autosave mutation', () => {
+  beforeEach(() => {
+    mockFetch.mockReset();
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ success: true, attempt: { id: 'att-1' } }) });
+  });
+
+  function makeSeedCache(qc: QueryClient, attemptId: string) {
+    qc.setQueryData(['attempt', attemptId], {
+      attempt: {
+        id: attemptId,
+        userId: 'u@x.id',
+        tryoutId: 1,
+        twkScore: 0,
+        tiuScore: 0,
+        tkpScore: 0,
+        totalScore: 0,
+        finishedAt: null,
+        answers: { 0: 1 },
+        raguRagu: {},
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+      tryout: { id: 1, name: 'T', isTrial: true, sortOrder: 0, durationMin: 15, questions: [] },
+    });
+  }
+
+  it('sends only answers in PUT body', async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const attemptId = 'att-ans-1';
+    makeSeedCache(qc, attemptId);
+
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(QueryClientProvider, { client: qc }, children);
+
+    const { result } = renderHook(() => useUpdateAttemptAnswers(attemptId), { wrapper });
+
+    await act(async () => {
+      result.current.mutate({ 0: 2, 1: 3, 2: 0 });
+      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    });
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    const [, init] = mockFetch.mock.calls[0];
+    const body = JSON.parse(init.body);
+    // Only answers field — no scores, no flags
+    expect(body).toEqual({ answers: { 0: 2, 1: 3, 2: 0 } });
+    expect(body).not.toHaveProperty('twkScore');
+    expect(body).not.toHaveProperty('raguRaguFlags');
+  });
+
+  it('does not mutate the cache (fire-and-forget)', async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const attemptId = 'att-ans-nocache-1';
+    makeSeedCache(qc, attemptId);
+
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(QueryClientProvider, { client: qc }, children);
+
+    const { result } = renderHook(() => useUpdateAttemptAnswers(attemptId), { wrapper });
+
+    act(() => { result.current.mutate({ 0: 99 }); });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    // Cache should still hold the original seeded answers, not the autosaved ones.
+    const cached = qc.getQueryData<{ attempt: { answers: Record<number, number> } }>([
+      'attempt',
+      attemptId,
+    ]);
+    expect(cached?.attempt.answers).toEqual({ 0: 1 });
+  });
+
+  it('rolls back on error', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const attemptId = 'att-ans-rollback-1';
+    makeSeedCache(qc, attemptId);
+
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(QueryClientProvider, { client: qc }, children);
+
+    const { result } = renderHook(() => useUpdateAttemptAnswers(attemptId), { wrapper });
+
+    act(() => {
+      result.current.mutate({ 0: 99 });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    const cached = qc.getQueryData<{ attempt: { answers: Record<number, number> } }>(['attempt', attemptId]);
+    // Rollback to original
+    expect(cached?.attempt.answers).toEqual({ 0: 1 });
   });
 });
 

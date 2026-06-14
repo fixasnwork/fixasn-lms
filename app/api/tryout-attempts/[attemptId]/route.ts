@@ -187,12 +187,13 @@ export async function PUT(
 
   // Detect score-writing PUT: set finishedAt on first finish.
   // Only stamp when answers (or any score field) is provided by the client.
-  // Flag-only calls with raguRaguFlags must NOT touch finishedAt.
-  const isScoreWrite = body.answers !== undefined
-    || body.twkScore !== undefined
-    || body.tiuScore !== undefined
-    || body.tkpScore !== undefined
-    || body.totalScore !== undefined;
+  // Only score fields signal a finish. Autosave sends { answers } only
+  // and must NOT touch finishedAt. Flag-only sends { raguRaguFlags } only.
+  const isScoreWrite =
+    body.twkScore !== undefined ||
+    body.tiuScore !== undefined ||
+    body.tkpScore !== undefined ||
+    body.totalScore !== undefined;
 
   const updated = await prisma.tryoutAttempt.update({
     where: { id: attemptId },

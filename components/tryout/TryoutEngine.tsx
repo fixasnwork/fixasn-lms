@@ -6,6 +6,7 @@ import type { Question } from "@/lib/types";
 import { getScore, formatTime } from "@/lib/scoring";
 import { Logo, Button, Badge, Card, Modal } from "@/components/ui";
 import { useLogoConfig, useUpdateAttemptFlags, queueFlagUpdate } from "@/hooks/useTryoutQueries";
+import { useAutosaveAnswers } from "@/hooks/useAutosaveAnswers";
 import PembahasanNavigator from "./PembahasanNavigator";
 
 // ── Types ──
@@ -178,13 +179,30 @@ export default function TryoutEngine({
   const [phase, setPhase] = useState<"ready" | "running" | "result">("ready");
   const [showMobileNav, setShowMobileNav] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const shouldRehydrate = useRef(false);
+  const prevPreloaded = useRef(preloadedAnswers);
 
-  // Flush any pending debounced flag write on unmount.
+  // ── Autosave hook (60s cadence, lifecycle flush, rehydration) ──
+  const { tryScheduleAutosave, syncAnswers } = useAutosaveAnswers({
+    attemptId,
+    phase,
+    timeLeft,
+    shouldRehydrateRef: shouldRehydrate,
+  });
+  // Sync ref on every render so the hook reads latest answers.
+  syncAnswers(answers);
+
+  // Rehydrate from server when preloadedAnswers changes (e.g. after invalidation)
   useEffect(() => {
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, []);
+    const prev = prevPreloaded.current;
+    const isDifferent =
+      Object.keys(prev).length !== Object.keys(preloadedAnswers).length ||
+      Object.entries(preloadedAnswers).some(([k, v]) => prev[Number(k)] !== v);
+    if (isDifferent) {
+      setAnswers(preloadedAnswers);
+    }
+    prevPreloaded.current = preloadedAnswers;
+  }, [preloadedAnswers]);
 
   const toggleRaguRagu = useCallback(
     (index: number) => {
@@ -504,7 +522,10 @@ export default function TryoutEngine({
                 return (
                   <button
                     key={j}
-                    onClick={() => setAnswers({ ...answers, [cur]: j })}
+                    onClick={() => {
+                      setAnswers({ ...answers, [cur]: j });
+                      tryScheduleAutosave();
+                    }}
                     className={`p-2.5 sm:p-3.5 border-2 rounded-xl text-left cursor-pointer font-medium text-xs sm:text-sm transition-all flex items-center gap-2 sm:gap-3 ${
                       isSelected
                         ? q.category === "TWK"

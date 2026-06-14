@@ -59,8 +59,9 @@ export async function POST(request: NextRequest) {
     orderBy: { createdAt: 'desc' },
   });
 
-  // If the latest attempt has no scores yet, it's in-progress → resume it
-  if (latestAttempt && latestAttempt.totalScore === 0) {
+  // If the latest attempt has not been finished yet, it's in-progress → resume it.
+  // Use finishedAt (not totalScore) since a zero-score finished attempt is valid.
+  if (latestAttempt && !latestAttempt.finishedAt) {
     return NextResponse.json({
       success: true,
       attempt: {
