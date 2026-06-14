@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Button, Card } from "@/components/ui";
+import FinishedAttemptCard from "@/components/tryout/FinishedAttemptCard";
 import { isPackageAvailable, isAvailable } from "@/lib/availability";
 import {
   usePackages,
@@ -302,6 +303,92 @@ export default function TryoutPage() {
               Belum ada paket tryout tersedia.
             </div>
           )}
+
+          {/* ── Daftar Tryout Selesai ── */}
+          {(() => {
+            // Build a lookup: tryoutId → { packageId, packageName }
+            const tryoutToPackage = new Map<
+              number,
+              { packageId: number; packageName: string }
+            >();
+            for (const pkg of packages) {
+              const pkgTryouts = tryoutBanks[pkg.id];
+              if (pkgTryouts) {
+                for (const t of pkgTryouts) {
+                  tryoutToPackage.set(t.id, {
+                    packageId: pkg.id,
+                    packageName: pkg.name,
+                  });
+                }
+              }
+            }
+
+            // Active, owned package IDs
+            const activeOwnedPkgIds = ownedPkgIds.filter((pid) => {
+              const pkg = packages.find((p) => p.id === pid);
+              return pkg ? isPackageAvailable(pkg) : false;
+            });
+
+            // Finished attempts whose tryout is in an active + owned package
+            // Trial attempts are included (trial is effectively available).
+            const finishedAttempts = attemptHistory
+              .filter((a) => {
+                if (!a.finishedAt) return false;
+                const pkgInfo = tryoutToPackage.get(a.tryoutId);
+                if (!pkgInfo) {
+                  // No package mapping found — could be a standalone/trial tryout
+                  return activeOwnedPkgIds.length > 0 && packages.length > 0;
+                }
+                return activeOwnedPkgIds.includes(pkgInfo.packageId);
+              })
+              .sort(
+                (a, b) =>
+                  new Date(b.finishedAt!).getTime() -
+                  new Date(a.finishedAt!).getTime()
+              );
+
+            return finishedAttempts.length > 0 ? (
+              <div className="mt-8">
+                <h3 className="font-extrabold text-lg text-brand mb-4 text-center">
+                  Daftar Tryout Selesai
+                </h3>
+                <div className="flex flex-col gap-3 w-full">
+                  {finishedAttempts.map((att) => {
+                    const pkgInfo = tryoutToPackage.get(att.tryoutId);
+                    const tryoutData = allTryouts.find(
+                      (t) => t.id === att.tryoutId
+                    );
+                    return (
+                      <FinishedAttemptCard
+                        key={att.id}
+                        attemptId={att.id}
+                        tryoutName={
+                          tryoutData?.name ?? `Tryout #${att.tryoutId}`
+                        }
+                        packageName={pkgInfo?.packageName ?? "-"}
+                        finishedAt={att.finishedAt!}
+                        totalScore={att.totalScore}
+                        twkScore={att.twkScore}
+                        tiuScore={att.tiuScore}
+                        tkpScore={att.tkpScore}
+                        onView={(id) => router.push(`/tryout/${id}`)}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="mt-8 text-center py-8 border border-dashed border-gray-200 rounded-xl bg-gray-50/50">
+                <p className="text-sm font-semibold text-gray-500">
+                  Belum ada tryout yang selesai dikerjakan.
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  Setelah menyelesaikan tryout, kamu bisa melihat
+                  pembahasannya di sini.
+                </p>
+              </div>
+            );
+          })()}
         </>
       )}
     </div>

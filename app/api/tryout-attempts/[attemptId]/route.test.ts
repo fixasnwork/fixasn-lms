@@ -106,6 +106,33 @@ describe('GET /api/tryout-attempts/[attemptId] — Ragu-ragu flag', () => {
     expect(data.attempt.answers).toEqual({});
     expect(data.attempt.raguRagu).toEqual({});
   });
+
+  it('GET returns finishedAt null for in-progress attempts', async () => {
+    mockFindUnique.mockResolvedValue(
+      makeAttemptWithAnswers([
+        { questionIndex: 0, selectedOption: 1, raguRagu: false },
+      ])
+    );
+
+    const res = await GET(makeGetReq() as unknown as Request, { params: makeParams('att-1') });
+    const data = await res.json();
+    expect(data.attempt).toHaveProperty('finishedAt');
+    expect(data.attempt.finishedAt).toBeNull();
+  });
+
+  it('GET returns finishedAt ISO string for finished attempts', async () => {
+    const finished = new Date('2026-06-14T10:00:00.000Z');
+    mockFindUnique.mockResolvedValue({
+      ...makeAttemptWithAnswers([
+        { questionIndex: 0, selectedOption: 1, raguRagu: false },
+      ]),
+      finishedAt: finished,
+    });
+
+    const res = await GET(makeGetReq() as unknown as Request, { params: makeParams('att-1') });
+    const data = await res.json();
+    expect(data.attempt.finishedAt).toBe('2026-06-14T10:00:00.000Z');
+  });
 });
 
 describe('PUT /api/tryout-attempts/[attemptId] — Ragu-ragu flag', () => {
@@ -122,6 +149,88 @@ describe('PUT /api/tryout-attempts/[attemptId] — Ragu-ragu flag', () => {
     }));
     const mod = await import('./route');
     PUT = mod.PUT;
+  });
+
+  it('score-writing PUT sets finishedAt', async () => {
+    const before = new Date('2025-01-01T00:00:00Z');
+    mockFindUnique.mockResolvedValue({
+      id: 'att-1',
+      userId: 'user@test.id',
+      twkScore: 0,
+      tiuScore: 0,
+      tkpScore: 0,
+      totalScore: 0,
+      createdAt: before,
+      updatedAt: before,
+    });
+
+    const res = await PUT(
+      makePutReq({
+        answers: { 0: 1 },
+        twkScore: 5,
+        tiuScore: 5,
+        tkpScore: 10,
+        totalScore: 20,
+      }),
+      { params: makeParams('att-1') }
+    );
+
+    expect(res.status).toBe(200);
+
+    const updateCall = mockUpdate.mock.calls[0][0];
+    // finishedAt is a Date set to now — verify it's present and recent
+    expect(updateCall.data.finishedAt).toBeInstanceOf(Date);
+    const now = Date.now();
+    expect(updateCall.data.finishedAt.getTime()).toBeGreaterThanOrEqual(now - 5000);
+  });
+
+  it('flag-only PUT does not set finishedAt', async () => {
+    mockFindUnique.mockResolvedValue({
+      id: 'att-1',
+      userId: 'user@test.id',
+      twkScore: 0,
+      tiuScore: 0,
+      tkpScore: 0,
+      totalScore: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await PUT(
+      makePutReq({ raguRaguFlags: { 0: true } }),
+      { params: makeParams('att-1') }
+    );
+
+    const updateCall = mockUpdate.mock.calls[0][0];
+    expect(updateCall.data.finishedAt).toBeUndefined();
+  });
+
+  it('re-submit does not overwrite existing finishedAt', async () => {
+    const existingFinished = new Date('2026-01-01T00:00:00Z');
+    mockFindUnique.mockResolvedValue({
+      id: 'att-1',
+      userId: 'user@test.id',
+      twkScore: 50,
+      tiuScore: 60,
+      tkpScore: 100,
+      totalScore: 210,
+      finishedAt: existingFinished,
+    });
+
+    await PUT(
+      makePutReq({
+        answers: { 0: 2 },
+        twkScore: 55,
+        tiuScore: 65,
+        tkpScore: 105,
+        totalScore: 225,
+      }),
+      { params: makeParams('att-1') }
+    );
+
+    const updateCall = mockUpdate.mock.calls[0][0];
+    // finishedAt should be undefined (not sent), preserving the existing value
+    expect(updateCall.data.finishedAt).toBeUndefined();
   });
 
   it('accepts raguRaguFlags only and writes them via upsert (create path)', async () => {

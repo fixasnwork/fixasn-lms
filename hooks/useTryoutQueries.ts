@@ -138,6 +138,7 @@ export interface AttemptWithTryout {
     tiuScore: number;
     tkpScore: number;
     totalScore: number;
+    finishedAt: string | null;
     answers: Record<number, number>;
     raguRagu: Record<number, boolean>;
     createdAt: string;
@@ -363,6 +364,7 @@ export function useAttemptHistory(userId: string | undefined) {
         tiuScore: number;
         tkpScore: number;
         totalScore: number;
+        finishedAt: string | null;
         createdAt: string;
       }>;
     },

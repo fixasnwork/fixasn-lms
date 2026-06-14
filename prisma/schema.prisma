@@ -288,10 +288,11 @@ model TryoutAttempt {
   userId     String  @db.Text
   userName   String  @db.Text
   tryoutId   Int
-  twkScore   Int     @default(0)
-  tiuScore   Int     @default(0)
-  tkpScore   Int     @default(0)
-  totalScore Int     @default(0)
+  twkScore   Int        @default(0)
+  tiuScore   Int        @default(0)
+  tkpScore   Int        @default(0)
+  totalScore Int        @default(0)
+  finishedAt DateTime?  @db.Timestamptz(6)
 
   createdAt  DateTime  @default(now()) @db.Timestamptz(6)
   createdBy  String?   @db.Text

@@ -186,6 +186,7 @@ export interface TryoutAttempt {
   tiuScore: number;
   tkpScore: number;
   totalScore: number;
+  finishedAt: string | null;
   answers: AttemptAnswer[];
   createdAt: string;
   updatedAt: string;

@@ -55,7 +55,7 @@ export default function TryoutAttemptPage({
   }
 
   const { attempt, tryout } = data;
-  const isCompleted = attempt.totalScore > 0;
+  const isCompleted = !!attempt.finishedAt;
 
   // If completed, show review mode
   if (isCompleted) {

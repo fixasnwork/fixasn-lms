@@ -118,6 +118,7 @@ export async function GET(
       tiuScore: attempt.tiuScore,
       tkpScore: attempt.tkpScore,
       totalScore: attempt.totalScore,
+      finishedAt: attempt.finishedAt?.toISOString() ?? null,
       answers: answersRecord,
       raguRagu: raguRaguRecord,
       createdAt: attempt.createdAt.toISOString(),
@@ -184,6 +185,15 @@ export async function PUT(
 
   const upsertRows = [...answerRows, ...flagRows];
 
+  // Detect score-writing PUT: set finishedAt on first finish.
+  // Only stamp when answers (or any score field) is provided by the client.
+  // Flag-only calls with raguRaguFlags must NOT touch finishedAt.
+  const isScoreWrite = body.answers !== undefined
+    || body.twkScore !== undefined
+    || body.tiuScore !== undefined
+    || body.tkpScore !== undefined
+    || body.totalScore !== undefined;
+
   const updated = await prisma.tryoutAttempt.update({
     where: { id: attemptId },
     data: {
@@ -191,6 +201,9 @@ export async function PUT(
       tiuScore: body.tiuScore ?? existing.tiuScore,
       tkpScore: body.tkpScore ?? existing.tkpScore,
       totalScore: body.totalScore ?? existing.totalScore,
+      finishedAt: isScoreWrite && !existing.finishedAt
+        ? new Date()
+        : undefined,
       answers: {
         upsert: upsertRows,
       },
@@ -202,6 +215,7 @@ export async function PUT(
     attempt: {
       id: updated.id,
       totalScore: updated.totalScore,
+      finishedAt: updated.finishedAt?.toISOString() ?? null,
       updatedAt: updated.updatedAt.toISOString(),
     },
   });
