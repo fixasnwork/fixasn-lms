@@ -11,6 +11,7 @@ export default function TryoutReviewMode({
   answers,
   name,
   scores,
+  raguRaguFlags = {},
   onBack,
   onRetry,
 }: {
@@ -18,6 +19,7 @@ export default function TryoutReviewMode({
   answers: Record<number, number>;
   name: string;
   scores: { twk: number; tiu: number; tkp: number };
+  raguRaguFlags?: Record<number, boolean>;
   onBack: () => void;
   onRetry: () => void;
 }) {
@@ -34,6 +36,9 @@ export default function TryoutReviewMode({
       : isCorrect
         ? "Benar"
         : "Salah";
+
+  const flaggedCount = Object.values(raguRaguFlags).filter(Boolean).length;
+  const totalQuestions = questions.length;
 
   return (
     <div className="min-h-screen bg-[#F8FAFF] p-2 sm:p-6 w-full">
@@ -65,6 +70,7 @@ export default function TryoutReviewMode({
             {questions.map((_, i) => {
               const a = answers[i];
               const q2 = questions[i];
+              const isFlagged = !!raguRaguFlags[i];
               let bg = "#F1F5F9";
               let col = "#9CA3AF";
               if (a !== undefined) {
@@ -83,7 +89,12 @@ export default function TryoutReviewMode({
                 <button
                   key={i}
                   onClick={() => setIdx(i)}
-                  className={`w-7 h-7 rounded border-none cursor-pointer text-xs font-semibold transition-all ${
+                  aria-label={
+                    isFlagged
+                      ? `Soal ${i + 1}, ditandai Ragu-ragu`
+                      : `Soal ${i + 1}`
+                  }
+                  className={`relative w-7 h-7 rounded border-none cursor-pointer text-xs font-semibold transition-all ${
                     i === idx ? "ring-2 ring-offset-1 ring-brand" : ""
                   }`}
                   style={{
@@ -92,9 +103,34 @@ export default function TryoutReviewMode({
                   }}
                 >
                   {i + 1}
+                  {isFlagged && (
+                    <span
+                      aria-hidden="true"
+                      data-testid={`review-flag-dot-${i}`}
+                      className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-yellow-400 ring-1 ring-white"
+                    />
+                  )}
                 </button>
               );
             })}
+          </div>
+        </div>
+
+        {/* Ragu-ragu summary stat */}
+        <div
+          data-testid="ragu-ragu-summary"
+          className="mb-5 rounded-xl border border-yellow-300 bg-yellow-50 px-4 py-3 flex items-center justify-between gap-3"
+        >
+          <div className="flex items-center gap-2.5">
+            <span aria-hidden="true" className="text-xl">🚩</span>
+            <div className="flex flex-col">
+              <span className="text-[10px] sm:text-xs font-bold text-yellow-800 uppercase tracking-wide">
+                Ragu-ragu
+              </span>
+              <span className="text-sm sm:text-base font-black text-yellow-900">
+                {flaggedCount} dari {totalQuestions} soal ditandai Ragu-ragu
+              </span>
+            </div>
           </div>
         </div>
 
@@ -133,6 +169,14 @@ export default function TryoutReviewMode({
             >
               {statusLabel}
             </span>
+            {raguRaguFlags[idx] && (
+              <span
+                data-testid="review-pill"
+                className="inline-flex items-center gap-1 text-xs font-bold text-yellow-800 bg-yellow-200/80 px-2.5 py-1 rounded-full"
+              >
+                <span aria-hidden="true">🚩</span> Ragu-ragu
+              </span>
+            )}
             <span className="text-xs font-bold text-gray-500 sm:ml-auto w-full sm:w-auto mt-2 sm:mt-0">
               Nilai kamu:{" "}
               <span className="font-black text-brand">{score}</span> poin

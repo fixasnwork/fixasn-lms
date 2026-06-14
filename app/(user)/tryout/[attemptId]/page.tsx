@@ -64,6 +64,7 @@ export default function TryoutAttemptPage({
         questions={tryout.questions}
         answers={attempt.answers}
         name={tryout.name}
+        raguRaguFlags={attempt.raguRagu ?? {}}
         scores={{
           twk: attempt.twkScore,
           tiu: attempt.tiuScore,
@@ -94,11 +95,13 @@ export default function TryoutAttemptPage({
   // In-progress: show tryout engine
   return (
     <TryoutEngine
+      attemptId={attemptId}
       questions={tryout.questions}
       durationMin={tryout.durationMin || (tryout.isTrial ? 15 : 100)}
       setName={tryout.isTrial ? "Trial Gratis" : tryout.name}
       isTrial={tryout.isTrial}
       preloadedAnswers={attempt.answers}
+      preloadedRaguRagu={attempt.raguRagu ?? {}}
       onFinish={async (answers: Record<number, number>) => {
         try {
           const scores = calculateScoring(tryout.questions, answers);

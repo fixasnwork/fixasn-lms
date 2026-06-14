@@ -309,10 +309,11 @@ model TryoutAttempt {
 }
 
 model AttemptAnswer {
-  id             String @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
-  attemptId      String @db.Uuid
+  id             String  @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  attemptId      String  @db.Uuid
   questionIndex  Int
-  selectedOption Int    @default(-1)
+  selectedOption Int     @default(-1)
+  raguRagu       Boolean @default(false)
 
   createdAt      DateTime @default(now()) @db.Timestamptz(6)
   updatedAt      DateTime @default(now()) @updatedAt @db.Timestamptz(6)

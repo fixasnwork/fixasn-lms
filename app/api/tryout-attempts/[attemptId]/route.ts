@@ -102,8 +102,11 @@ export async function GET(
 
   // Convert stored answers back to Record<number, number>
   const answersRecord: Record<number, number> = {};
+  // Sibling map for Ragu-ragu flag state per questionIndex
+  const raguRaguRecord: Record<number, boolean> = {};
   for (const ans of attempt.answers) {
     answersRecord[ans.questionIndex] = ans.selectedOption;
+    raguRaguRecord[ans.questionIndex] = ans.raguRagu;
   }
 
   return NextResponse.json({
@@ -116,6 +119,7 @@ export async function GET(
       tkpScore: attempt.tkpScore,
       totalScore: attempt.totalScore,
       answers: answersRecord,
+      raguRagu: raguRaguRecord,
       createdAt: attempt.createdAt.toISOString(),
       updatedAt: attempt.updatedAt.toISOString(),
     },
@@ -159,9 +163,26 @@ export async function PUT(
         create: {
           questionIndex: parseInt(idx, 10),
           selectedOption: Math.max(-1, opt as number),
+          raguRagu: false,
         },
       }))
     : [];
+
+  // Flag-only updates: write raguRagu without disturbing selectedOption.
+  // Absent keys are no-op (do not clear existing flags implicitly).
+  const flagRows = body.raguRaguFlags
+    ? Object.entries(body.raguRaguFlags).map(([idx, flagged]) => ({
+        where: { attemptId_questionIndex: { attemptId, questionIndex: parseInt(idx, 10) } },
+        update: { raguRagu: Boolean(flagged) },
+        create: {
+          questionIndex: parseInt(idx, 10),
+          selectedOption: -1,
+          raguRagu: Boolean(flagged),
+        },
+      }))
+    : [];
+
+  const upsertRows = [...answerRows, ...flagRows];
 
   const updated = await prisma.tryoutAttempt.update({
     where: { id: attemptId },
@@ -171,7 +192,7 @@ export async function PUT(
       tkpScore: body.tkpScore ?? existing.tkpScore,
       totalScore: body.totalScore ?? existing.totalScore,
       answers: {
-        upsert: answerRows,
+        upsert: upsertRows,
       },
     },
   });

@@ -5,7 +5,7 @@ import Image from "next/image";
 import type { Question } from "@/lib/types";
 import { getScore, formatTime } from "@/lib/scoring";
 import { Logo, Button, Badge, Card, Modal } from "@/components/ui";
-import { useLogoConfig } from "@/hooks/useTryoutQueries";
+import { useLogoConfig, useUpdateAttemptFlags, queueFlagUpdate } from "@/hooks/useTryoutQueries";
 import PembahasanNavigator from "./PembahasanNavigator";
 
 // ── Types ──
@@ -22,6 +22,7 @@ interface QuestionGridProps {
   answered: number;
   totalQuestions: number;
   answers: Record<number, number>;
+  raguRagu: Record<number, boolean>;
   cur: number;
   onSelect: (index: number) => void;
   variant?: "sidebar" | "modal";
@@ -32,6 +33,7 @@ function QuestionGrid({
   answered,
   totalQuestions,
   answers,
+  raguRagu,
   cur,
   onSelect,
   variant = "sidebar",
@@ -79,12 +81,18 @@ function QuestionGrid({
                 {sec.indices.map((gi) => {
                   const isActive = gi === cur;
                   const isDone = answers[gi] !== undefined;
+                  const isFlagged = !!raguRagu[gi];
                   return (
                     <button
                       key={gi}
                       onClick={() => onSelect(gi)}
+                      aria-label={
+                        isFlagged
+                          ? `Soal ${gi + 1}, ditandai Ragu-ragu${isDone ? ", sudah dijawab" : ""}`
+                          : `Soal ${gi + 1}${isDone ? ", sudah dijawab" : ""}`
+                      }
                       className={`
-                        w-full aspect-square rounded-md border-none cursor-pointer font-semibold text-xs transition-all
+                        relative w-full aspect-square rounded-md border-none cursor-pointer font-semibold text-xs transition-all
                         ${isActive ? "ring-2 ring-offset-1" : ""}
                       `}
                       style={{
@@ -95,6 +103,12 @@ function QuestionGrid({
                       }}
                     >
                       {gi + 1}
+                      {isFlagged && (
+                        <span
+                          aria-hidden="true"
+                          className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-yellow-400 ring-1 ring-white"
+                        />
+                      )}
                     </button>
                   );
                 })}
@@ -118,6 +132,10 @@ function QuestionGrid({
             {item.label}
           </div>
         ))}
+        <div className="flex gap-1.5 items-center text-xs text-gray-500">
+          <div className="w-2 h-2 rounded-full bg-yellow-400 flex-shrink-0" />
+          Ragu-ragu
+        </div>
       </div>
     </>
   );
@@ -125,6 +143,7 @@ function QuestionGrid({
 
 // ── Main Component ──
 interface TryoutEngineProps {
+  attemptId?: string;
   questions: Question[];
   durationMin: number;
   setName?: string;
@@ -132,9 +151,11 @@ interface TryoutEngineProps {
   onFinish?: (answers: Record<number, number>) => void;
   onBack?: () => void;
   preloadedAnswers?: Record<number, number>;
+  preloadedRaguRagu?: Record<number, boolean>;
 }
 
 export default function TryoutEngine({
+  attemptId,
   questions,
   durationMin,
   setName = "Tryout SKD",
@@ -142,23 +163,39 @@ export default function TryoutEngine({
   onFinish,
   onBack,
   preloadedAnswers = {},
+  preloadedRaguRagu = {},
 }: TryoutEngineProps) {
   const { data: logoConfig } = useLogoConfig();
+  const updateFlags = useUpdateAttemptFlags(attemptId ?? "");
   const DURATION = (durationMin || 100) * 60;
 
   const [answers, setAnswers] =
     useState<Record<number, number>>(preloadedAnswers);
+  const [raguRagu, setRaguRagu] =
+    useState<Record<number, boolean>>(preloadedRaguRagu);
   const [cur, setCur] = useState(0);
   const [timeLeft, setTimeLeft] = useState(DURATION);
   const [phase, setPhase] = useState<"ready" | "running" | "result">("ready");
   const [showMobileNav, setShowMobileNav] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Flush any pending debounced flag write on unmount.
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
+
+  const toggleRaguRagu = useCallback(
+    (index: number) => {
+      setRaguRagu((prev) => {
+        const next = { ...prev, [index]: !prev[index] };
+        if (attemptId) queueFlagUpdate(attemptId, { [index]: next[index] });
+        return next;
+      });
+    },
+    [attemptId],
+  );
 
   const startTryout = useCallback(() => {
     setPhase("running");
@@ -168,19 +205,21 @@ export default function TryoutEngine({
         if (t <= 1) {
           clearInterval(timerRef.current!);
           setPhase("result");
+          if (attemptId) updateFlags.mutate(raguRagu);
           onFinish?.(answers);
           return 0;
         }
         return t - 1;
       });
     }, 1000);
-  }, [answers, onFinish]);
+  }, [answers, onFinish, attemptId, raguRagu, updateFlags]);
 
   const finish = useCallback(async () => {
     clearInterval(timerRef.current!);
+    if (attemptId) await updateFlags.mutateAsync(raguRagu);
     await onFinish?.(answers);
     setPhase("result");
-  }, [answers, onFinish]);
+  }, [answers, onFinish, attemptId, raguRagu, updateFlags]);
 
   // Scoring
   const totals = { TWK: 0, TIU: 0, TKP: 0 };
@@ -407,7 +446,13 @@ export default function TryoutEngine({
       <div className="max-w-6xl mx-auto p-3 sm:p-4 grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-4 sm:gap-5 pb-24 lg:pb-4">
         {/* Question Card */}
         <div>
-          <Card className="p-4 sm:p-6">
+          <Card
+            className={`p-4 sm:p-6 transition-colors ${
+              raguRagu[cur]
+                ? "border-2 border-yellow-400 bg-yellow-50/40 shadow-[0_0_0_1px_rgba(250,204,21,0.35)]"
+                : ""
+            }`}
+          >
             {/* Meta row */}
             <div className="flex flex-wrap items-center gap-2 mb-3 sm:mb-4">
               <Badge
@@ -420,6 +465,14 @@ export default function TryoutEngine({
               <span className="text-xs sm:text-sm text-gray-400 font-semibold">
                 Soal {cur + 1} / {questions.length}
               </span>
+              {raguRagu[cur] && (
+                <span
+                  data-testid="ragu-ragu-badge"
+                  className="inline-flex items-center gap-1 text-[10px] sm:text-xs font-bold text-yellow-800 bg-yellow-200/80 px-2 py-0.5 rounded-md"
+                >
+                  <span aria-hidden="true">🚩</span> Ragu-ragu
+                </span>
+              )}
               {q.category === "TKP" && (
                 <span className="text-[10px] sm:text-xs font-semibold text-violet-700 bg-violet-50 px-2 py-0.5 rounded-md ml-auto">
                   Pilih yang paling mencerminkan dirimu
@@ -508,6 +561,24 @@ export default function TryoutEngine({
               </Button>
             </div>
           </Card>
+
+          {/* Ragu-ragu toggle */}
+          <div className="mt-3 flex justify-center sm:justify-end">
+            <button
+              type="button"
+              data-testid="ragu-ragu-toggle"
+              onClick={() => toggleRaguRagu(cur)}
+              aria-pressed={!!raguRagu[cur]}
+              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold border transition-all ${
+                raguRagu[cur]
+                  ? "bg-yellow-100 border-yellow-400 text-yellow-800 hover:bg-yellow-200"
+                  : "bg-white border-gray-200 text-gray-600 hover:border-yellow-300 hover:text-yellow-700"
+              }`}
+            >
+              <span aria-hidden="true">{raguRagu[cur] ? "🚩" : "⚑"}</span>
+              {raguRagu[cur] ? "Batalkan Ragu-ragu" : "Tandai Ragu-ragu"}
+            </button>
+          </div>
         </div>
 
         {/* Desktop Sidebar */}
@@ -519,6 +590,7 @@ export default function TryoutEngine({
                 answered={answered}
                 totalQuestions={questions.length}
                 answers={answers}
+                raguRagu={raguRagu}
                 cur={cur}
                 onSelect={setCur}
                 variant="sidebar"
@@ -622,6 +694,7 @@ export default function TryoutEngine({
           answered={answered}
           totalQuestions={questions.length}
           answers={answers}
+          raguRagu={raguRagu}
           cur={cur}
           onSelect={handleSelectQuestion}
           variant="modal"

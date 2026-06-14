@@ -196,7 +196,15 @@ export interface AttemptAnswer {
   attemptId: string; // UUID v7 → TryoutAttempt.id
   questionIndex: number;
   selectedOption: number;
+  raguRagu: boolean;
 }
+
+/**
+ * Wire payload for flag-only updates.
+ * Map of questionIndex → flagged.
+ * Absent keys are treated as no-op on the server (do not clear implicitly).
+ */
+export type RaguRaguFlags = Record<number, boolean>;
 
 // ── Logo Config (key-value entries) ───────────
 export interface LogoConfigEntry {

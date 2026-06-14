@@ -20,16 +20,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'tryoutId is required' }, { status: 400 });
   }
 
-  // Verify the tryout exists (include packages for availability gate)
+  // Verify the tryout exists
   const tryout = await prisma.tryout.findUnique({
     where: { id: tryoutId, deletedAt: null },
-    include: { packageTryouts: { include: { package: true } } },
   });
   if (!tryout) {
     return NextResponse.json({ error: 'Tryout not found' }, { status: 404 });
   }
 
   // Check if user has access to this tryout (trial = always accessible)
+  let accessPayment: { package: { startDate: Date | string | null; endDate: Date | string | null } } | null = null;
   if (!tryout.isTrial) {
     const hasAccess = await prisma.payment.findFirst({
       where: {
@@ -41,10 +41,12 @@ export async function POST(request: NextRequest) {
           },
         },
       },
+      select: { package: { select: { startDate: true, endDate: true } } },
     });
     if (!hasAccess) {
       return NextResponse.json({ error: 'Access denied. Purchase a package to unlock this tryout.' }, { status: 403 });
     }
+    accessPayment = hasAccess;
   }
 
   // Find the most recent attempt for this user + tryout
@@ -77,17 +79,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    for (const pt of tryout.packageTryouts) {
-      if (!isPackageAvailable(pt.package)) {
-        return NextResponse.json(
-          {
-            error: 'tryout_unavailable',
-            reason: 'package_closed',
-            retryable: true,
-          },
-          { status: 403 }
-        );
-      }
+    // Only enforce the package date window on the package the user is actually
+    // accessing the tryout through. Other linked packages may be inactive for
+    // unrelated reasons (e.g. legacy product variants) and must not block
+    // attempts from users who already paid for access via a different package.
+    if (accessPayment && !isPackageAvailable(accessPayment.package)) {
+      return NextResponse.json(
+        {
+          error: 'tryout_unavailable',
+          reason: 'package_closed',
+          retryable: true,
+        },
+        { status: 403 }
+      );
     }
 
   // Otherwise, create a new blank attempt

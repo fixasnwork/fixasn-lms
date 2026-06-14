@@ -139,6 +139,7 @@ export interface AttemptWithTryout {
     tkpScore: number;
     totalScore: number;
     answers: Record<number, number>;
+    raguRagu: Record<number, boolean>;
     createdAt: string;
     updatedAt: string;
   };
@@ -182,6 +183,79 @@ export function useUpdateAttempt(attemptId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['attempt', attemptId] });
       queryClient.invalidateQueries({ queryKey: ['attempt-history'] });
+    },
+  });
+}
+
+/* ── Update Attempt Ragu-ragu Flags (debounced mutation) ───────── */
+// Module-level debouncer: one in-flight + one queued update per attemptId.
+// Coalesces rapid toggles (200-300ms) into a single PUT with the latest state.
+type FlagUpdate = Record<number, boolean>;
+
+const flagDebouncers = new Map<
+  string,
+  { timer: ReturnType<typeof setTimeout> | null; latest: FlagUpdate }
+>();
+
+function flushFlags(attemptId: string): void {
+  const entry = flagDebouncers.get(attemptId);
+  if (!entry || !entry.timer) return;
+  clearTimeout(entry.timer);
+  flagDebouncers.delete(attemptId);
+  const payload = entry.latest;
+  if (Object.keys(payload).length === 0) return;
+  // Fire-and-forget; consumer reads via useAttempt refetch / invalidation.
+  fetch(`/api/tryout-attempts/${attemptId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ raguRaguFlags: payload }),
+  }).catch(() => {
+    // Silent fail — UI shows the optimistic state; next refetch will reconcile.
+  });
+}
+
+export function queueFlagUpdate(attemptId: string, update: FlagUpdate, delayMs = 250): void {
+  const existing = flagDebouncers.get(attemptId);
+  const next: FlagUpdate = { ...(existing?.latest ?? {}), ...update };
+  if (existing?.timer) clearTimeout(existing.timer);
+  const timer = setTimeout(() => flushFlags(attemptId), delayMs);
+  flagDebouncers.set(attemptId, { timer, latest: next });
+}
+
+export function useUpdateAttemptFlags(attemptId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (update: FlagUpdate) => {
+      // Immediate (non-debounced) write — used when leaving the page or final save.
+      const res = await fetch(`/api/tryout-attempts/${attemptId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ raguRaguFlags: update }),
+      });
+      if (!res.ok) throw new Error('Gagal menyimpan tanda Ragu-ragu');
+      return res.json() as Promise<{ success: boolean }>;
+    },
+    onMutate: async (update) => {
+      // Optimistic merge into cached useAttempt data so the palette/UI updates instantly.
+      await queryClient.cancelQueries({ queryKey: ['attempt', attemptId] });
+      const prev = queryClient.getQueryData<AttemptWithTryout>(['attempt', attemptId]);
+      if (prev) {
+        queryClient.setQueryData<AttemptWithTryout>(['attempt', attemptId], {
+          ...prev,
+          attempt: {
+            ...prev.attempt,
+            raguRagu: { ...(prev.attempt.raguRagu ?? {}), ...update },
+          },
+        });
+      }
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(['attempt', attemptId], ctx.prev);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['attempt', attemptId] });
     },
   });
 }
