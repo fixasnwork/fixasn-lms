@@ -329,3 +329,86 @@ describe('PUT /api/tryout-attempts/[attemptId] — Ragu-ragu flag', () => {
     expect(upsert[0].update).toEqual({ selectedOption: 1 });
   });
 });
+
+describe('PUT /api/tryout-attempts/[attemptId] — timeLeftSeconds', () => {
+  let PUT: (req: Request, ctx: { params: Promise<{ attemptId: string }> }) => Promise<Response>;
+  let GET: (req: Request, ctx: { params: Promise<{ attemptId: string }> }) => Promise<Response>;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    mockAuth.mockResolvedValue(SESSION);
+    mockUpdate.mockImplementation(({ data }: { data: Record<string, unknown> }) => ({
+      id: 'att-1',
+      totalScore: 0,
+      timeLeftSeconds: data.timeLeftSeconds ?? null,
+      finishedAt: null,
+      updatedAt: new Date('2026-01-01T00:00:00Z'),
+      ...data,
+    }));
+    const mod = await import('./route');
+    PUT = mod.PUT;
+    GET = mod.GET;
+  });
+
+  it('PUT with timeLeftSeconds persists it and GET returns it', async () => {
+    // First lookup (PUT ownership check) returns existing attempt with null timer
+    // Second lookup (GET) returns the updated attempt with the new timer value
+    mockFindUnique
+      .mockResolvedValueOnce({
+        id: 'att-1',
+        userId: 'user@test.id',
+        twkScore: 0,
+        tiuScore: 0,
+        tkpScore: 0,
+        totalScore: 0,
+        timeLeftSeconds: null,
+      })
+      .mockResolvedValueOnce({
+        ...makeAttemptWithAnswers([]),
+        timeLeftSeconds: 1234,
+      });
+
+    const putRes = await PUT(
+      makePutReq({ answers: { 0: 1 }, timeLeftSeconds: 1234 }),
+      { params: makeParams('att-1') }
+    );
+    expect(putRes.status).toBe(200);
+    const putData = await putRes.json();
+    expect(putData.attempt.timeLeftSeconds).toBe(1234);
+
+    // Verify the write hit prisma with the clamped value
+    const updateCall = mockUpdate.mock.calls[0][0];
+    expect(updateCall.data.timeLeftSeconds).toBe(1234);
+    // Timer-only/answers-only PUT must not stamp finishedAt
+    expect(updateCall.data.finishedAt).toBeUndefined();
+
+    // GET should return the persisted value
+    const getRes = await GET(makeGetReq() as unknown as Request, {
+      params: makeParams('att-1'),
+    });
+    expect(getRes.status).toBe(200);
+    const getData = await getRes.json();
+    expect(getData.attempt.timeLeftSeconds).toBe(1234);
+  });
+
+  it('PUT without timeLeftSeconds leaves the existing value untouched', async () => {
+    mockFindUnique.mockResolvedValue({
+      id: 'att-1',
+      userId: 'user@test.id',
+      twkScore: 0,
+      tiuScore: 0,
+      tkpScore: 0,
+      totalScore: 0,
+      timeLeftSeconds: 777,
+    });
+
+    await PUT(
+      makePutReq({ answers: { 0: 2 } }),
+      { params: makeParams('att-1') }
+    );
+
+    const updateCall = mockUpdate.mock.calls[0][0];
+    // Server must re-send the existing value (preserves it on write)
+    expect(updateCall.data.timeLeftSeconds).toBe(777);
+  });
+});

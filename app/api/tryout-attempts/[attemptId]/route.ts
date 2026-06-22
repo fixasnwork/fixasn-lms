@@ -118,6 +118,7 @@ export async function GET(
       tiuScore: attempt.tiuScore,
       tkpScore: attempt.tkpScore,
       totalScore: attempt.totalScore,
+      timeLeftSeconds: attempt.timeLeftSeconds ?? null,
       finishedAt: attempt.finishedAt?.toISOString() ?? null,
       answers: answersRecord,
       raguRagu: raguRaguRecord,
@@ -195,6 +196,18 @@ export async function PUT(
     body.tkpScore !== undefined ||
     body.totalScore !== undefined;
 
+  // Clamp timer to [0, 86400] (24h safety upper bound — covers any realistic durationMin).
+  // Only persist when the body actually carries the field; absent body = leave existing untouched.
+  const clampTimer = (raw: unknown): number => {
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return 0;
+    return Math.max(0, Math.min(86400, Math.trunc(n)));
+  };
+  const nextTimeLeftSeconds =
+    body.timeLeftSeconds !== undefined
+      ? clampTimer(body.timeLeftSeconds)
+      : existing.timeLeftSeconds;
+
   const updated = await prisma.tryoutAttempt.update({
     where: { id: attemptId },
     data: {
@@ -202,6 +215,7 @@ export async function PUT(
       tiuScore: body.tiuScore ?? existing.tiuScore,
       tkpScore: body.tkpScore ?? existing.tkpScore,
       totalScore: body.totalScore ?? existing.totalScore,
+      timeLeftSeconds: nextTimeLeftSeconds,
       finishedAt: isScoreWrite && !existing.finishedAt
         ? new Date()
         : undefined,
@@ -216,6 +230,7 @@ export async function PUT(
     attempt: {
       id: updated.id,
       totalScore: updated.totalScore,
+      timeLeftSeconds: updated.timeLeftSeconds ?? null,
       finishedAt: updated.finishedAt?.toISOString() ?? null,
       updatedAt: updated.updatedAt.toISOString(),
     },

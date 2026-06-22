@@ -65,17 +65,36 @@ The runner SHALL reconcile its local answer state from the server on mount and w
 - **AND** the server is not refetched as a side effect
 - **AND** the next autosave flush will persist the new answer
 
-### Requirement: Autosave writes only answer data
-The autosave PUT SHALL contain only the `answers` field and SHALL NOT touch the attempt's score or `finishedAt` fields.
+### Requirement: Autosave writes only answer data plus timer snapshot
+The autosave PUT SHALL contain the `answers` field and `timeLeftSeconds`. It SHALL NOT touch the attempt's score or `finishedAt` fields.
 
 #### Scenario: Autosave PUT body shape
 - **WHEN** the autosave fires
-- **THEN** the PUT body is `{ answers: Record<number, number> }`
+- **THEN** the PUT body is `{ answers: Record<number, number>, timeLeftSeconds: number }`
 - **AND** the body does not contain `twkScore`, `tiuScore`, `tkpScore`, `totalScore`, or `raguRaguFlags`
 
 #### Scenario: Autosave does not change finishedAt
 - **WHEN** the autosave fires for an in-progress attempt
 - **THEN** the attempt's `finishedAt` remains `null`
+
+### Requirement: Autosave carries the current timer
+The autosave hook SHALL include `timeLeftSeconds` in every PUT body it sends, reflecting the live `timeLeft` at the moment of the flush.
+
+#### Scenario: 60s cadence flush carries the timer
+- **WHEN** the 60-second autosave timer fires
+- **THEN** the PUT body contains `timeLeftSeconds` equal to the engine's `timeLeft` at flush time
+
+#### Scenario: Visibility-hidden flush carries the timer
+- **WHEN** `document.visibilityState` changes to `hidden`
+- **THEN** the immediate flush PUT body contains `timeLeftSeconds`
+
+#### Scenario: Unmount flush carries the timer
+- **WHEN** the runner component unmounts
+- **THEN** the immediate flush PUT body contains `timeLeftSeconds`
+
+#### Scenario: sendBeacon flush carries the timer
+- **WHEN** the pagehide or beforeunload handler fires a sendBeacon flush
+- **THEN** the beacon payload contains `timeLeftSeconds` alongside `answers`
 
 ### Requirement: Autosave is bounded to the running phase
 The system SHALL only autosave while the runner is in the `running` phase.

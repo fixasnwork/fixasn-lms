@@ -102,6 +102,12 @@ export default function TryoutAttemptPage({
       isTrial={tryout.isTrial}
       preloadedAnswers={attempt.answers}
       preloadedRaguRagu={attempt.raguRagu ?? {}}
+      // Resume-seed: only meaningful when the server returned a saved timer.
+      // The engine itself guards against stale/legacy nulls.
+      initialTimeLeftSeconds={attempt.timeLeftSeconds ?? null}
+      // Save-and-exit routes the user back to the list page; the engine
+      // already flushed answers + timer + flags before invoking onExit.
+      onExit={() => router.push("/tryout")}
       onFinish={async (answers: Record<number, number>) => {
         try {
           const scores = calculateScoring(tryout.questions, answers);

@@ -1,0 +1,248 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, act } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import React from 'react';
+import TryoutEngine from './TryoutEngine';
+import type { Question } from '@/lib/types';
+
+// Hoisted mocks for the query hooks consumed by TryoutEngine.
+const { mockUpdateAnswersMutate, mockUpdateAnswersMutateAsync, mockUpdateFlagsMutate, mockUpdateFlagsMutateAsync } = vi.hoisted(() => ({
+  mockUpdateAnswersMutate: vi.fn(),
+  mockUpdateAnswersMutateAsync: vi.fn(),
+  mockUpdateFlagsMutate: vi.fn(),
+  mockUpdateFlagsMutateAsync: vi.fn(),
+}));
+
+vi.mock('@/hooks/useTryoutQueries', () => ({
+  useLogoConfig: () => ({ data: null }),
+  useUpdateAttemptAnswers: () => ({
+    mutate: mockUpdateAnswersMutate,
+    mutateAsync: mockUpdateAnswersMutateAsync,
+    isPending: false,
+  }),
+  useUpdateAttemptFlags: () => ({
+    mutate: mockUpdateFlagsMutate,
+    mutateAsync: mockUpdateFlagsMutateAsync,
+  }),
+  queueFlagUpdate: vi.fn(),
+}));
+
+// The engine renders <Logo> from useLogoConfig; mock it out so the test
+// doesn't depend on the Logo component's null-handling (which is the real
+// production concern, not the engine's).
+vi.mock('@/components/ui/Logo', () => ({
+  default: () => <div data-testid="mock-logo" />,
+}));
+
+const baseQuestion: Question = {
+  id: 1,
+  category: 'TWK',
+  question: 'Sample?',
+  correctAnswer: 0,
+  questionImage: null,
+  explanation: null,
+  explanationImage: null,
+  options: [
+    { id: 1, questionId: 1, optionIndex: 0, optionText: 'A', optionImage: null, tkpValue: null },
+    { id: 2, questionId: 1, optionIndex: 1, optionText: 'B', optionImage: null, tkpValue: null },
+  ],
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+};
+
+function makeQuestions(n: number): Question[] {
+  return Array.from({ length: n }, (_, i) => ({ ...baseQuestion, id: i + 1, question: `Q${i + 1}` }));
+}
+
+function makeWrapper() {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const Wrapper = ({ children }: { children: React.ReactNode }) =>
+    React.createElement(QueryClientProvider, { client: qc }, children);
+  Wrapper.displayName = 'QueryClientWrapper';
+  return Wrapper;
+}
+
+describe('TryoutEngine — Simpan & Keluar (save-and-exit)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    mockUpdateAnswersMutate.mockReset();
+    mockUpdateAnswersMutateAsync.mockReset();
+    mockUpdateAnswersMutateAsync.mockResolvedValue({ success: true, attempt: { id: 'a1' } });
+    mockUpdateFlagsMutate.mockReset();
+    mockUpdateFlagsMutateAsync.mockReset();
+    mockUpdateFlagsMutateAsync.mockResolvedValue({ success: true });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  // Helper: locate the Simpan & Keluar button by its visible text. We don't
+  // use `data-testid` because the Button primitive doesn't forward arbitrary
+  // HTML attributes; matching on the rendered text is robust to that and to
+  // Tailwind's responsive visibility classes (jsdom has no real layout).
+  const getSimpanButton = () =>
+    screen.getByText(/Simpan & Keluar/).closest('button') as HTMLButtonElement | null;
+
+  it('seeds the timer from initialTimeLeftSeconds when preloadedAnswers is non-empty (resume)', () => {
+    const wrapper = makeWrapper();
+    const questions = makeQuestions(3);
+    render(
+      <TryoutEngine
+        attemptId="att-resume"
+        questions={questions}
+        durationMin={100}
+        preloadedAnswers={{ 0: 0 }}
+        initialTimeLeftSeconds={1234}
+        onFinish={vi.fn()}
+      />,
+      { wrapper },
+    );
+
+    // The seeded timer is observable only after Mulai Tryout transitions
+    // the engine into the running phase, where the header renders
+    // formatTime(timeLeft). formatTime(1234) = "20:34".
+    fireEvent.click(screen.getByText(/Mulai Tryout/));
+    expect(screen.getAllByText(/20:34/).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('does not show the Simpan & Keluar button in the ready phase', () => {
+    const wrapper = makeWrapper();
+    render(
+      <TryoutEngine
+        attemptId="att-ready"
+        questions={makeQuestions(2)}
+        durationMin={15}
+        onFinish={vi.fn()}
+      />,
+      { wrapper },
+    );
+
+    expect(screen.queryByText(/Simpan & Keluar/)).not.toBeInTheDocument();
+  });
+
+  it('shows the Simpan & Keluar button in the running phase', () => {
+    const wrapper = makeWrapper();
+    render(
+      <TryoutEngine
+        attemptId="att-running"
+        questions={makeQuestions(2)}
+        durationMin={15}
+        onFinish={vi.fn()}
+      />,
+      { wrapper },
+    );
+
+    fireEvent.click(screen.getByText(/Mulai Tryout/));
+    // The Button primitive doesn't forward arbitrary props like data-testid,
+    // so we locate the Simpan & Keluar button by its visible text instead.
+    expect(screen.getByText(/Simpan & Keluar/)).toBeInTheDocument();
+  });
+
+  it('clicking the button opens the modal; clicking Batal closes it without calling onExit', () => {
+    const wrapper = makeWrapper();
+    const onExit = vi.fn();
+    render(
+      <TryoutEngine
+        attemptId="att-modal-cancel"
+        questions={makeQuestions(3)}
+        durationMin={15}
+        onExit={onExit}
+        onFinish={vi.fn()}
+      />,
+      { wrapper },
+    );
+
+    fireEvent.click(screen.getByText(/Mulai Tryout/));
+    fireEvent.click(getSimpanButton()!);
+
+    // Modal renders: title + answered count + time-left + Batal + confirm.
+    expect(screen.getByText('Simpan & Keluar?')).toBeInTheDocument();
+    expect(screen.getByTestId('exit-answered-count')).toBeInTheDocument();
+    expect(screen.getByTestId('exit-time-left')).toBeInTheDocument();
+
+    // Click Batal.
+    fireEvent.click(screen.getByText('Batal'));
+
+    // Modal gone, onExit not called, no PUT.
+    expect(screen.queryByText('Simpan & Keluar?')).not.toBeInTheDocument();
+    expect(onExit).not.toHaveBeenCalled();
+    expect(mockUpdateAnswersMutateAsync).not.toHaveBeenCalled();
+  });
+
+  it('clicking Simpan & Keluar in the modal flushes answers + timer and calls onExit on success', async () => {
+    const wrapper = makeWrapper();
+    const onExit = vi.fn();
+    render(
+      <TryoutEngine
+        attemptId="att-modal-confirm"
+        questions={makeQuestions(3)}
+        durationMin={15}
+        onExit={onExit}
+        onFinish={vi.fn()}
+      />,
+      { wrapper },
+    );
+
+    // Start the engine, then select an option to populate `answers`.
+    fireEvent.click(screen.getByText(/Mulai Tryout/));
+    // The option button label is the option letter inside a span; pick the
+    // first matching button to disambiguate from any duplicate option text.
+    const optionA = screen.getAllByText('A')[0].closest('button') as HTMLButtonElement;
+    fireEvent.click(optionA);
+
+    // Advance fake time a couple of seconds so timeLeft != durationMin*60.
+    act(() => { vi.advanceTimersByTime(2000); });
+
+    fireEvent.click(getSimpanButton()!);
+    // Confirm button — same text inside the modal footer.
+    fireEvent.click(screen.getAllByText(/^Simpan & Keluar$/)[0]);
+
+    await act(async () => {
+      // Allow promise chain to resolve.
+      await Promise.resolve();
+    });
+
+    // The PUT body includes the latest answers + timeLeftSeconds.
+    expect(mockUpdateAnswersMutateAsync).toHaveBeenCalledTimes(1);
+    const call = mockUpdateAnswersMutateAsync.mock.calls[0][0];
+    expect(call.answers).toMatchObject({ 0: 0 });
+    expect(typeof call.timeLeftSeconds).toBe('number');
+    // durationMin=15 → 900s. After 2s we expect ≤ 898.
+    expect(call.timeLeftSeconds).toBeGreaterThan(0);
+    expect(call.timeLeftSeconds).toBeLessThanOrEqual(900);
+
+    // onExit fires after the PUT resolves.
+    expect(onExit).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the modal open and surfaces an inline error if the PUT fails', async () => {
+    mockUpdateAnswersMutateAsync.mockRejectedValueOnce(new Error('network down'));
+
+    const wrapper = makeWrapper();
+    const onExit = vi.fn();
+    render(
+      <TryoutEngine
+        attemptId="att-modal-error"
+        questions={makeQuestions(3)}
+        durationMin={15}
+        onExit={onExit}
+        onFinish={vi.fn()}
+      />,
+      { wrapper },
+    );
+
+    fireEvent.click(screen.getByText(/Mulai Tryout/));
+    fireEvent.click(getSimpanButton()!);
+
+    await act(async () => {
+      fireEvent.click(screen.getAllByText(/^Simpan & Keluar$/)[0]);
+      await Promise.resolve();
+    });
+
+    // Modal stays open, error message visible, onExit NOT called.
+    expect(screen.getByText('Simpan & Keluar?')).toBeInTheDocument();
+    expect(screen.getByTestId('exit-error')).toHaveTextContent('network down');
+    expect(onExit).not.toHaveBeenCalled();
+  });
+});

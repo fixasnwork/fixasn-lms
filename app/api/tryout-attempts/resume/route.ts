@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
         id: latestAttempt.id,
         tryoutId: latestAttempt.tryoutId,
         isNew: false,
+        timeLeftSeconds: latestAttempt.timeLeftSeconds ?? null,
       },
     });
   }
@@ -114,6 +115,7 @@ export async function POST(request: NextRequest) {
       id: newAttempt.id,
       tryoutId: newAttempt.tryoutId,
       isNew: true,
+      timeLeftSeconds: null,
     },
   });
 }

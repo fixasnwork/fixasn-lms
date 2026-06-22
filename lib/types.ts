@@ -187,6 +187,12 @@ export interface TryoutAttempt {
   tkpScore: number;
   totalScore: number;
   finishedAt: string | null;
+  /**
+   * Remaining timer seconds at the last flush.
+   * `null` = fresh attempt or legacy row with no saved timer (treat as full duration).
+   * `number` = the engine should seed its countdown from this value on resume.
+   */
+  timeLeftSeconds?: number | null;
   answers: AttemptAnswer[];
   createdAt: string;
   updatedAt: string;

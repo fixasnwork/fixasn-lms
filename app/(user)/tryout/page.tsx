@@ -66,6 +66,24 @@ export default function TryoutPage() {
     }
   }
 
+  // ── In-progress attempts (no finishedAt) keyed by tryoutId, used to
+  //     surface "Lanjutkan" hints and a resume banner on the list page. ──
+  const inProgressByTryout = new Map<
+    number,
+    { id: string; answeredCount: number }
+  >();
+  for (const a of attemptHistory) {
+    if (a.finishedAt) continue;
+    if (inProgressByTryout.has(a.tryoutId)) continue; // first/most-recent wins
+    const answeredCount = a.answers
+      ? Object.keys(a.answers).length
+      : 0;
+    inProgressByTryout.set(a.tryoutId, {
+      id: a.id,
+      answeredCount,
+    });
+  }
+
   // ── Task 1.2: ownedPkgIds (pending or verified = access granted) ──
   const ownedPkgIds = userPayments
     .filter((p) => p.status === "pending" || p.status === "verified")
@@ -190,6 +208,17 @@ export default function TryoutPage() {
               <h3 className="font-extrabold text-lg text-brand mb-5 text-center">
                 Paket Tryout Kamu
               </h3>
+              {/* ── In-progress resume banner ── */}
+              {inProgressByTryout.size > 0 && (
+                <div className="mb-5 rounded-xl border-2 border-amber-300 bg-amber-50 px-4 py-3 text-center">
+                  <div className="font-extrabold text-sm text-amber-800">
+                    ⏳ Kamu punya {inProgressByTryout.size} tryout yang belum selesai
+                  </div>
+                  <div className="text-xs text-amber-700 mt-0.5">
+                    Klik tombol <strong>Lanjutkan</strong> di bawah untuk kembali ke tryout tersebut.
+                  </div>
+                </div>
+              )}
               <div className="flex gap-5 overflow-x-auto pt-4 pb-2 -mx-1 px-1">
                 {ownedPackages.map((pkg) => {
                   // Get tryouts for this package
@@ -236,7 +265,7 @@ export default function TryoutPage() {
                         {pkgTryouts.map((t) => {
                           const score = bestScores.get(t.id);
                           const hasScore = score !== undefined;
-
+                          const inProgress = inProgressByTryout.get(t.id);
                           const isSelected = t.id === selectedId;
 
                           return (
@@ -258,15 +287,19 @@ export default function TryoutPage() {
                             >
                               <div>
                                 <div className="font-extrabold text-sm">
-                                  {t.name}
+                                  {inProgress ? `Lanjutkan ${t.name}` : t.name}
                                 </div>
-                                {hasScore && (
+                                {inProgress ? (
+                                  <div className="text-xs text-amber-700 font-semibold">
+                                    ⏳ {inProgress.answeredCount} soal dijawab — klik untuk melanjutkan
+                                  </div>
+                                ) : hasScore ? (
                                   <div
                                     className={`text-xs ${isSelected ? "text-blue-500" : "text-gray-400"}`}
                                   >
                                     {score} poin
                                   </div>
-                                )}
+                                ) : null}
                               </div>
                               <span
                                 className={`text-lg leading-none ${isSelected ? "text-brand-secondary" : "text-gray-400"}`}
@@ -287,7 +320,9 @@ export default function TryoutPage() {
                         >
                           {createOrResumeAttempt.isPending
                             ? "Memuat..."
-                            : `Mulai ${selectedTryout.name}`}
+                            : inProgressByTryout.has(selectedTryout.id)
+                              ? `▶ Lanjutkan ${selectedTryout.name}`
+                              : `Mulai ${selectedTryout.name}`}
                         </Button>
                       )}
                     </Card>

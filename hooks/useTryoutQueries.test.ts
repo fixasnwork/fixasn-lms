@@ -181,15 +181,15 @@ describe('useUpdateAttemptAnswers — autosave mutation', () => {
     const { result } = renderHook(() => useUpdateAttemptAnswers(attemptId), { wrapper });
 
     await act(async () => {
-      result.current.mutate({ 0: 2, 1: 3, 2: 0 });
+      result.current.mutate({ answers: { 0: 2, 1: 3, 2: 0 }, timeLeftSeconds: 1234 });
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
     });
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const [, init] = mockFetch.mock.calls[0];
     const body = JSON.parse(init.body);
-    // Only answers field — no scores, no flags
-    expect(body).toEqual({ answers: { 0: 2, 1: 3, 2: 0 } });
+    // Only answers + timeLeftSeconds fields — no scores, no flags.
+    expect(body).toEqual({ answers: { 0: 2, 1: 3, 2: 0 }, timeLeftSeconds: 1234 });
     expect(body).not.toHaveProperty('twkScore');
     expect(body).not.toHaveProperty('raguRaguFlags');
   });
@@ -204,7 +204,7 @@ describe('useUpdateAttemptAnswers — autosave mutation', () => {
 
     const { result } = renderHook(() => useUpdateAttemptAnswers(attemptId), { wrapper });
 
-    act(() => { result.current.mutate({ 0: 99 }); });
+    act(() => { result.current.mutate({ answers: { 0: 99 }, timeLeftSeconds: 1000 }); });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     // Cache should still hold the original seeded answers, not the autosaved ones.
@@ -227,7 +227,7 @@ describe('useUpdateAttemptAnswers — autosave mutation', () => {
     const { result } = renderHook(() => useUpdateAttemptAnswers(attemptId), { wrapper });
 
     act(() => {
-      result.current.mutate({ 0: 99 });
+      result.current.mutate({ answers: { 0: 99 }, timeLeftSeconds: 1000 });
     });
 
     await waitFor(() => {

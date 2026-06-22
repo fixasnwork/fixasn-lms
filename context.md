@@ -1,5 +1,7 @@
 # Code Context: Soft-Deleted Package Reappears on Hard Refresh
 
+> One-off bug/investigation writeup. For the consolidated end-to-end picture of the tryout functionality (user-facing flow, all runner APIs, schema, specs, recent commits, ranked fix candidates), see `TRYOUTS.md`.
+
 ## Root Cause
 
 **`admin/layout.tsx` server prefetch (line 35) omits `deletedAt: null` filter** — fetches ALL packages including soft-deleted ones. Hard refresh rehydrates these into client cache, making deleted packages reappear.

@@ -49,7 +49,9 @@ export function useAutosaveAnswers({
     }
     const current = answersRef.current;
     if (attemptRef.current && Object.keys(current).length > 0) {
-      updateAnswers.mutate(current);
+      // Carry the live timer alongside the answers so the server can
+      // restore the countdown on the next mount / resume.
+      updateAnswers.mutate({ answers: current, timeLeftSeconds: timeRef.current });
     }
   };
 
@@ -62,7 +64,9 @@ export function useAutosaveAnswers({
     timerRef.current = setTimeout(() => {
       const current = answersRef.current;
       if (attemptRef.current && Object.keys(current).length > 0) {
-        updateAnswers.mutate(current);
+        // Carry the live timer alongside the answers so the server can
+        // restore the countdown on the next mount / resume.
+        updateAnswers.mutate({ answers: current, timeLeftSeconds: timeRef.current });
       }
       timerRef.current = null;
     }, AUTOSAVE_DELAY);
@@ -97,8 +101,12 @@ export function useAutosaveAnswers({
       }
     };
     const handlePageHide = () => {
+      // sendBeacon: build a JSON body containing both answers and the latest
+      // timer snapshot so the server can restore state on the next mount.
+      // We keep using Blob + 'application/json' here — the existing sendBeacon
+      // behaviour (out of scope for this change) is preserved.
       const blob = new Blob(
-        [JSON.stringify({ answers: answersRef.current })],
+        [JSON.stringify({ answers: answersRef.current, timeLeftSeconds: timeRef.current })],
         { type: 'application/json' },
       );
       if (attemptRef.current) navigator.sendBeacon(`/api/tryout-attempts/${attemptRef.current}`, blob);

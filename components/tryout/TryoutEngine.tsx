@@ -5,7 +5,12 @@ import Image from "next/image";
 import type { Question } from "@/lib/types";
 import { getScore, formatTime } from "@/lib/scoring";
 import { Logo, Button, Badge, Card, Modal } from "@/components/ui";
-import { useLogoConfig, useUpdateAttemptFlags, queueFlagUpdate } from "@/hooks/useTryoutQueries";
+import {
+  useLogoConfig,
+  useUpdateAttemptFlags,
+  useUpdateAttemptAnswers,
+  queueFlagUpdate,
+} from "@/hooks/useTryoutQueries";
 import { useAutosaveAnswers } from "@/hooks/useAutosaveAnswers";
 import PembahasanNavigator from "./PembahasanNavigator";
 
@@ -153,6 +158,20 @@ interface TryoutEngineProps {
   onBack?: () => void;
   preloadedAnswers?: Record<number, number>;
   preloadedRaguRagu?: Record<number, boolean>;
+  /**
+   * Remaining timer seconds from the server on resume. When provided AND
+   * `preloadedAnswers` is non-empty (i.e. this is a resume, not a fresh
+   * attempt), the engine seeds `timeLeft` from this value instead of the
+   * full `durationMin * 60`. Falls back to `null`/undefined for fresh
+   * attempts so the countdown always starts from the full duration.
+   */
+  initialTimeLeftSeconds?: number | null;
+  /**
+   * Called when the user confirms a "Simpan & Keluar" save-and-exit action
+   * after the PUT succeeds. Page-level wiring typically routes the user
+   * back to `/tryout`. Not called on cancel or on error.
+   */
+  onExit?: () => void;
 }
 
 export default function TryoutEngine({
@@ -165,9 +184,12 @@ export default function TryoutEngine({
   onBack,
   preloadedAnswers = {},
   preloadedRaguRagu = {},
+  initialTimeLeftSeconds,
+  onExit,
 }: TryoutEngineProps) {
   const { data: logoConfig } = useLogoConfig();
   const updateFlags = useUpdateAttemptFlags(attemptId ?? "");
+  const updateAnswers = useUpdateAttemptAnswers(attemptId ?? "");
   const DURATION = (durationMin || 100) * 60;
 
   const [answers, setAnswers] =
@@ -175,9 +197,24 @@ export default function TryoutEngine({
   const [raguRagu, setRaguRagu] =
     useState<Record<number, boolean>>(preloadedRaguRagu);
   const [cur, setCur] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(DURATION);
+  // Lazy initializer: when this is a resume (preloadedAnswers non-empty AND
+  // the server returned a saved timer), seed the countdown from the server.
+  // Otherwise start at the full duration. Runs exactly once on mount — later
+  // server refetches must NOT reset the live timer.
+  const [timeLeft, setTimeLeft] = useState<number>(() => {
+    if (
+      initialTimeLeftSeconds !== undefined &&
+      initialTimeLeftSeconds !== null &&
+      Object.keys(preloadedAnswers).length > 0
+    ) {
+      return Math.max(0, Math.min(DURATION, initialTimeLeftSeconds));
+    }
+    return DURATION;
+  });
   const [phase, setPhase] = useState<"ready" | "running" | "result">("ready");
   const [showMobileNav, setShowMobileNav] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [exitError, setExitError] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const shouldRehydrate = useRef(false);
   const prevPreloaded = useRef(preloadedAnswers);
@@ -238,6 +275,36 @@ export default function TryoutEngine({
     await onFinish?.(answers);
     setPhase("result");
   }, [answers, onFinish, attemptId, raguRagu, updateFlags]);
+
+  // ── Save-and-exit (Simpan & Keluar) ──
+  // Single PUT via useUpdateAttemptAnswers with answers + timeLeftSeconds,
+  // flushed alongside any pending ragu-ragu flags. On success: stop the
+  // interval, close the modal, call onExit?. On error: keep the modal
+  // open and surface a small inline message so the user can retry.
+  const handleConfirmExit = useCallback(async () => {
+    if (!attemptId) return;
+    setExitError(null);
+    try {
+      await Promise.all([
+        updateAnswers.mutateAsync({
+          answers,
+          timeLeftSeconds: timeLeft,
+        }),
+        // Skip if no flags were ever touched — mutateAsync on an empty
+        // body is a no-op on the server.
+        ...(Object.keys(raguRagu).length > 0
+          ? [updateFlags.mutateAsync(raguRagu)]
+          : []),
+      ]);
+      if (timerRef.current) clearInterval(timerRef.current);
+      setShowExitConfirm(false);
+      onExit?.();
+    } catch (err) {
+      setExitError(
+        err instanceof Error ? err.message : "Gagal menyimpan, coba lagi.",
+      );
+    }
+  }, [attemptId, answers, timeLeft, raguRagu, updateAnswers, updateFlags, onExit]);
 
   // Scoring
   const totals = { TWK: 0, TIU: 0, TKP: 0 };
@@ -451,6 +518,20 @@ export default function TryoutEngine({
             ⏱ <span className="hidden sm:inline">{timeStr}</span>
             <span className="sm:hidden">{timerShort}</span>
           </div>
+
+          {/* Simpan & Keluar — running phase only, opens the confirmation modal. */}
+          {attemptId && (
+            <Button
+              variant="outline"
+              size="sm"
+              data-testid="simpan-keluar-button"
+              onClick={() => setShowExitConfirm(true)}
+              disabled={updateAnswers.isPending}
+              className="!px-2 sm:!px-3 hidden sm:inline-flex"
+            >
+              💾 Simpan & Keluar
+            </Button>
+          )}
 
           {/* Finish */}
           <Button variant="danger" size="sm" onClick={finish} className="!px-2 sm:!px-3">
@@ -720,6 +801,88 @@ export default function TryoutEngine({
           onSelect={handleSelectQuestion}
           variant="modal"
         />
+      </Modal>
+
+      {/* ── Simpan & Keluar — Confirmation Modal ── */}
+      <Modal
+        open={showExitConfirm}
+        onClose={() => {
+          if (!updateAnswers.isPending) {
+            setShowExitConfirm(false);
+            setExitError(null);
+          }
+        }}
+        title="Simpan & Keluar?"
+        width="min(95vw, 440px)"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600 leading-relaxed">
+            Jawaban dan sisa waktu kamu akan disimpan. Kamu bisa melanjutkan
+            tryout ini nanti dari daftar tryout.
+          </p>
+
+          {/* Progress summary */}
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 grid grid-cols-2 gap-3 text-center">
+            <div>
+              <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+                Soal dijawab
+              </div>
+              <div
+                className="font-black text-lg text-brand mt-0.5"
+                data-testid="exit-answered-count"
+              >
+                {answered} / {questions.length}
+              </div>
+            </div>
+            <div>
+              <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+                Sisa waktu
+              </div>
+              <div
+                className="font-black text-lg text-brand mt-0.5"
+                data-testid="exit-time-left"
+              >
+                ⏱ {formatTime(timeLeft)}
+              </div>
+            </div>
+          </div>
+
+          {/* Inline error from the last PUT attempt — modal stays open so the
+              user can retry without losing the open state. */}
+          {exitError && (
+            <div
+              role="alert"
+              data-testid="exit-error"
+              className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700"
+            >
+              {exitError}
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex gap-2 pt-1">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => {
+                setShowExitConfirm(false);
+                setExitError(null);
+              }}
+              disabled={updateAnswers.isPending}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="primary"
+              className="flex-1"
+              onClick={handleConfirmExit}
+              disabled={updateAnswers.isPending}
+              data-testid="exit-confirm-button"
+            >
+              {updateAnswers.isPending ? "Menyimpan…" : "Simpan & Keluar"}
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

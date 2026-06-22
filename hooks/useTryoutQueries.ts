@@ -119,7 +119,17 @@ export function useCreateOrResumeAttempt() {
       }
       return res.json() as Promise<{
         success: boolean;
-        attempt: { id: string; tryoutId: number; isNew: boolean };
+        attempt: {
+          id: string;
+          tryoutId: number;
+          isNew: boolean;
+          /**
+           * Remaining timer seconds at the last flush, or null for fresh /
+           * legacy attempts. The runner seeds its countdown from this on
+           * resume. Surfaced from `/api/tryout-attempts/resume`.
+           */
+          timeLeftSeconds: number | null;
+        };
       }>;
     },
     onSuccess: () => {
@@ -139,6 +149,11 @@ export interface AttemptWithTryout {
     tkpScore: number;
     totalScore: number;
     finishedAt: string | null;
+    /**
+     * Remaining timer seconds at the last flush, or null for fresh / legacy
+     * attempts. The engine seeds its countdown from this on resume.
+     */
+    timeLeftSeconds?: number | null;
     answers: Record<number, number>;
     raguRagu: Record<number, boolean>;
     createdAt: string;
@@ -226,13 +241,24 @@ export function queueFlagUpdate(attemptId: string, update: FlagUpdate, delayMs =
 /* ── Update Attempt Answers (autosave mutation) ────────────────── */
 // Fire-and-forget: no optimistic cache update, no invalidation on settle.
 // The server is source of truth on next mount/focus/visibility re-fetch.
+export interface UpdateAttemptAnswersInput {
+  answers: Record<number, number>;
+  /**
+   * Remaining timer seconds at flush time. Carried on every PUT so the
+   * server can persist the countdown and the next mount can resume from it.
+   * Clamped to `[0, durationMin*60]` server-side; null/undefined is allowed
+   * for score-only writes that should not touch the timer column.
+   */
+  timeLeftSeconds?: number | null;
+}
+
 export function useUpdateAttemptAnswers(attemptId: string) {
   return useMutation({
-    mutationFn: async (answers: Record<number, number>) => {
+    mutationFn: async (input: UpdateAttemptAnswersInput) => {
       const res = await fetch(`/api/tryout-attempts/${attemptId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers }),
+        body: JSON.stringify(input),
       });
       if (!res.ok) throw new Error('Gagal menyimpan jawaban');
       return res.json() as Promise<{ success: boolean; attempt: { id: string } }>;
@@ -366,6 +392,25 @@ export function useLogoConfig() {
 }
 
 /* ── Attempt History (for list page) ───────────────────────────── */
+export interface AttemptHistoryEntry {
+  id: string;
+  tryoutId: number;
+  twkScore: number;
+  tiuScore: number;
+  tkpScore: number;
+  totalScore: number;
+  finishedAt: string | null;
+  /**
+   * Persisted answers keyed by questionIndex. Returned by the server
+   * (`/api/tryout-attempts` includes `answers: true`) for in-progress
+   * resume UX on the list page. May be undefined for legacy history rows.
+   */
+  answers?: Record<number, number>;
+  /** Remaining timer seconds at last flush; null for fresh/legacy attempts. */
+  timeLeftSeconds?: number | null;
+  createdAt: string;
+}
+
 export function useAttemptHistory(userId: string | undefined) {
   return useQuery({
     queryKey: ['attempt-history', userId],
@@ -374,16 +419,7 @@ export function useAttemptHistory(userId: string | undefined) {
       const res = await fetch(`/api/tryout-attempts?userId=${encodeURIComponent(userId)}`);
       if (!res.ok) throw new Error('Failed to fetch attempt history');
       const data = await res.json();
-      return data.attempts as Array<{
-        id: string;
-        tryoutId: number;
-        twkScore: number;
-        tiuScore: number;
-        tkpScore: number;
-        totalScore: number;
-        finishedAt: string | null;
-        createdAt: string;
-      }>;
+      return data.attempts as AttemptHistoryEntry[];
     },
     enabled: !!userId,
   });

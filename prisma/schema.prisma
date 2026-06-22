@@ -292,6 +292,8 @@ model TryoutAttempt {
   tiuScore   Int        @default(0)
   tkpScore   Int        @default(0)
   totalScore Int        @default(0)
+  // Remaining seconds at last flush; null = fresh attempt or legacy row. Persisted on every autosave/save-and-exit.
+  timeLeftSeconds Int?
   finishedAt DateTime?  @db.Timestamptz(6)
 
   createdAt  DateTime  @default(now()) @db.Timestamptz(6)

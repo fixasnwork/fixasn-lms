@@ -16,6 +16,7 @@ Single-package Next.js 16 App Router + React 19 + TypeScript app for FIX ASN, an
 - TanStack Query is used for client/server data fetching and hydration; Zustand remains for auth hydration and legacy/local app state.
 - Supabase is used for image storage uploads; Supabase Auth helpers exist but NextAuth is primary auth.
 - Known backlog lives in `TODO.md` / `TASKS.md` (date periods, hero photo upload, palette editor, package popularity card).
+- **Tryout functionality end-to-end picture lives in `TRYOUTS.md`** — start there before changing any code under `app/(user)/tryout/`, `components/tryout/`, `app/api/tryout-attempts/`, `app/api/tryouts/`, or related Prisma models. Bug/investigation writeups live in `context.md` alongside.
 
 ## Tech Stack
 
