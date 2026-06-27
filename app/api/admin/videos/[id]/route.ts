@@ -10,43 +10,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAdmin } from "@/lib/adminAuth";
-import { parseYouTubeId } from "@/lib/video";
-import type { Video, VideoCategory } from "@/lib/types";
+import { parseYouTubeId, mapVideo, ALLOWED_VIDEO_CATEGORIES } from "@/lib/video";
+import type { VideoCategory } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const ALLOWED_CATEGORIES: ReadonlyArray<VideoCategory> = ["TWK", "TIU", "TKP"];
-
 function parseId(value: string): number | null {
   const id = Number(value);
   return Number.isInteger(id) && id > 0 ? id : null;
-}
-
-function mapVideo(v: {
-  id: number;
-  title: string;
-  description: string | null;
-  youtubeId: string;
-  category: string;
-  durationSec: number | null;
-  sortOrder: number;
-  isPublished: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}): Video {
-  return {
-    id: v.id,
-    title: v.title,
-    description: v.description,
-    youtubeId: v.youtubeId,
-    category: v.category as VideoCategory,
-    durationSec: v.durationSec,
-    sortOrder: v.sortOrder,
-    isPublished: v.isPublished,
-    createdAt: v.createdAt.toISOString(),
-    updatedAt: v.updatedAt.toISOString(),
-  };
 }
 
 export async function GET(
@@ -140,9 +112,9 @@ export async function PUT(
     let category: string = existing.category;
     if (body.category !== undefined) {
       const candidate = String(body.category).trim();
-      if (!ALLOWED_CATEGORIES.includes(candidate as VideoCategory)) {
+      if (!ALLOWED_VIDEO_CATEGORIES.includes(candidate as VideoCategory)) {
         return NextResponse.json(
-          { error: `category must be one of: ${ALLOWED_CATEGORIES.join(", ")}` },
+          { error: `category must be one of: ${ALLOWED_VIDEO_CATEGORIES.join(", ")}` },
           { status: 400 }
         );
       }

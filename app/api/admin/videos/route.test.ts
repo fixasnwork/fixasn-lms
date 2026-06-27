@@ -99,6 +99,30 @@ describe("POST /api/admin/videos", () => {
     expect(res.status).toBe(400);
   });
 
+  it("returns 400 when sortOrder is non-integer", async () => {
+    const res = await POST(makePostReq({ title: "x", youtubeId: "eRsGyueVLvQ", category: "TWK", sortOrder: "abc" }));
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when sortOrder is fractional", async () => {
+    const res = await POST(makePostReq({ title: "x", youtubeId: "eRsGyueVLvQ", category: "TWK", sortOrder: 1.5 }));
+    expect(res.status).toBe(400);
+  });
+
+  it("accepts valid sortOrder", async () => {
+    const res = await POST(makePostReq({ title: "x", youtubeId: "eRsGyueVLvQ", category: "TWK", sortOrder: 5 }));
+    expect(res.status).toBe(201);
+  });
+
+  it("accepts isPublished: 'true' (string) via Boolean coercion", async () => {
+    const res = await POST(
+      makePostReq({ title: "x", youtubeId: "eRsGyueVLvQ", category: "TWK", isPublished: "true" })
+    );
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(data.video.isPublished).toBe(true);
+  });
+
   it("creates a video with all fields", async () => {
     const res = await POST(
       makePostReq({

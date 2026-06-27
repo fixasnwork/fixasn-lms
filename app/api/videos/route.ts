@@ -23,38 +23,13 @@ import type { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireActiveSession } from "@/lib/routeAuth";
 import { isAdminRole } from "@/lib/deviceSession";
-import type { Video, VideoCategory, VideoListResponse } from "@/lib/types";
+import type { VideoListResponse } from "@/lib/types";
+import { mapVideo } from "@/lib/video";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const DENIED_STATUSES: ReadonlyArray<string> = ["rejected", "expired"];
-
-function mapVideo(v: {
-  id: number;
-  title: string;
-  description: string | null;
-  youtubeId: string;
-  category: string;
-  durationSec: number | null;
-  sortOrder: number;
-  isPublished: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}): Video {
-  return {
-    id: v.id,
-    title: v.title,
-    description: v.description,
-    youtubeId: v.youtubeId,
-    category: v.category as VideoCategory,
-    durationSec: v.durationSec,
-    sortOrder: v.sortOrder,
-    isPublished: v.isPublished,
-    createdAt: v.createdAt.toISOString(),
-    updatedAt: v.updatedAt.toISOString(),
-  };
-}
+const DENIED_STATUSES: ReadonlyArray<string> = ["rejected", "expired", "blocked"];
 
 async function userHasVideoPackageAccess(email: string): Promise<boolean> {
   // Single query: join UserPurchase → Package, filter to video-enabled

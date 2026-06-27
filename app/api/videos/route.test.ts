@@ -122,4 +122,30 @@ describe("GET /api/videos", () => {
     // Admins must NOT trigger the purchase check.
     expect(mockPrisma.userPurchase.findFirst).not.toHaveBeenCalled();
   });
+
+  // Fix 5: assert the where-clause filters are applied.
+  it("queries only purchases with package.includesVideoPembelajaran=true", async () => {
+    resetSession({ admin: false });
+    mockPrisma.userPurchase.findFirst.mockResolvedValueOnce(null);
+    await GET(makeReq());
+    const where = mockPrisma.userPurchase.findFirst.mock.calls[0][0].where;
+    expect(where.package.is.includesVideoPembelajaran).toBe(true);
+    expect(where.package.is.deletedAt).toBeNull();
+  });
+
+  it("excludes blocked/rejected/expired payments via status notIn", async () => {
+    resetSession({ admin: false });
+    await GET(makeReq());
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const where = mockPrisma.userPurchase.findFirst.mock.calls[0][0].where as any;
+    // The OR should have two clauses: paymentId null, or payment status notIn
+    const denyClause = where.OR.find(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (c: any) => c?.payment?.is?.status?.notIn
+    );
+    expect(denyClause).toBeDefined();
+    expect(denyClause.payment.is.status.notIn).toEqual(
+      expect.arrayContaining(["rejected", "expired", "blocked"])
+    );
+  });
 });

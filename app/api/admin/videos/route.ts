@@ -10,40 +10,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAdmin } from "@/lib/adminAuth";
-import { parseYouTubeId } from "@/lib/video";
-import type { Video, VideoCategory } from "@/lib/types";
+import { parseYouTubeId, mapVideo, ALLOWED_VIDEO_CATEGORIES } from "@/lib/video";
+import type { VideoCategory } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-const ALLOWED_CATEGORIES: ReadonlyArray<VideoCategory> = ["TWK", "TIU", "TKP"];
-
-/* ── Mappers ────────────────────────────────────────────────────── */
-function mapVideo(v: {
-  id: number;
-  title: string;
-  description: string | null;
-  youtubeId: string;
-  category: string;
-  durationSec: number | null;
-  sortOrder: number;
-  isPublished: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}): Video {
-  return {
-    id: v.id,
-    title: v.title,
-    description: v.description,
-    youtubeId: v.youtubeId,
-    category: v.category as VideoCategory,
-    durationSec: v.durationSec,
-    sortOrder: v.sortOrder,
-    isPublished: v.isPublished,
-    createdAt: v.createdAt.toISOString(),
-    updatedAt: v.updatedAt.toISOString(),
-  };
-}
 
 /* ── GET /api/admin/videos ─────────────────────────────────────── */
 export async function GET() {
@@ -88,20 +59,27 @@ export async function POST(request: NextRequest) {
 
     // youtubeId — required, must pass parseYouTubeId + 11-char regex
     const rawYoutube =
-      typeof body.youtubeId === "string" ? body.youtubeId : typeof body.youtubeUrl === "string" ? body.youtubeUrl : "";
+      typeof body.youtubeId === "string"
+        ? body.youtubeId
+        : typeof body.youtubeUrl === "string"
+          ? body.youtubeUrl
+          : "";
     const parsedId = parseYouTubeId(rawYoutube);
     if (!parsedId) {
       return NextResponse.json(
-        { error: "youtubeId must be a valid YouTube id or URL (11 chars after the v=, youtu.be/, /embed/, or /shorts/ path)" },
+        {
+          error:
+            "youtubeId must be a valid YouTube id or URL (11 chars after the v=, youtu.be/, /embed/, or /shorts/ path)",
+        },
         { status: 400 }
       );
     }
 
     // category — required, must be one of the three allowed values
     const category = String(body.category ?? "").trim();
-    if (!ALLOWED_CATEGORIES.includes(category as VideoCategory)) {
+    if (!ALLOWED_VIDEO_CATEGORIES.includes(category as VideoCategory)) {
       return NextResponse.json(
-        { error: `category must be one of: ${ALLOWED_CATEGORIES.join(", ")}` },
+        { error: `category must be one of: ${ALLOWED_VIDEO_CATEGORIES.join(", ")}` },
         { status: 400 }
       );
     }
@@ -119,16 +97,22 @@ export async function POST(request: NextRequest) {
       durationSec = parsed;
     }
 
-    // sortOrder — optional integer, default 0
-    const sortOrder =
-      body.sortOrder === undefined || body.sortOrder === null
-        ? 0
-        : Number.isInteger(Number(body.sortOrder))
-          ? Number(body.sortOrder)
-          : 0;
+    // sortOrder — optional integer, default 0; reject non-integer (matches PUT)
+    let sortOrder = 0;
+    if (body.sortOrder !== undefined && body.sortOrder !== null) {
+      const parsed = Number(body.sortOrder);
+      if (!Number.isInteger(parsed)) {
+        return NextResponse.json(
+          { error: "sortOrder must be an integer" },
+          { status: 400 }
+        );
+      }
+      sortOrder = parsed;
+    }
 
-    // isPublished — optional boolean, default false
-    const isPublished = body.isPublished === true;
+    // isPublished — optional boolean, default false (matches PUT)
+    const isPublished =
+      body.isPublished !== undefined ? Boolean(body.isPublished) : false;
 
     const video = await prisma.video.create({
       data: {
