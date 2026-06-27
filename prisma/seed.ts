@@ -51,8 +51,21 @@ async function main() {
   for (const p of DEFAULT_PACKAGES) {
     await prisma.package.upsert({
       where: { name: p.name },
-      create: { name: p.name, description: p.description, price: p.price, isTrial: p.isTrial, startDate: p.startDate ? new Date(p.startDate) : null, endDate: p.endDate ? new Date(p.endDate) : null },
-      update: { startDate: p.startDate ? new Date(p.startDate) : undefined, endDate: p.endDate ? new Date(p.endDate) : undefined },
+      // On first insert, set the video flag from the static default. On update,
+      // DO NOT touch includesVideoPembelajaran — preserve any admin toggle.
+      create: {
+        name: p.name,
+        description: p.description,
+        price: p.price,
+        isTrial: p.isTrial,
+        includesVideoPembelajaran: p.includesVideoPembelajaran ?? false,
+        startDate: p.startDate ? new Date(p.startDate) : null,
+        endDate: p.endDate ? new Date(p.endDate) : null,
+      },
+      update: {
+        startDate: p.startDate ? new Date(p.startDate) : undefined,
+        endDate: p.endDate ? new Date(p.endDate) : undefined,
+      },
     });
   }
   const allPackages = await prisma.package.findMany();
@@ -179,6 +192,27 @@ async function main() {
   }
   console.log(`   ✓ bankAccounts: ${await prisma.bankAccount.count()}`);
 
+  // ── 7. Sample Videos (dev-only; find-or-create by title+category) ──────
+  // The youtubeIds here are placeholder demos; replace with real FIX ASN
+  // content before any non-dev deploy. Three distinct, well-known public-
+  // domain Blender Foundation open-movie IDs so reviewers can visually
+  // confirm each category resolves to a different video.
+  console.log("[7/7] Seeding sample videos...");
+  const sampleVideos = [
+    { title: "Pengantar TWK", youtubeId: "eRsGyueVLvQ", category: "TWK", sortOrder: 1, isPublished: true, durationSec: 888 },
+    { title: "Pengantar TIU", youtubeId: "aqz-KE-bpKQ", category: "TIU", sortOrder: 1, isPublished: true, durationSec: 596 },
+    { title: "Pengantar TKP", youtubeId: "TWzdRCc8Vic", category: "TKP", sortOrder: 1, isPublished: true, durationSec: 734 },
+  ];
+  for (const v of sampleVideos) {
+    const existing = await prisma.video.findFirst({
+      where: { title: v.title, category: v.category, deletedAt: null },
+    });
+    if (!existing) {
+      await prisma.video.create({ data: v });
+    }
+  }
+  console.log(`   ✓ videos: ${await prisma.video.count()}`);
+
   // ── Reset autoincrement sequences ─────────────────────────────────────
   await prisma.$executeRawUnsafe(`SELECT setval('questions_id_seq', (SELECT COALESCE(MAX(id), 1) FROM questions))`);
   await prisma.$executeRawUnsafe(`SELECT setval('"questionOptions_id_seq"', (SELECT COALESCE(MAX(id), 1) FROM "questionOptions"))`);
@@ -194,6 +228,7 @@ async function main() {
   console.log(`  questionOptions:  ${await prisma.questionOption.count()}`);
   console.log(`  packageTryouts:   ${await prisma.packageTryout.count()}`);
   console.log(`  tryoutQuestions:  ${await prisma.tryoutQuestion.count()}`);
+  console.log(`  videos:           ${await prisma.video.count()}`);
   console.log(`  unique questions inserted: ${seen.size}`);
 
   await prisma.$disconnect();

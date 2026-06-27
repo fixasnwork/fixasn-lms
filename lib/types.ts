@@ -8,6 +8,7 @@
 
 // ── Categories ────────────────────────────────
 export type QuestionCategory = "TWK" | "TIU" | "TKP";
+export type VideoCategory = "TWK" | "TIU" | "TKP";
 
 // ── Questions & Options ───────────────────────
 export interface Question {
@@ -94,11 +95,49 @@ export interface Package {
   description: string;
   price: number;
   isTrial: boolean;
+  /**
+   * When true, an active (non-rejected, non-expired) UserPurchase on this
+   * package grants the user access to the /video catalog. See
+   * openspec/changes/video-pembelajaran/specs/video-pembelajaran/spec.md.
+   */
+  includesVideoPembelajaran: boolean;
   tryoutCount?: number;
   startDate: string | null;
   endDate: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+// ── Videos (Video Pembelajaran) ───────────────
+export interface Video {
+  id: number;
+  title: string;
+  description: string | null;
+  youtubeId: string;
+  category: VideoCategory;
+  durationSec: number | null;
+  sortOrder: number;
+  isPublished: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VideoListResponse {
+  videos: Video[];
+  /**
+   * `true` if the caller should see the catalog. For `admin` role this is
+   * always true. For `user` role it is true iff a non-rejected, non-expired
+   * `UserPurchase` exists against a package with
+   * `Package.includesVideoPembelajaran = true`.
+   */
+  hasAccess: boolean;
+  /**
+   * Why access was denied. `null` when `hasAccess` is true. Every deny
+   * scenario in the spec (no purchase, rejected purchase, expired purchase)
+   * collapses to `no_video_package` because the contract is the same:
+   * the caller has no qualifying purchase.
+   */
+  accessReason: "no_video_package" | null;
 }
 
 // ── Bank Accounts ─────────────────────────────

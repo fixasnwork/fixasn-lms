@@ -17,6 +17,7 @@ function mapPackage(pkg: {
   description: string;
   price: number;
   isTrial: boolean;
+  includesVideoPembelajaran: boolean;
   tryoutCount: number;
   startDate: Date | null;
   endDate: Date | null;
@@ -29,6 +30,7 @@ function mapPackage(pkg: {
     description: pkg.description,
     price: pkg.price,
     isTrial: pkg.isTrial,
+    includesVideoPembelajaran: pkg.includesVideoPembelajaran,
     startDate: pkg.startDate ? pkg.startDate.toISOString() : null,
     endDate: pkg.endDate ? pkg.endDate.toISOString() : null,
     tryoutCount: pkg.tryoutCount,
@@ -85,6 +87,10 @@ export async function PUT(
     const description = body.description !== undefined ? String(body.description).trim() : existing.description;
     const price = body.price !== undefined ? Number(body.price) : existing.price;
     const isTrial = body.isTrial !== undefined ? Boolean(body.isTrial) : existing.isTrial;
+    const includesVideoPembelajaran =
+      body.includesVideoPembelajaran !== undefined
+        ? Boolean(body.includesVideoPembelajaran)
+        : existing.includesVideoPembelajaran;
 
     // Date fields: use body value if provided, else preserve existing
     let startDate: Date | null | undefined = undefined;
@@ -121,6 +127,7 @@ export async function PUT(
         description,
         price,
         isTrial,
+        includesVideoPembelajaran,
         ...(startDate !== undefined ? { startDate } : {}),
         ...(endDate !== undefined ? { endDate } : {}),
       },

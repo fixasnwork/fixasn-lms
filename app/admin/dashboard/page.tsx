@@ -29,6 +29,7 @@ export default async function AdminDashboard() {
     description: p.description,
     price: p.price,
     isTrial: p.isTrial,
+    includesVideoPembelajaran: p.includesVideoPembelajaran,
     startDate: p.startDate?.toISOString() ?? null,
     endDate: p.endDate?.toISOString() ?? null,
     createdAt: p.createdAt.toISOString(),
