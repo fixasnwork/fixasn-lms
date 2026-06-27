@@ -14,6 +14,7 @@ export interface PackageResponse {
   description: string;
   price: number;
   isTrial: boolean;
+  includesVideoPembelajaran: boolean;
   startDate: string | null;
   endDate: string | null;
   createdAt: string;
@@ -27,6 +28,7 @@ function mapPackage(pkg: {
   description: string;
   price: number;
   isTrial: boolean;
+  includesVideoPembelajaran: boolean;
   tryoutCount: number;
   startDate: Date | null;
   endDate: Date | null;
@@ -39,6 +41,7 @@ function mapPackage(pkg: {
     description: pkg.description,
     price: pkg.price,
     isTrial: pkg.isTrial,
+    includesVideoPembelajaran: pkg.includesVideoPembelajaran,
     startDate: pkg.startDate ? pkg.startDate.toISOString() : null,
     endDate: pkg.endDate ? pkg.endDate.toISOString() : null,
     tryoutCount: pkg.tryoutCount,
@@ -61,6 +64,7 @@ export async function GET() {
       description: pkg.description,
       price: pkg.price,
       isTrial: pkg.isTrial,
+      includesVideoPembelajaran: pkg.includesVideoPembelajaran,
       startDate: pkg.startDate,
       endDate: pkg.endDate,
       tryoutCount: Math.max(pkg.tryoutCount, pkg._count.packageTryouts),
@@ -85,6 +89,7 @@ export async function POST(request: NextRequest) {
     const price = Number(body.price) || 0;
     const description = String(body.description ?? '').trim();
     const isTrial = Boolean(body.isTrial);
+    const includesVideoPembelajaran = Boolean(body.includesVideoPembelajaran);
     const startDate = body.startDate ? new Date(body.startDate) : null;
     const endDate = body.endDate ? new Date(body.endDate) : null;
 
@@ -107,7 +112,7 @@ export async function POST(request: NextRequest) {
     }
 
     const pkg = await prisma.package.create({
-      data: { name, description, price, isTrial, startDate, endDate, tryoutCount: 0 },
+      data: { name, description, price, isTrial, includesVideoPembelajaran, startDate, endDate, tryoutCount: 0 },
     });
 
     return NextResponse.json({ success: true, package: mapPackage({ ...pkg, tryoutCount: 0 }) }, { status: 201 });

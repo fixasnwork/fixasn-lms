@@ -99,6 +99,10 @@ model Package {
   price       Int      @default(0)
   description String   @default("") @db.Text
   isTrial     Boolean  @default(false)
+  // When true, an active (non-rejected, non-expired) UserPurchase on this package
+  // grants the user access to the /video catalog. Default false preserves existing
+  // package behavior; admin can flip per package from the settings UI.
+  includesVideoPembelajaran Boolean @default(false)
   startDate   DateTime? @db.Timestamptz(6)
   endDate     DateTime? @db.Timestamptz(6)
 
@@ -337,4 +341,29 @@ model LogoConfigEntry {
   updatedAt   DateTime @default(now()) @updatedAt @db.Timestamptz(6)
 
   @@map("logoConfigEntries")
+}
+
+// ── Video Pembelajaran ──────────────────────────────────────────────────
+model Video {
+  id          Int      @id @default(autoincrement())
+  title       String   @db.Text
+  description String?  @db.Text
+  // 11-char YouTube video id; embed via https://www.youtube.com/embed/{id}
+  youtubeId   String   @db.Text
+  // Free-text category validated at API boundary: "TWK" | "TIU" | "TKP"
+  category    String   @db.Text
+  durationSec Int?     @db.Integer
+  sortOrder   Int      @default(0)
+  isPublished Boolean  @default(false)
+
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
+  createdBy   String?   @db.Text
+  createdIP   String?   @db.Text
+  updatedAt   DateTime  @updatedAt       @db.Timestamptz(6)
+  updatedBy   String?   @db.Text
+  updatedIP   String?   @db.Text
+  deletedAt   DateTime? @db.Timestamptz(6)
+
+  @@index([category, isPublished, sortOrder])
+  @@map("videos")
 }
