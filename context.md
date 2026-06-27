@@ -1,83 +1,92 @@
-# Code Context: Soft-Deleted Package Reappears on Hard Refresh
+# Code Path Comparison: "finished tryout" count disagreement
 
-> One-off bug/investigation writeup. For the consolidated end-to-end picture of the tryout functionality (user-facing flow, all runner APIs, schema, specs, recent commits, ranked fix candidates), see `TRYOUTS.md`.
+## Files Examined
 
-## Root Cause
+1. `app/api/users/me/dashboard/route.ts` — Dashboard API (Path A)
+2. `app/(user)/tryout/page.tsx` — Tryout page (Path B)
+3. `hooks/useTryoutQueries.ts` — `useUserPayments`, `useAttemptHistory`, `usePackages`, `useTryouts`
+4. `lib/availability.ts` — `isAvailable`, `isPackageAvailable`, `getEntityStatus`
+5. `app/api/payments/route.ts` — Payments API (called by `useUserPayments`)
+6. `app/api/tryout-attempts/route.ts` — Attempt history API (called by `useAttemptHistory`)
+7. `app/api/packages/route.ts` — Packages API (called by `usePackages`)
+8. `app/api/tryouts/route.ts` — Tryouts API (called by `useTryouts`)
+9. `lib/types.ts` — `Package` and `Tryout` type definitions
 
-**`admin/layout.tsx` server prefetch (line 35) omits `deletedAt: null` filter** — fetches ALL packages including soft-deleted ones. Hard refresh rehydrates these into client cache, making deleted packages reappear.
+## Side-by-Side Comparison
 
-## Flow Trace
+| Aspect | Dashboard `route.ts` | Tryout page |
+|---|---|---|
+| **Payment source** | Direct Prisma query `prisma.payment.findMany` with `status: { in: ['pending','verified'] }`, `package: { deletedAt: null }` (lines 61-69) | `useUserPayments` → `GET /api/payments?userId=X` → ALL payments for user (no DB status filter). Client-side filters `.filter(p => p.status === 'pending' \|\| p.status === 'verified')` (line 327-329). No `deletedAt` check on packages in the filter |
+| **Status filter** | `['pending', 'verified']` in DB WHERE (line 65) | Same values but client-side: `.filter(p => p.status === "pending" \|\| p.status === "verified")` (line 328) |
+| **Package `deletedAt` check** | IN DB QUERY: `package: { deletedAt: null }` (line 66). No further check needed in loop | NOT in payment filter. BUT: `activeOwnedPkgIds` uses `packages.find()` which comes from `usePackages` → `GET /api/packages` filters `deletedAt: null`. So deleted packages are implicitly excluded because they won't be found (line 362-364) |
+| **Tryout `deletedAt` check** | Loop line 89: `if (pt.tryout.deletedAt !== null) continue` | Implicit: `tryoutBanks` from `useTryouts` → `GET /api/tryouts` filters `deletedAt: null` (tryouts route line 373). So tryouts with `deletedAt` set never appear in the mapping |
+| **Package date availability check** | Lines 83-84: `if (startDate && endDate) ? isAvailable(pkg) : true` — **null+null → true (available)** | Line 363: `isPackageAvailable(pkg)` — **null+null → `false` (inactive)** via `getEntityStatus` |
+| **Tryout date availability check** | Lines 90-91: `if (startDate && endDate) ? isAvailable(tryout) : true` — null+null → true | No equivalent check in `finishedAttempts` filter; `tryoutBanks` returns all non-deleted tryouts regardless of date; but display uses `isAvailable(t)` for owned tryout cards (line 126) |
+| **Null-date handling pattern** | Override: `date1 && date2 ? isAvailable(x) : true` | No override: uses `isAvailable` / `isPackageAvailable` directly |
+| **Trial tryout handling** | Only visible if linked to a paid package via Payment→Package→PackageTryout chain (same as any tryout) | Special trial card at top (lines 99-121). `finishedAttempts` fallback for `!pkgInfo` returns `true` if any active owned packages exist (line 374-376) |
+| **Attempt `deletedAt` filter** | Lines 104-105: `where: { userId, deletedAt: null }` — **explicit** | `useAttemptHistory` → `GET /api/tryout-attempts?userId=X` — **NO `deletedAt` filter** (tryout-attempts route line 30-32) |
+| **Attempt scope for "completed" count** | Filtered by `activeTryoutIds` (only tryouts from active+owned packages) (lines 114-117) | Filtered by `activeOwnedPkgIds` (lines 370-381). Also uses `tryoutToPackage` mapping which maps tryoutId → packageId |
 
-1. Hard refresh → `admin/layout.tsx` runs server-side
-2. Prefetches `['packages']` via `prisma.package.findMany()` **without** `where: { deletedAt: null }` (line 33-39)
-3. `dehydrate`/`HydrationBoundary` passes this data (including soft-deleted packages) to client React Query cache
-4. `usePackages()` hook (`hooks/useTryoutQueries.ts` line 190) finds cached data, `staleTime: 5 * 60_000` means no refetch
-5. UI renders soft-deleted package
+## Root Cause: The Exact Disagreement
 
-After delete mutation (optimistic filter + invalidate), UI updates correctly immediately. But hard refresh re-runs server prefetch → deleted package comes back.
+**Dashboard** counts a finished attempt when the package has **both `startDate=null` and `endDate=null`** (unrestricted package). The tryout page **excludes** it.
 
-## Files Retrieved
+The chain:
 
-1. `app/admin/layout.tsx` (lines 27-52) — **BUG LOCATION**: server prefetch uses `prisma.package.findMany()` without `deletedAt` filter
-2. `app/api/packages/route.ts` (lines 27-31) — GET route **correctly** filters `where: { deletedAt: null }`
-3. `app/api/packages/[packageId]/route.ts` (lines 72-113) — DELETE route correctly soft-deletes via `deletedAt: new Date()`
-4. `hooks/useTryoutQueries.ts` (lines 190-200, 339-353) — `usePackages()` with `staleTime: 5min`; `useDeletePackage()` with optimistic update + invalidate
-5. `lib/queryClient.ts` — server `QueryClient` config
-6. `prisma/schema.prisma` (lines 95-120) — `Package` model has `deletedAt DateTime?`
+1. **Dashboard lines 83-84**: When both `startDate` and `endDate` are null on a package:
+   ```ts
+   p.package.startDate && p.package.endDate  // null && null → falsy
+   // → pkgAvailable = true  (the `: true` branch)
+   ```
+   Package is considered available → tryoutIds in that package are added to `activeTryoutIds`.
 
-## Key Code
+2. **Tryout page line 361-365**:
+   ```ts
+   const activeOwnedPkgIds = ownedPkgIds.filter((pid) => {
+     const pkg = packages.find((p) => p.id === pid);
+     return pkg ? isPackageAvailable(pkg) : false;  // null+null → false
+   });
+   ```
+   `isPackageAvailable` (aliased to `isAvailable`) calls `getEntityStatus` which returns `"inactive"` for `{startDate: null, endDate: null}` → returns `false`. Package excluded from `activeOwnedPkgIds`.
 
-### Bug — `admin/layout.tsx` lines 33-39
+3. **Tryout page line 378**: `activeOwnedPkgIds.includes(pkgInfo.packageId)` → `false` → attempt excluded from `finishedAttempts`.
+
+**Result**: Dashboard shows `distinctFinishedTryouts = 1`, tryout page shows 0 finished attempts.
+
+## Why `isAvailable(null, null)` returns `false`
+
+From `lib/availability.ts` `getEntityStatus` (lines 50-72):
+```
+Both null → "inactive" → isAvailable returns false
+```
+
+The dashboard code has a COMMENT acknowledging this (lines 78-82):
+```
+// `isAvailable` alone returns false for null+null, which excludes
+// unrestricted packages — see `getEntityStatus` in lib/availability.ts.
+```
+
+Then deliberately works around it with the `? true :` pattern. The tryout page does NOT have this workaround.
+
+## Secondary (but less impactful) differences
+
+- **Attempt `deletedAt`**: Dashboard filters `deletedAt: null` on attempts; tryout page API doesn't. Would only matter if attempts are soft-deleted.
+- **Trial fallback** (tryout page line 374-376): If `tryoutToPackage` has no mapping for a tryout, the fallback includes it if any `activeOwnedPkgIds` exist. The dashboard has no equivalent — trial tryouts only count if they're in a paid package's tryout list.
+
+## Recommended Minimal Fix
+
+**Change exactly one thing**: Align the tryout page's `activeOwnedPkgIds` filter with the dashboard's null-date handling.
+
+In `app/(user)/tryout/page.tsx`, change lines 362-364 from:
 ```ts
-queryClient.prefetchQuery({
-  queryKey: ['packages'],
-  queryFn: async () => {
-    const data = await prisma.package.findMany({ orderBy: { id: 'asc' } });
-    // ^^ No where clause — includes soft-deleted packages
-    return data.map((p) => ({ ...p, createdAt: p.createdAt.toISOString(), updatedAt: p.updatedAt.toISOString() }));
-  },
-});
+return pkg ? isPackageAvailable(pkg) : false;
 ```
-
-### Correct filter — `app/api/packages/route.ts` lines 27-28
+to:
 ```ts
-const data = await prisma.package.findMany({
-  where: { deletedAt: null },
-  ...
-});
+if (!pkg) return false;
+return (pkg.startDate && pkg.endDate) ? isPackageAvailable(pkg) : true;
 ```
 
-## Architecture
+This makes the tryout page treat null+null-dated packages the same way the dashboard does: as "always available." The `isPackageAvailable` call is preserved for packages that DO have dates, so the tryout page still respects date windows when they're set.
 
-```
-admin/layout.tsx (server)           → Prisma direct query (BUG: no deletedAt filter)
-                                    → dehydrate → HydrationBoundary → client React Query cache
-                                    ↓
-app/admin/settings/page.tsx (client) → usePackages() reads ['packages'] from cache
-                                      staleTime 5min → no refetch on mount
-```
-
-The GET API route (`app/api/packages/route.ts`) is correct. The client hook is fine. The delete mutation is fine. Only the server prefetch in the admin layout misses the filter.
-
-## Start Here
-
-Fix `app/admin/layout.tsx` line 35. Change:
-
-```ts
-const data = await prisma.package.findMany({ orderBy: { id: 'asc' } });
-```
-
-To:
-
-```ts
-const data = await prisma.package.findMany({ where: { deletedAt: null }, orderBy: { id: 'asc' } });
-```
-
-## One-Line Fix
-
-`app/admin/layout.tsx` line 35: Add `where: { deletedAt: null }` to the `prisma.package.findMany()` call inside the `['packages']` prefetch query.
-
-## Additional Risks
-
-- `admin/layout.tsx` also prefetches `['admin-payments']` (line 30). Check if `Payment` model also has `deletedAt` — unlikely related but worth verifying if payments show ghost records too.
-- No other server prefetch in project fetches packages aside from this layout.
+Alternatively, fix `availability.ts` `getEntityStatus` to return `"active"` for null+null. But that has wider blast radius (affects all callers including POST creation gates, rendering filters, etc.), so the targeted fix is safer.

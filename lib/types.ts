@@ -290,3 +290,35 @@ export interface ScoringResult {
   TKP: number;
   total: number;
 }
+
+// ── Dashboard Summary (per-user aggregates) ────
+/**
+ * Per-category accumulated scores for the user, computed from
+ * `TryoutAttempt.twkScore/tiuScore/tkpScore` across finished attempts.
+ */
+export interface DashboardCategoryScores {
+  twk: number;
+  tiu: number;
+  tkp: number;
+}
+
+/**
+ * Aggregated snapshot returned by `GET /api/users/me/dashboard` and
+ * consumed by the user dashboard client.
+ *
+ * - `remainingTryouts` = Σ(purchased package.tryoutCount) − count(DISTINCT finished tryoutId), floored at 0
+ * - `completedTryouts` = count of TryoutAttempt rows with finishedAt IS NOT NULL
+ * - `rank`            = all-time position (sum of max totalScore per tryoutId); null when the user has no attempts
+ * - `totalScore`      = same sum rule as the rank, mirrors the leaderboard score
+ * - `tryoutCount`     = count of distinct tryouts the user has at least one attempt for
+ * - `categoryScores`  = sum of twk/tiu/tkp across finished attempts (NOT the leaderboard's max-per-tryout rule;
+ *                       these are the running category totals the progress bar should display)
+ */
+export interface DashboardSummary {
+  remainingTryouts: number;
+  completedTryouts: number;
+  rank: number | null;
+  totalScore: number;
+  tryoutCount: number;
+  categoryScores: DashboardCategoryScores;
+}

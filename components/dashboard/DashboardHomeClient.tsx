@@ -1,25 +1,39 @@
-'use client';
+"use client";
 
-import { useRouter } from 'next/navigation';
-import { StatCard, Button, Card } from '@/components/ui';
+import { useRouter } from "next/navigation";
+import { StatCard, Button, Card } from "@/components/ui";
+import { useDashboardSummaryQuery } from "@/hooks/useDashboardSummary";
 
 interface Props {
   userName: string;
 }
 
+const CATEGORY_BARS: ReadonlyArray<{
+  key: "twk" | "tiu" | "tkp";
+  label: string;
+  color: string;
+}> = [
+  { key: "twk", label: "TWK - Wawasan Kebangsaan", color: "#2563EB" },
+  { key: "tiu", label: "TIU - Intelegensia Umum", color: "#7C3AED" },
+  { key: "tkp", label: "TKP - Karakteristik Pribadi", color: "#D97706" },
+];
+
 export default function DashboardHomeClient({ userName }: Props) {
   const router = useRouter();
+  const { data: summary, isLoading, isError } = useDashboardSummaryQuery();
+  console.info("summary:", summary);
 
-  const unlockedVideo = false;
-  const remainingTryouts = 0;
-  const usedTryouts = 0;
+  const remainingTryouts = summary?.remainingTryouts ?? null;
+  const completedTryouts = summary?.completedTryouts ?? null;
+  const rank = summary?.rank ?? null;
+  const categoryScores = summary?.categoryScores ?? { twk: 0, tiu: 0, tkp: 0 };
 
   return (
     <div>
       {/* Welcome */}
       <div className="mb-5.5">
         <h2 className="font-black text-2xl text-brand mb-0.5">
-          Selamat Datang, {userName.split(' ')[0]}! 👋
+          Selamat Datang, {userName.split(" ")[0]}! 👋
         </h2>
         <p className="text-gray-400 m-0 text-sm">
           Ayo semangat belajar hari ini!
@@ -28,43 +42,73 @@ export default function DashboardHomeClient({ userName }: Props) {
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-5.5">
-        <StatCard icon="📝" label="Sisa Tryout" value={remainingTryouts} color="#2563EB" />
-        <StatCard icon="✅" label="Tryout Selesai" value={usedTryouts} color="#16A34A" />
-        <StatCard icon="🏅" label="Peringkat" value="#42" color="#B45309" />
         <StatCard
-          icon="🎬"
-          label="Akses Video"
-          value={unlockedVideo ? 'Aktif' : 'Belum'}
-          color={unlockedVideo ? '#16A34A' : '#9CA3AF'}
+          icon="📝"
+          label="Sisa Tryout"
+          value={remainingTryouts === null ? "—" : remainingTryouts}
+          color="#2563EB"
         />
+        <StatCard
+          icon="✅"
+          label="Tryout Selesai"
+          value={completedTryouts === null ? "—" : completedTryouts}
+          color="#16A34A"
+        />
+        <StatCard
+          icon="🏅"
+          label="Peringkat"
+          value={isLoading ? "—" : rank === null ? "—" : `#${rank}`}
+          color="#B45309"
+        />
+        <StatCard icon="🎬" label="Akses Video" value="Belum" color="#9CA3AF" />
       </div>
+
+      {isError && (
+        <div className="mb-5.5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          Gagal memuat ringkasan dashboard. Coba segarkan halaman.
+        </div>
+      )}
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <Card className="lg:col-span-2">
-          <h3 className="font-extrabold text-base text-brand mb-4">
-            📈 Progress Per Materi
-          </h3>
-          {[
-            ['TWK - Wawasan Kebangsaan', 78, '#2563EB'],
-            ['TIU - Intelegensia Umum', 65, '#7C3AED'],
-            ['TKP - Karakteristik Pribadi', 82, '#D97706'],
-          ].map(([cat, pct, col]) => (
-            <div key={cat as string} className="mb-3.5">
-              <div className="flex justify-between mb-1.25">
-                <span className="text-sm font-semibold text-gray-700">{cat as string}</span>
-                <span className="text-sm font-black" style={{ color: col as string }}>
-                  {pct as number}%
-                </span>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-extrabold text-base text-brand m-0">
+              📈 Progress Per Materi
+            </h3>
+            <span
+              className="text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200"
+              title="Akses Video akan tersedia dalam waktu dekat."
+            >
+              🎬 Video Coming soon
+            </span>
+          </div>
+          {CATEGORY_BARS.map(({ key, label, color }) => {
+            const pct = categoryScores[key];
+            return (
+              <div key={key} className="mb-3.5">
+                <div className="flex justify-between mb-1.25">
+                  <span className="text-sm font-semibold text-gray-700">
+                    {label}
+                  </span>
+                  <span className="text-sm font-black" style={{ color }}>
+                    {pct}
+                  </span>
+                </div>
+                <div className="h-1.75 bg-gray-100 rounded overflow-hidden">
+                  <div
+                    className="h-full rounded transition-all duration-1000"
+                    style={{
+                      // Scaled against a 100 ceiling so the bar reflects the raw score.
+                      // Replace with /max once a per-attempt max is decided.
+                      width: `${Math.min(100, Math.max(0, pct))}%`,
+                      backgroundColor: color,
+                    }}
+                  />
+                </div>
               </div>
-              <div className="h-1.75 bg-gray-100 rounded overflow-hidden">
-                <div
-                  className="h-full rounded transition-all duration-1000"
-                  style={{ width: `${pct}%`, backgroundColor: col as string }}
-                />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </Card>
 
         {/* Quick Actions */}
@@ -76,22 +120,22 @@ export default function DashboardHomeClient({ userName }: Props) {
             <Button
               variant="primary"
               className="w-full"
-              onClick={() => router.push('/tryout')}
-              disabled={remainingTryouts <= 0}
+              onClick={() => router.push("/tryout")}
+              disabled={remainingTryouts !== null && remainingTryouts <= 0}
             >
               📝 Mulai Tryout
             </Button>
             <Button
               variant="gold"
               className="w-full"
-              onClick={() => router.push('/video')}
+              onClick={() => router.push("/video")}
             >
               🎬 Video Belajar
             </Button>
             <Button
               variant="outline"
               className="w-full"
-              onClick={() => router.push('/ranking')}
+              onClick={() => router.push("/ranking")}
             >
               🏅 Lihat Ranking
             </Button>

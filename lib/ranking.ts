@@ -139,3 +139,85 @@ export async function getRankingData(since?: Date): Promise<RankingEntry[]> {
 
   return rankings;
 }
+
+/**
+ * Single-user rank helper. Reuses the same scoring rule as `getRankingData`:
+ * for each user, sum of max `totalScore` per `tryoutId`; rank = 1 + number of
+ * other users with a strictly higher score, with ties broken by earliest
+ * `updatedAt` (earlier wins).
+ *
+ * @param userId User identifier (email in this codebase — matches TryoutAttempt.userId).
+ * @param since  Optional date — only attempts with `createdAt >= since` count.
+ * @returns `{ rank, totalScore, tryoutCount }` or `null` if the user has no attempts.
+ */
+export interface UserRank {
+  rank: number;
+  totalScore: number;
+  tryoutCount: number;
+}
+
+export async function getUserRank(
+  userId: string,
+  since?: Date
+): Promise<UserRank | null> {
+  // Fetch all attempts (whole set) so we can rank against every user,
+  // not just the target. Mirrors `getRankingData` selection.
+  const attempts = await prisma.tryoutAttempt.findMany({
+    where: {
+      deletedAt: null,
+      ...(since && { createdAt: { gte: since } }),
+    },
+    select: {
+      userId: true,
+      tryoutId: true,
+      totalScore: true,
+      updatedAt: true,
+    },
+  });
+
+  if (attempts.length === 0) return null;
+
+  // Aggregate: per user → (per tryoutId → max totalScore) + earliest updatedAt
+  const userTryoutMax = new Map<string, Map<number, number>>();
+  const userEarliestAt = new Map<string, Date>();
+
+  for (const a of attempts) {
+    if (!userTryoutMax.has(a.userId)) {
+      userTryoutMax.set(a.userId, new Map());
+    }
+    const tryoutScores = userTryoutMax.get(a.userId)!;
+    const currentMax = tryoutScores.get(a.tryoutId) ?? 0;
+    tryoutScores.set(a.tryoutId, Math.max(currentMax, a.totalScore));
+
+    const prev = userEarliestAt.get(a.userId);
+    if (!prev || a.updatedAt < prev) {
+      userEarliestAt.set(a.userId, a.updatedAt);
+    }
+  }
+
+  if (!userTryoutMax.has(userId)) return null;
+
+  const myScores = userTryoutMax.get(userId)!;
+  const myTotal = [...myScores.values()].reduce((s, v) => s + v, 0);
+  const myEarliest = userEarliestAt.get(userId)!;
+
+  // Count users who rank ahead of me.
+  // ahead = strictly higher totalScore, OR (equal totalScore AND earlier updatedAt)
+  let ahead = 0;
+  for (const [otherId, otherScores] of userTryoutMax) {
+    if (otherId === userId) continue;
+    const otherTotal = [...otherScores.values()].reduce((s, v) => s + v, 0);
+    if (otherTotal > myTotal) {
+      ahead += 1;
+    } else if (otherTotal === myTotal) {
+      const otherEarliest = userEarliestAt.get(otherId)!;
+      if (otherEarliest < myEarliest) ahead += 1;
+    }
+  }
+
+  return {
+    rank: ahead + 1,
+    totalScore: myTotal,
+    tryoutCount: myScores.size,
+  };
+}
