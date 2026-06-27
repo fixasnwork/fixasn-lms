@@ -132,11 +132,12 @@ export interface VideoListResponse {
    */
   hasAccess: boolean;
   /**
-   * Why access was denied. `null` when `hasAccess` is true.
-   * `no_purchase`     — no UserPurchase row for any video-enabled package.
-   * `no_video_package`— a purchase exists but its package does not enable video.
+   * Why access was denied. `null` when `hasAccess` is true. Every deny
+   * scenario in the spec (no purchase, rejected purchase, expired purchase)
+   * collapses to `no_video_package` because the contract is the same:
+   * the caller has no qualifying purchase.
    */
-  accessReason: "no_purchase" | "no_video_package" | null;
+  accessReason: "no_video_package" | null;
 }
 
 // ── Bank Accounts ─────────────────────────────

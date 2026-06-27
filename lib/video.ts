@@ -4,12 +4,16 @@
 // raw 11-char id. Returns the normalized 11-char id or null when the input
 // is empty, malformed, or has an unrecognized host. This is a defense-in-
 // depth re-parse — clients should also pre-validate before POST.
+//
+// All URL regexes are end-anchored with `(?=$|[?&#/])` so an id longer
+// than 11 chars (e.g. an accidental paste of 12+ chars after `v=`) is
+// rejected instead of silently truncated to its first 11 characters.
 // ─────────────────────────────────────────────
 
 const YT_ID_RE = /^[A-Za-z0-9_-]{11}$/;
-const YT_SHORT_RE = /^https?:\/\/youtu\.be\/([A-Za-z0-9_-]{11})/;
-const YT_PATH_RE = /^https?:\/\/(?:www\.|m\.)?youtube\.com\/(?:embed|shorts)\/([A-Za-z0-9_-]{11})/;
-const YT_WATCH_RE = /^https?:\/\/(?:www\.|m\.)?youtube\.com\/watch\?(?:.*&)?v=([A-Za-z0-9_-]{11})/;
+const YT_SHORT_RE = /^https?:\/\/youtu\.be\/([A-Za-z0-9_-]{11})(?=$|[?&#/])/;
+const YT_PATH_RE = /^https?:\/\/(?:www\.|m\.)?youtube\.com\/(?:embed|shorts)\/([A-Za-z0-9_-]{11})(?=$|[?&#/])/;
+const YT_WATCH_RE = /^https?:\/\/(?:www\.|m\.)?youtube\.com\/watch\?(?:.*&)?v=([A-Za-z0-9_-]{11})(?:$|&)/;
 
 export function parseYouTubeId(input: string | null | undefined): string | null {
   if (!input) return null;

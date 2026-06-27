@@ -61,4 +61,17 @@ describe('parseYouTubeId', () => {
   it('rejects garbage text', () => {
     expect(parseYouTubeId('not a youtube link at all')).toBeNull();
   });
+  // Truncation guard: a 12-char id in a URL must NOT silently drop the last char.
+  it('rejects watch URL with 12-char v= value (no silent truncation)', () => {
+    expect(parseYouTubeId('https://www.youtube.com/watch?v=ABCDEFGHIJKL')).toBeNull();
+  });
+  it('rejects youtu.be URL with 12-char id (no silent truncation)', () => {
+    expect(parseYouTubeId('https://youtu.be/ABCDEFGHIJKL')).toBeNull();
+  });
+  it('rejects embed URL with 12-char id (no silent truncation)', () => {
+    expect(parseYouTubeId('https://www.youtube.com/embed/ABCDEFGHIJKL')).toBeNull();
+  });
+  it('rejects shorts URL with 12-char id (no silent truncation)', () => {
+    expect(parseYouTubeId('https://www.youtube.com/shorts/ABCDEFGHIJKL')).toBeNull();
+  });
 });

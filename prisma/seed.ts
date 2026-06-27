@@ -194,13 +194,14 @@ async function main() {
 
   // ── 7. Sample Videos (dev-only; find-or-create by title+category) ──────
   // The youtubeIds here are placeholder demos; replace with real FIX ASN
-  // content before any non-dev deploy. Idempotent: re-running seed will
-  // not duplicate these rows.
+  // content before any non-dev deploy. Three distinct, well-known public-
+  // domain Blender Foundation open-movie IDs so reviewers can visually
+  // confirm each category resolves to a different video.
   console.log("[7/7] Seeding sample videos...");
   const sampleVideos = [
-    { title: "Pengantar TWK", youtubeId: "dQw4w9WgXcQ", category: "TWK", sortOrder: 1, isPublished: true, durationSec: 2100 },
-    { title: "Pengantar TIU", youtubeId: "oHg5SJYRHA0", category: "TIU", sortOrder: 1, isPublished: true, durationSec: 2100 },
-    { title: "Pengantar TKP", youtubeId: "L_jWHffIx5E", category: "TKP", sortOrder: 1, isPublished: true, durationSec: 2100 },
+    { title: "Pengantar TWK", youtubeId: "eRsGyueVLvQ", category: "TWK", sortOrder: 1, isPublished: true, durationSec: 888 },
+    { title: "Pengantar TIU", youtubeId: "aqz-KE-bpKQ", category: "TIU", sortOrder: 1, isPublished: true, durationSec: 596 },
+    { title: "Pengantar TKP", youtubeId: "TWzdRCc8Vic", category: "TKP", sortOrder: 1, isPublished: true, durationSec: 734 },
   ];
   for (const v of sampleVideos) {
     const existing = await prisma.video.findFirst({

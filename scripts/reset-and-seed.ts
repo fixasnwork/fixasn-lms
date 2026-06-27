@@ -75,6 +75,8 @@ async function main() {
     "permissions",
     "users",
     "logoConfigEntries",
+    // video-pembelajaran PR 1: new catalog table
+    "videos",
   ];
 
   for (const table of dropOrder) {
@@ -89,9 +91,11 @@ async function main() {
   const existingTables = tableCheck.map((r) => r.tablename);
   console.log(`  Found ${existingTables.length} tables:`, existingTables.join(", "));
 
-  if (existingTables.length < 14) {
+  // 16 known app tables + the `videos` table added in video-pembelajaran PR 1.
+  const EXPECTED_TABLE_COUNT = 17;
+  if (existingTables.length < EXPECTED_TABLE_COUNT) {
     console.error(
-      "\n❌ Not all 14 tables exist. Please run: npx prisma db push"
+      `\n❌ Not all ${EXPECTED_TABLE_COUNT} tables exist. Please run: npx prisma db push`
     );
     process.exit(1);
   }
@@ -132,13 +136,49 @@ async function main() {
   for (const p of DEFAULT_PACKAGES) {
     await prisma.package.upsert({
       where: { name: p.name },
-      create: { name: p.name, description: p.description, price: p.price, isTrial: p.isTrial, startDate: p.startDate ? new Date(p.startDate) : null, endDate: p.endDate ? new Date(p.endDate) : null },
-      update: { startDate: p.startDate ? new Date(p.startDate) : undefined, endDate: p.endDate ? new Date(p.endDate) : undefined },
+      // On first insert, set the video flag from the static default. On update,
+      // DO NOT touch includesVideoPembelajaran — preserve any admin toggle.
+      create: {
+        name: p.name,
+        description: p.description,
+        price: p.price,
+        isTrial: p.isTrial,
+        includesVideoPembelajaran: p.includesVideoPembelajaran ?? false,
+        startDate: p.startDate ? new Date(p.startDate) : null,
+        endDate: p.endDate ? new Date(p.endDate) : null,
+      },
+      update: {
+        startDate: p.startDate ? new Date(p.startDate) : undefined,
+        endDate: p.endDate ? new Date(p.endDate) : undefined,
+      },
     });
   }
   const allPackages = await prisma.package.findMany();
   const pkgIdByName = new Map(allPackages.map((p) => [p.name, p.id]));
   console.log(`  packages: ${allPackages.length} rows`);
+
+  // ── Sample Videos (dev-only; mirrors prisma/seed.ts block) ─────────────
+  // The youtubeIds here are placeholders; replace with real FIX ASN content
+  // before any non-dev deploy. Idempotent: re-running reset-and-seed will
+  // not duplicate these rows.
+  const sampleVideos = [
+    // Three distinct, well-known public-domain demo IDs so reviewers can
+    // visually confirm each category resolves to a different video.
+    // Sintel (open movie), Big Buck Bunny (open movie), Tears of Steel
+    // (open movie) — all from the Blender Foundation, safe for dev/demo.
+    { title: "Pengantar TWK", youtubeId: "eRsGyueVLvQ", category: "TWK", sortOrder: 1, isPublished: true, durationSec: 888 },
+    { title: "Pengantar TIU", youtubeId: "aqz-KE-bpKQ", category: "TIU", sortOrder: 1, isPublished: true, durationSec: 596 },
+    { title: "Pengantar TKP", youtubeId: "TWzdRCc8Vic", category: "TKP", sortOrder: 1, isPublished: true, durationSec: 734 },
+  ];
+  for (const v of sampleVideos) {
+    const existing = await prisma.video.findFirst({
+      where: { title: v.title, category: v.category, deletedAt: null },
+    });
+    if (!existing) {
+      await prisma.video.create({ data: v });
+    }
+  }
+  console.log(`  videos: ${await prisma.video.count()} rows`);
 
   // Bank Accounts
   for (const b of DEFAULT_BANK_ACCOUNTS) {
@@ -251,6 +291,7 @@ async function main() {
   console.log(`  questionOptions:  ${await prisma.questionOption.count()}`);
   console.log(`  packageTryouts:   ${await prisma.packageTryout.count()}`);
   console.log(`  tryoutQuestions:  ${await prisma.tryoutQuestion.count()}`);
+  console.log(`  videos:           ${await prisma.video.count()}`);
   console.log(`  unique questions: ${seenQIds.size}`);
 }
 
