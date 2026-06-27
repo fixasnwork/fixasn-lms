@@ -120,6 +120,31 @@ describe("useUpdateVideo", () => {
     expect(invalidateQueriesFn).toHaveBeenCalledWith({ queryKey: ["admin-videos"] });
     expect(invalidateQueriesFn).toHaveBeenCalledWith({ queryKey: ["user-videos"] });
   });
+
+  it("normalizes youtubeId from URL in optimistic merge", async () => {
+    useUpdateVideo();
+    const cfg = capturedUseMutationCalls[0];
+
+    getQueryDataFn.mockReturnValueOnce([{ id: 1, title: "Old", youtubeId: "AAAAAAAAAAA" }]);
+    await cfg.onMutate?.({ id: 1, youtubeId: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" });
+
+    // The updater passed to setQueryData should produce the 11-char id.
+    const updater = setQueryDataFn.mock.calls[0][1] as (old: Record<string, unknown>[]) => Record<string, unknown>[];
+    const result = updater([{ id: 1, title: "Old", youtubeId: "AAAAAAAAAAA" }]);
+    expect(result[0].youtubeId).toBe("dQw4w9WgXcQ");
+  });
+
+  it("keeps raw 11-char id unchanged in optimistic merge", async () => {
+    useUpdateVideo();
+    const cfg = capturedUseMutationCalls[0];
+
+    getQueryDataFn.mockReturnValueOnce([{ id: 1, title: "Old", youtubeId: "AAAAAAAAAAA" }]);
+    await cfg.onMutate?.({ id: 1, youtubeId: "BBBBBBBBBBB" });
+
+    const updater = setQueryDataFn.mock.calls[0][1] as (old: Record<string, unknown>[]) => Record<string, unknown>[];
+    const result = updater([{ id: 1, title: "Old", youtubeId: "AAAAAAAAAAA" }]);
+    expect(result[0].youtubeId).toBe("BBBBBBBBBBB");
+  });
 });
 
 describe("useDeleteVideo", () => {

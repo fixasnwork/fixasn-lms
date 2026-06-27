@@ -196,7 +196,10 @@ export interface Payment {
   id: string;       // UUID v7
   userId: string;   // references user.email
   packageId: number;
-  status: "pending" | "verified" | "blocked";
+  // Matches the DB column (free-form String @db.Text) + the runtime
+  // deny list at app/api/videos/route.ts:32 which excludes rejected &
+  // expired in addition to the three primary states.
+  status: "pending" | "verified" | "blocked" | "rejected" | "expired";
   proofUrl: string | null;
   blockReason: string | null;
   createdAt: string;
