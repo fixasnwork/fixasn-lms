@@ -1,19 +1,20 @@
 import { describe, it, expect, vi } from 'vitest';
+import { NextRequest } from 'next/server';
 import { POST, GET } from './route';
 
 vi.mock('@/lib/adminAuth', () => ({
   requireAdmin: vi.fn().mockResolvedValue(null),
 }));
 
-function makeGetReq(url: string) {
-  return { nextUrl: new URL(url) } as unknown as Request;
+function makeGetReq(url: string): NextRequest {
+  return { nextUrl: new URL(url) } as unknown as NextRequest;
 }
 
-function makePostReq(body: Record<string, unknown>) {
+function makePostReq(body: Record<string, unknown>): NextRequest {
   return {
     json: async () => body,
     nextUrl: new URL('http://localhost/api/banks'),
-  } as unknown as Request;
+  } as unknown as NextRequest;
 }
 
 describe('POST /api/banks', () => {

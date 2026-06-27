@@ -35,12 +35,15 @@ test.describe('Tryout page performance', () => {
 
     // Get performance entries from the browser
     const perfEntries = await page.evaluate(() => {
-      return performance.getEntriesByType('resource').map((e) => ({
-        name: e.name.replace('http://localhost:3000', ''),
-        duration: Math.round(e.duration),
-        startTime: Math.round(e.startTime),
-        transferSize: Math.round(e.transferSize / 1024) + 'KB',
-      }));
+      return performance.getEntriesByType('resource').map((e) => {
+        const entry = e as PerformanceResourceTiming;
+        return {
+          name: entry.name.replace('http://localhost:3000', ''),
+          duration: Math.round(entry.duration),
+          startTime: Math.round(entry.startTime),
+          transferSize: Math.round(entry.transferSize / 1024) + 'KB',
+        };
+      });
     });
 
     // Filter to just our API calls

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { NextRequest } from 'next/server';
 import { GET, PUT, DELETE } from './route';
 
 vi.mock('@/lib/adminAuth', () => ({
@@ -50,25 +51,25 @@ beforeEach(() => {
 
 describe('GET /api/tryouts/[tryoutId]', () => {
   it('returns 400 for invalid tryoutId', async () => {
-    const response = await GET({} as Request, makeParams('abc'));
+    const response = await GET({} as NextRequest, makeParams('abc'));
     expect(response.status).toBe(400);
   });
 
   it('returns 404 for non-existent tryout', async () => {
-    const response = await GET({} as Request, makeParams('999999'));
+    const response = await GET({} as NextRequest, makeParams('999999'));
     expect(response.status).toBe(404);
   });
 });
 
 describe('PUT /api/tryouts/[tryoutId]', () => {
   it('returns 400 for invalid tryoutId', async () => {
-    const req = { json: async () => ({ name: 'Test' }) } as unknown as Request;
+    const req = { json: async () => ({ name: 'Test' }) } as unknown as NextRequest;
     const response = await PUT(req, makeParams('abc'));
     expect(response.status).toBe(400);
   });
 
   it('returns 400 for invalid durationMin', async () => {
-    const req = { json: async () => ({ durationMin: 0 }) } as unknown as Request;
+    const req = { json: async () => ({ durationMin: 0 }) } as unknown as NextRequest;
     const response = await PUT(req, makeParams('1'));
     expect(response.status).toBe(400);
   });
@@ -80,7 +81,7 @@ describe('PUT /api/tryouts/[tryoutId]', () => {
         startDate: '2026-06-30T00:00:00Z',
         endDate: '2026-06-01T00:00:00Z',
       }),
-    } as unknown as Request;
+    } as unknown as NextRequest;
     const response = await PUT(req, makeParams('1'));
     expect(response.status).toBe(400);
     const data = await response.json();
@@ -90,7 +91,7 @@ describe('PUT /api/tryouts/[tryoutId]', () => {
   it('returns 400 when date strings are invalid', async () => {
     const req = {
       json: async () => ({ startDate: 'not-a-date' }),
-    } as unknown as Request;
+    } as unknown as NextRequest;
     const response = await PUT(req, makeParams('1'));
     expect(response.status).toBe(400);
     const data = await response.json();
@@ -100,7 +101,7 @@ describe('PUT /api/tryouts/[tryoutId]', () => {
   it('allows setting endDate to null', async () => {
     const req = {
       json: async () => ({ endDate: null }),
-    } as unknown as Request;
+    } as unknown as NextRequest;
     const response = await PUT(req, makeParams('1'));
     expect(response.status).toBe(200);
   });
@@ -108,12 +109,12 @@ describe('PUT /api/tryouts/[tryoutId]', () => {
 
 describe('DELETE /api/tryouts/[tryoutId]', () => {
   it('returns 400 for invalid tryoutId', async () => {
-    const response = await DELETE({} as Request, makeParams('xyz'));
+    const response = await DELETE({} as NextRequest, makeParams('xyz'));
     expect(response.status).toBe(400);
   });
 
   it('returns 404 for non-existent tryout', async () => {
-    const response = await DELETE({} as Request, makeParams('999999'));
+    const response = await DELETE({} as NextRequest, makeParams('999999'));
     expect(response.status).toBe(404);
   });
 });

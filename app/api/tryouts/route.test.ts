@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import type { NextRequest } from 'next/server';
 import { GET, POST } from './route';
 
 const mockPrisma = vi.hoisted(() => {
@@ -50,15 +51,15 @@ vi.mock('@/lib/adminAuth', () => ({
   requireAdmin: vi.fn().mockResolvedValue(null),
 }));
 
-function makeReq(url: string) {
-  return { nextUrl: new URL(url) } as unknown as Request;
+function makeReq(url: string): NextRequest {
+  return { nextUrl: new URL(url) } as unknown as NextRequest;
 }
 
-function makePostReq(body: Record<string, unknown>) {
+function makePostReq(body: Record<string, unknown>): NextRequest {
   return {
     json: async () => body,
     nextUrl: new URL('http://localhost/api/tryouts'),
-  } as unknown as Request;
+  } as unknown as NextRequest;
 }
 
 describe('GET /api/tryouts', () => {

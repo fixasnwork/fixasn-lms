@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { NextRequest } from 'next/server';
 
 // ── Hoisted mock handles (so vi.mock factories can reference them) ──
 const { mockAuth, mockFindUnique, mockUpdate } = vi.hoisted(() => ({
@@ -34,15 +35,15 @@ const SESSION = {
 };
 
 // ── Helpers ──
-function makeGetReq(): Request {
-  return { nextUrl: new URL('http://localhost/api/tryout-attempts/att-1') } as unknown as Request;
+function makeGetReq(): NextRequest {
+  return { nextUrl: new URL('http://localhost/api/tryout-attempts/att-1') } as unknown as NextRequest;
 }
 
-function makePutReq(body: Record<string, unknown>): Request {
+function makePutReq(body: Record<string, unknown>): NextRequest {
   return {
     json: async () => body,
     nextUrl: new URL('http://localhost/api/tryout-attempts/att-1'),
-  } as unknown as Request;
+  } as unknown as NextRequest;
 }
 
 function makeParams(attemptId: string) {
@@ -74,7 +75,7 @@ function makeAttemptWithAnswers(answers: Array<{ questionIndex: number; selected
 }
 
 describe('GET /api/tryout-attempts/[attemptId] — Ragu-ragu flag', () => {
-  let GET: (req: Request, ctx: { params: Promise<{ attemptId: string }> }) => Promise<Response>;
+  let GET: (req: NextRequest, ctx: { params: Promise<{ attemptId: string }> }) => Promise<Response>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -92,7 +93,7 @@ describe('GET /api/tryout-attempts/[attemptId] — Ragu-ragu flag', () => {
       ])
     );
 
-    const res = await GET(makeGetReq() as unknown as Request, { params: makeParams('att-1') });
+    const res = await GET(makeGetReq(), { params: makeParams('att-1') });
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.attempt.answers).toEqual({ 0: 1, 1: -1, 2: 2 });
@@ -101,7 +102,7 @@ describe('GET /api/tryout-attempts/[attemptId] — Ragu-ragu flag', () => {
 
   it('returns empty raguRagu map when no answers exist', async () => {
     mockFindUnique.mockResolvedValue(makeAttemptWithAnswers([]));
-    const res = await GET(makeGetReq() as unknown as Request, { params: makeParams('att-1') });
+    const res = await GET(makeGetReq(), { params: makeParams('att-1') });
     const data = await res.json();
     expect(data.attempt.answers).toEqual({});
     expect(data.attempt.raguRagu).toEqual({});
@@ -114,7 +115,7 @@ describe('GET /api/tryout-attempts/[attemptId] — Ragu-ragu flag', () => {
       ])
     );
 
-    const res = await GET(makeGetReq() as unknown as Request, { params: makeParams('att-1') });
+    const res = await GET(makeGetReq(), { params: makeParams('att-1') });
     const data = await res.json();
     expect(data.attempt).toHaveProperty('finishedAt');
     expect(data.attempt.finishedAt).toBeNull();
@@ -129,14 +130,14 @@ describe('GET /api/tryout-attempts/[attemptId] — Ragu-ragu flag', () => {
       finishedAt: finished,
     });
 
-    const res = await GET(makeGetReq() as unknown as Request, { params: makeParams('att-1') });
+    const res = await GET(makeGetReq(), { params: makeParams('att-1') });
     const data = await res.json();
     expect(data.attempt.finishedAt).toBe('2026-06-14T10:00:00.000Z');
   });
 });
 
 describe('PUT /api/tryout-attempts/[attemptId] — Ragu-ragu flag', () => {
-  let PUT: (req: Request, ctx: { params: Promise<{ attemptId: string }> }) => Promise<Response>;
+  let PUT: (req: NextRequest, ctx: { params: Promise<{ attemptId: string }> }) => Promise<Response>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -331,8 +332,8 @@ describe('PUT /api/tryout-attempts/[attemptId] — Ragu-ragu flag', () => {
 });
 
 describe('PUT /api/tryout-attempts/[attemptId] — timeLeftSeconds', () => {
-  let PUT: (req: Request, ctx: { params: Promise<{ attemptId: string }> }) => Promise<Response>;
-  let GET: (req: Request, ctx: { params: Promise<{ attemptId: string }> }) => Promise<Response>;
+  let PUT: (req: NextRequest, ctx: { params: Promise<{ attemptId: string }> }) => Promise<Response>;
+  let GET: (req: NextRequest, ctx: { params: Promise<{ attemptId: string }> }) => Promise<Response>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -383,7 +384,7 @@ describe('PUT /api/tryout-attempts/[attemptId] — timeLeftSeconds', () => {
     expect(updateCall.data.finishedAt).toBeUndefined();
 
     // GET should return the persisted value
-    const getRes = await GET(makeGetReq() as unknown as Request, {
+    const getRes = await GET(makeGetReq(), {
       params: makeParams('att-1'),
     });
     expect(getRes.status).toBe(200);

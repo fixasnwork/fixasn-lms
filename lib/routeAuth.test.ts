@@ -48,7 +48,7 @@ describe('requireActiveSession - ban check', () => {
   });
 
   it('returns 403 if user is blocked', async () => {
-    vi.mocked(auth).mockResolvedValue(mockSession);
+    vi.mocked(auth as () => Promise<typeof mockSession | null>).mockResolvedValue(mockSession);
     vi.mocked(prisma.user.findUnique).mockResolvedValue({
       isBlocked: true,
     } as never);
@@ -62,7 +62,7 @@ describe('requireActiveSession - ban check', () => {
   });
 
   it('allows non-banned users through', async () => {
-    vi.mocked(auth).mockResolvedValue(mockSession);
+    vi.mocked(auth as () => Promise<typeof mockSession | null>).mockResolvedValue(mockSession);
     vi.mocked(prisma.user.findUnique).mockResolvedValue({
       isBlocked: false,
     } as never);
