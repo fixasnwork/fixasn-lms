@@ -12,6 +12,7 @@ import {
   queueFlagUpdate,
 } from "@/hooks/useTryoutQueries";
 import { useAutosaveAnswers } from "@/hooks/useAutosaveAnswers";
+import { useNavGuardStore } from "@/store/useNavGuardStore";
 import PembahasanNavigator from "./PembahasanNavigator";
 
 // ── Types ──
@@ -72,11 +73,16 @@ function QuestionGrid({
         }}
       >
         {sections.map((sec) => {
-          const done = sec.indices.filter((i) => answers[i] !== undefined).length;
+          const done = sec.indices.filter(
+            (i) => answers[i] !== undefined,
+          ).length;
           return (
             <div key={sec.label} className="mb-3">
               <div className="flex justify-between items-center mb-1.5">
-                <span className="font-bold text-xs" style={{ color: sec.color }}>
+                <span
+                  className="font-bold text-xs"
+                  style={{ color: sec.color }}
+                >
                   {sec.label}
                 </span>
                 <span className="text-xs text-gray-400">
@@ -102,8 +108,16 @@ function QuestionGrid({
                         ${isActive ? "ring-2 ring-offset-1" : ""}
                       `}
                       style={{
-                        background: isActive ? sec.color : isDone ? sec.bg : "#F1F5F9",
-                        color: isActive ? "#fff" : isDone ? sec.color : "#9CA3AF",
+                        background: isActive
+                          ? sec.color
+                          : isDone
+                            ? sec.bg
+                            : "#F1F5F9",
+                        color: isActive
+                          ? "#fff"
+                          : isDone
+                            ? sec.color
+                            : "#9CA3AF",
                         outline: isActive ? `2px solid ${sec.color}` : "none",
                         outlineOffset: 1,
                       }}
@@ -130,7 +144,10 @@ function QuestionGrid({
           { color: "#DBEAFE", label: "Sudah dijawab" },
           { color: "#F1F5F9", label: "Belum dijawab" },
         ].map((item) => (
-          <div key={item.label} className="flex gap-1.5 items-center text-xs text-gray-500">
+          <div
+            key={item.label}
+            className="flex gap-1.5 items-center text-xs text-gray-500"
+          >
             <div
               className="w-3 h-3 rounded border border-gray-200 flex-shrink-0"
               style={{ background: item.color }}
@@ -241,6 +258,55 @@ export default function TryoutEngine({
     prevPreloaded.current = preloadedAnswers;
   }, [preloadedAnswers]);
 
+  // ── Nav guard: keep a ref to the latest save closure. The store's
+  // `save` slot points at this ref so the sidebar/bottom-nav always read
+  // the freshest `answers` / `timeLeft` / `raguRagu` without forcing the
+  // store to update on every keystroke. ──
+  const performSaveRef = useRef<() => Promise<void>>(async () => {});
+  useEffect(() => {
+    performSaveRef.current = async () => {
+      if (!attemptId) return;
+      await Promise.all([
+        updateAnswers.mutateAsync({
+          answers,
+          timeLeftSeconds: timeLeft,
+        }),
+        // Skip if no flags were ever touched — mutateAsync on an empty
+        // body is a no-op on the server.
+        ...(Object.keys(raguRagu).length > 0
+          ? [updateFlags.mutateAsync(raguRagu)]
+          : []),
+      ]);
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  });
+
+  // ── Nav guard: register/unregister + push progress snapshot. Active
+  // only while a tryout is actually running (not in ready/result phases). ──
+  const isRunning = phase === "running" && !!attemptId;
+  useEffect(() => {
+    useNavGuardStore.getState().setActive(isRunning);
+    if (!isRunning) {
+      useNavGuardStore.getState().setSave(null);
+      useNavGuardStore.getState().setProgress(null);
+    } else {
+      // Bind a stable wrapper that always delegates to the latest ref.
+      useNavGuardStore.getState().setSave(() => performSaveRef.current());
+    }
+    return () => {
+      useNavGuardStore.getState().reset();
+    };
+  }, [isRunning]);
+
+  useEffect(() => {
+    if (!isRunning) return;
+    useNavGuardStore.getState().setProgress({
+      answered: Object.keys(answers).length,
+      total: questions.length,
+      timeLeftLabel: formatTime(timeLeft),
+    });
+  }, [isRunning, answers, timeLeft, questions.length]);
+
   const toggleRaguRagu = useCallback(
     (index: number) => {
       setRaguRagu((prev) => {
@@ -277,26 +343,14 @@ export default function TryoutEngine({
   }, [answers, onFinish, attemptId, raguRagu, updateFlags]);
 
   // ── Save-and-exit (Simpan & Keluar) ──
-  // Single PUT via useUpdateAttemptAnswers with answers + timeLeftSeconds,
-  // flushed alongside any pending ragu-ragu flags. On success: stop the
-  // interval, close the modal, call onExit?. On error: keep the modal
-  // open and surface a small inline message so the user can retry.
+  // Delegates the actual PUT to the ref so the nav-guard modal and this
+  // modal share a single code path. On success: close the modal, call
+  // onExit?. On error: keep the modal open and surface a small inline
+  // message so the user can retry.
   const handleConfirmExit = useCallback(async () => {
-    if (!attemptId) return;
     setExitError(null);
     try {
-      await Promise.all([
-        updateAnswers.mutateAsync({
-          answers,
-          timeLeftSeconds: timeLeft,
-        }),
-        // Skip if no flags were ever touched — mutateAsync on an empty
-        // body is a no-op on the server.
-        ...(Object.keys(raguRagu).length > 0
-          ? [updateFlags.mutateAsync(raguRagu)]
-          : []),
-      ]);
-      if (timerRef.current) clearInterval(timerRef.current);
+      await performSaveRef.current();
       setShowExitConfirm(false);
       onExit?.();
     } catch (err) {
@@ -304,7 +358,7 @@ export default function TryoutEngine({
         err instanceof Error ? err.message : "Gagal menyimpan, coba lagi.",
       );
     }
-  }, [attemptId, answers, timeLeft, raguRagu, updateAnswers, updateFlags, onExit]);
+  }, [onExit]);
 
   // Scoring
   const totals = { TWK: 0, TIU: 0, TKP: 0 };
@@ -321,13 +375,10 @@ export default function TryoutEngine({
     setPhase("ready");
   };
 
-  const handleSelectQuestion = useCallback(
-    (index: number) => {
-      setCur(index);
-      setShowMobileNav(false);
-    },
-    [],
-  );
+  const handleSelectQuestion = useCallback((index: number) => {
+    setCur(index);
+    setShowMobileNav(false);
+  }, []);
 
   // ── PHASE: READY ──
   if (phase === "ready") {
@@ -365,7 +416,10 @@ export default function TryoutEngine({
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
             {tips.map((t, i) => (
-              <div key={i} className="flex flex-col items-center gap-1.5 sm:gap-2">
+              <div
+                key={i}
+                className="flex flex-col items-center gap-1.5 sm:gap-2"
+              >
                 <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-brand flex items-center justify-center text-xl sm:text-2xl">
                   {t.icon}
                 </div>
@@ -380,7 +434,11 @@ export default function TryoutEngine({
             <Button variant="outline" className="flex-1" onClick={onBack}>
               Batalkan
             </Button>
-            <Button variant="primary" className="flex-[2]" onClick={startTryout}>
+            <Button
+              variant="primary"
+              className="flex-[2]"
+              onClick={startTryout}
+            >
               Mulai Tryout
             </Button>
           </div>
@@ -395,10 +453,18 @@ export default function TryoutEngine({
       <div className="min-h-screen bg-[#F8FAFF] p-3 sm:p-6">
         <div className="max-w-4xl mx-auto">
           <div className="flex flex-col sm:flex-row gap-3 mb-4 sm:mb-5">
-            <Button variant="outline" onClick={onBack} className="w-full sm:w-auto">
+            <Button
+              variant="outline"
+              onClick={onBack}
+              className="w-full sm:w-auto"
+            >
               ← Kembali ke Dashboard
             </Button>
-            <Button variant="primary" onClick={retry} className="w-full sm:w-auto sm:ml-auto">
+            <Button
+              variant="primary"
+              onClick={retry}
+              className="w-full sm:w-auto sm:ml-auto"
+            >
               🔄 Ulangi Tryout
             </Button>
           </div>
@@ -424,7 +490,10 @@ export default function TryoutEngine({
               ].map(({ cat, col, pass }) => (
                 <div key={cat} className="bg-white/10 rounded-xl p-3 sm:p-4">
                   <div className="font-bold text-xs sm:text-sm mb-1">{cat}</div>
-                  <div className="text-2xl sm:text-3xl font-black" style={{ color: col }}>
+                  <div
+                    className="text-2xl sm:text-3xl font-black"
+                    style={{ color: col }}
+                  >
                     {totals[cat as keyof typeof totals]}
                   </div>
                   <div className="text-white/60 text-[10px] sm:text-xs mt-1">
@@ -463,33 +532,45 @@ export default function TryoutEngine({
     }
   });
 
-  const twkDone = categoryIndices.TWK.filter((i) => answers[i] !== undefined).length;
-  const tiuDone = categoryIndices.TIU.filter((i) => answers[i] !== undefined).length;
-  const tkpDone = categoryIndices.TKP.filter((i) => answers[i] !== undefined).length;
+  const twkDone = categoryIndices.TWK.filter(
+    (i) => answers[i] !== undefined,
+  ).length;
+  const tiuDone = categoryIndices.TIU.filter(
+    (i) => answers[i] !== undefined,
+  ).length;
+  const tkpDone = categoryIndices.TKP.filter(
+    (i) => answers[i] !== undefined,
+  ).length;
 
   const sections: Section[] = [
-    { label: "TWK", indices: categoryIndices.TWK, color: "#2563EB", bg: "#DBEAFE" },
-    { label: "TIU", indices: categoryIndices.TIU, color: "#7C3AED", bg: "#EDE9FE" },
-    { label: "TKP", indices: categoryIndices.TKP, color: "#D97706", bg: "#FEF3C7" },
+    {
+      label: "TWK",
+      indices: categoryIndices.TWK,
+      color: "#2563EB",
+      bg: "#DBEAFE",
+    },
+    {
+      label: "TIU",
+      indices: categoryIndices.TIU,
+      color: "#7C3AED",
+      bg: "#EDE9FE",
+    },
+    {
+      label: "TKP",
+      indices: categoryIndices.TKP,
+      color: "#D97706",
+      bg: "#FEF3C7",
+    },
   ];
 
-  const currentSection = sections.find((s) => s.indices.includes(cur)) || sections[0];
+  const currentSection =
+    sections.find((s) => s.indices.includes(cur)) || sections[0];
 
   const timeStr = formatTime(timeLeft);
   const timerShort = timeStr.split(":").slice(-2).join(":"); // MM:SS for mobile
 
   return (
     <div className="min-h-screen bg-[#F8FAFF] w-full max-w-[100vw] overflow-x-hidden">
-      {/* ── Trial Banner ── */}
-      {isTrial && (
-        <div className="bg-gradient-to-r from-amber-600 to-yellow-400 text-white px-3 sm:px-6 py-2 text-center font-bold text-[11px] sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-3">
-          <span>🎯 MODE TRIAL — 10 Soal Gratis · 15 menit</span>
-          <span className="bg-white/25 rounded-full px-2 sm:px-3 py-0.5 text-[9px] sm:text-xs whitespace-nowrap">
-            Beli paket untuk akses 110 soal penuh
-          </span>
-        </div>
-      )}
-
       {/* ── Sticky Header ── */}
       <div
         className="bg-white border-b border-gray-100 px-3 sm:px-4 h-14 flex items-center justify-between sticky top-0 z-50 shadow-sm"
@@ -504,15 +585,23 @@ export default function TryoutEngine({
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Desktop stats */}
           <div className="hidden md:flex gap-3 text-xs text-gray-400 font-semibold">
-            <span>TWK: {twkDone}/{categoryIndices.TWK.length}</span>
-            <span>TIU: {tiuDone}/{categoryIndices.TIU.length}</span>
-            <span>TKP: {tkpDone}/{categoryIndices.TKP.length}</span>
+            <span>
+              TWK: {twkDone}/{categoryIndices.TWK.length}
+            </span>
+            <span>
+              TIU: {tiuDone}/{categoryIndices.TIU.length}
+            </span>
+            <span>
+              TKP: {tkpDone}/{categoryIndices.TKP.length}
+            </span>
           </div>
 
           {/* Timer — full on desktop, short (MM:SS) on mobile */}
           <div
             className={`px-2 sm:px-3 py-1 rounded-full font-black text-center flex-shrink-0 ${
-              timeLeft < 300 ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-700"
+              timeLeft < 300
+                ? "bg-red-50 text-red-600"
+                : "bg-blue-50 text-blue-700"
             } text-xs sm:text-sm md:text-lg min-w-[52px] sm:min-w-[64px] md:min-w-[80px]`}
           >
             ⏱ <span className="hidden sm:inline">{timeStr}</span>
@@ -534,7 +623,12 @@ export default function TryoutEngine({
           )}
 
           {/* Finish */}
-          <Button variant="danger" size="sm" onClick={finish} className="!px-2 sm:!px-3">
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={finish}
+            className="!px-2 sm:!px-3"
+          >
             <span className="hidden sm:inline">Selesai</span>
             <span className="sm:hidden">✓</span>
           </Button>
@@ -556,7 +650,11 @@ export default function TryoutEngine({
             <div className="flex flex-wrap items-center gap-2 mb-3 sm:mb-4">
               <Badge
                 color={
-                  q.category === "TWK" ? "blue" : q.category === "TIU" ? "purple" : "yellow"
+                  q.category === "TWK"
+                    ? "blue"
+                    : q.category === "TIU"
+                      ? "purple"
+                      : "yellow"
                 }
               >
                 {q.category}
@@ -619,14 +717,18 @@ export default function TryoutEngine({
                   >
                     <span
                       className={`w-6 h-6 rounded-md flex items-center justify-center font-bold text-xs flex-shrink-0 ${
-                        isSelected ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-400"
+                        isSelected
+                          ? "bg-blue-500 text-white"
+                          : "bg-gray-100 text-gray-400"
                       }`}
                     >
                       {String.fromCharCode(65 + j)}
                     </span>
                     <div className="flex-1 min-w-0">
                       {opt.optionText && (
-                        <span className="leading-relaxed">{opt.optionText}</span>
+                        <span className="leading-relaxed">
+                          {opt.optionText}
+                        </span>
                       )}
                       {optImg && (
                         <div className="relative w-full h-16 sm:h-24 mt-1">
@@ -718,7 +820,10 @@ export default function TryoutEngine({
                 className="w-2 h-2 rounded-full flex-shrink-0"
                 style={{ background: currentSection.color }}
               />
-              <span className="text-[11px] font-bold truncate" style={{ color: currentSection.color }}>
+              <span
+                className="text-[11px] font-bold truncate"
+                style={{ color: currentSection.color }}
+              >
                 {q.category} #{cur + 1}
               </span>
             </div>
@@ -773,7 +878,9 @@ export default function TryoutEngine({
         {/* Category summary */}
         <div className="flex gap-2 mb-4">
           {sections.map((sec) => {
-            const done = sec.indices.filter((i) => answers[i] !== undefined).length;
+            const done = sec.indices.filter(
+              (i) => answers[i] !== undefined,
+            ).length;
             return (
               <div
                 key={sec.label}

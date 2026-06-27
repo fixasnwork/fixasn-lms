@@ -5,6 +5,8 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useNavGuardStore } from "@/store/useNavGuardStore";
+import { Modal, Button } from "@/components/ui";
 
 interface NavItem {
   id: string;
@@ -25,14 +27,59 @@ export default function UserSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuthStore();
+  const isGuarded = useNavGuardStore((s) => s.isActive);
+  const navProgress = useNavGuardStore((s) => s.progress);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
+  // Nav-guard state: when a tryout is in-progress, clicks land here first
+  // and trigger a confirm modal before we actually navigate.
+  const [pendingNavPath, setPendingNavPath] = useState<string | null>(null);
+  const [navError, setNavError] = useState<string | null>(null);
+  const [navSaving, setNavSaving] = useState(false);
 
   const segment = pathname?.split("/").pop() || "";
   const currentPage = segment === "dashboard" ? "home" : segment;
 
+  const pathFor = (id: string) =>
+    id === "home" ? "/dashboard" : `/${id}`;
+
   const handleNav = (id: string) => {
     setIsMoreOpen(false);
-    router.push(id === "home" ? "/dashboard" : `/${id}`);
+    const path = pathFor(id);
+    // Skip the guard when navigating to the same page the user is on —
+    // avoids a confusing "are you sure you want to leave?" modal when
+    // they just tap the active item.
+    if (pathname === path) return;
+    if (isGuarded) {
+      setNavError(null);
+      setPendingNavPath(path);
+      return;
+    }
+    router.push(path);
+  };
+
+  const handleCancelNav = () => {
+    if (navSaving) return;
+    setPendingNavPath(null);
+    setNavError(null);
+  };
+
+  const handleSaveAndLeave = async () => {
+    if (!pendingNavPath) return;
+    setNavSaving(true);
+    setNavError(null);
+    try {
+      const save = useNavGuardStore.getState().save;
+      if (save) await save();
+      const dest = pendingNavPath;
+      setPendingNavPath(null);
+      router.push(dest);
+    } catch (err) {
+      setNavError(
+        err instanceof Error ? err.message : "Gagal menyimpan, coba lagi.",
+      );
+    } finally {
+      setNavSaving(false);
+    }
   };
 
   const handleLogout = () => {
@@ -205,6 +252,70 @@ export default function UserSidebar() {
           </button>
         </div>
       </nav>
+
+      {/* ── Nav-guard confirmation modal ── */}
+      <Modal
+        open={!!pendingNavPath}
+        onClose={handleCancelNav}
+        title="Keluar dari Tryout?"
+        width="min(95vw, 440px)"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600 leading-relaxed">
+            Jawaban kamu yang belum tersimpan bisa hilang. Yakin ingin keluar
+            ke halaman lain sekarang?
+          </p>
+
+          {navProgress && (
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 grid grid-cols-2 gap-3 text-center">
+              <div>
+                <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+                  Soal dijawab
+                </div>
+                <div className="font-black text-lg text-brand mt-0.5">
+                  {navProgress.answered} / {navProgress.total}
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+                  Sisa waktu
+                </div>
+                <div className="font-black text-lg text-brand mt-0.5">
+                  ⏱ {navProgress.timeLeftLabel}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {navError && (
+            <div
+              role="alert"
+              className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700"
+            >
+              {navError}
+            </div>
+          )}
+
+          <div className="flex gap-2 pt-1">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={handleCancelNav}
+              disabled={navSaving}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="primary"
+              className="flex-1"
+              onClick={handleSaveAndLeave}
+              disabled={navSaving}
+            >
+              {navSaving ? "Menyimpan…" : "Simpan & Keluar"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 }

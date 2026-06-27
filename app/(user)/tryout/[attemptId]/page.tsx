@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { use, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { calculateScoring } from "@/lib/scoring";
 import TryoutEngine from "@/components/tryout/TryoutEngine";
@@ -18,6 +18,25 @@ export default function TryoutAttemptPage({
 
   const { data, isFetching, error } = useAttempt(attemptId);
   const updateAttempt = useUpdateAttempt(attemptId);
+
+  // ── Browser-close guard ──
+  // Only register while an in-progress attempt is mounted. The native
+  // `beforeunload` dialog ("Changes you made may not be saved") is the
+  // only mechanism the browser exposes for this; custom messages are
+  // ignored by every modern browser for security reasons. The user is
+  // directed to the in-app "Simpan & Keluar" modal for a friendlier
+  // confirmation when navigating via the sidebar.
+  useEffect(() => {
+    if (!data || data.attempt.finishedAt) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      // Setting returnValue (any string) is what actually triggers the
+      // native prompt; the value itself is ignored by the browser.
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [data]);
 
   if (isFetching) {
     return (
