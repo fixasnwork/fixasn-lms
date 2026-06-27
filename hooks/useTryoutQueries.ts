@@ -78,6 +78,10 @@ export function useCreatePayment() {
     onSuccess: () => {
       // Invalidate payments query so any component using it refetches
       queryClient.invalidateQueries({ queryKey: ['payments'] });
+      // video-pembelajaran: a new payment may have just granted video access
+      // (Paket Video Belajar). Invalidate the user video catalog so the
+      // /video page flips from locked to unlocked on the next visit.
+      queryClient.invalidateQueries({ queryKey: ['user-videos'] });
     },
   });
 }

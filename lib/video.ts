@@ -1,14 +1,44 @@
 // ─────────────────────────────────────────────
-// YouTube id extraction (server-side helper)
-// Accepts full watch / short / embed / shorts / mobile URLs as well as a
-// raw 11-char id. Returns the normalized 11-char id or null when the input
-// is empty, malformed, or has an unrecognized host. This is a defense-in-
-// depth re-parse — clients should also pre-validate before POST.
-//
+// YouTube id extraction + shared video helpers.
+//   parseYouTubeId   — extract 11-char id from URL or raw id
+//   mapVideo         — Prisma row → Video type
+//   ALLOWED_VIDEO_CATEGORIES — valid Video.category values
+// ─────────────────────────────────────────────
+
+import type { Video, VideoCategory } from "@/lib/types";
+
+export const ALLOWED_VIDEO_CATEGORIES: ReadonlyArray<VideoCategory> = ["TWK", "TIU", "TKP"];
+
+/** Shared mapper: Prisma video row → API response shape. */
+export function mapVideo(v: {
+  id: number;
+  title: string;
+  description: string | null;
+  youtubeId: string;
+  category: string;
+  durationSec: number | null;
+  sortOrder: number;
+  isPublished: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}): Video {
+  return {
+    id: v.id,
+    title: v.title,
+    description: v.description,
+    youtubeId: v.youtubeId,
+    category: v.category as VideoCategory,
+    durationSec: v.durationSec,
+    sortOrder: v.sortOrder,
+    isPublished: v.isPublished,
+    createdAt: v.createdAt.toISOString(),
+    updatedAt: v.updatedAt.toISOString(),
+  };
+}
+
 // All URL regexes are end-anchored with `(?=$|[?&#/])` so an id longer
 // than 11 chars (e.g. an accidental paste of 12+ chars after `v=`) is
 // rejected instead of silently truncated to its first 11 characters.
-// ─────────────────────────────────────────────
 
 const YT_ID_RE = /^[A-Za-z0-9_-]{11}$/;
 const YT_SHORT_RE = /^https?:\/\/youtu\.be\/([A-Za-z0-9_-]{11})(?=$|[?&#/])/;
