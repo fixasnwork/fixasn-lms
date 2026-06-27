@@ -74,4 +74,18 @@ describe('parseYouTubeId', () => {
   it('rejects shorts URL with 12-char id (no silent truncation)', () => {
     expect(parseYouTubeId('https://www.youtube.com/shorts/ABCDEFGHIJKL')).toBeNull();
   });
+
+  // Fragment consistency: all four URL forms must accept a # fragment.
+  it('accepts watch URL with #t= fragment', () => {
+    expect(parseYouTubeId(`https://www.youtube.com/watch?v=${VALID}#t=10s`)).toBe(VALID);
+  });
+  it('accepts youtu.be URL with #t= fragment', () => {
+    expect(parseYouTubeId(`https://youtu.be/${VALID}#t=10s`)).toBe(VALID);
+  });
+  it('accepts embed URL with # fragment', () => {
+    expect(parseYouTubeId(`https://www.youtube.com/embed/${VALID}#fragment`)).toBe(VALID);
+  });
+  it('accepts shorts URL with # fragment', () => {
+    expect(parseYouTubeId(`https://www.youtube.com/shorts/${VALID}#fragment`)).toBe(VALID);
+  });
 });
