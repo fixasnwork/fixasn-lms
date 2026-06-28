@@ -313,6 +313,7 @@ function PackageCreateModal({ open, onClose }: { open: boolean; onClose: () => v
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState(0);
   const [isTrial, setIsTrial] = useState(false);
+  const [includesVideoPembelajaran, setIncludesVideoPembelajaran] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
@@ -324,6 +325,7 @@ function PackageCreateModal({ open, onClose }: { open: boolean; onClose: () => v
         description: description.trim(),
         price,
         isTrial,
+        includesVideoPembelajaran,
         startDate: localDatetimeToIso(startDate),
         endDate: localDatetimeToIso(endDate),
       },
@@ -334,6 +336,7 @@ function PackageCreateModal({ open, onClose }: { open: boolean; onClose: () => v
           setDescription('');
           setPrice(0);
           setIsTrial(false);
+          setIncludesVideoPembelajaran(false);
           setStartDate('');
           setEndDate('');
         },
@@ -362,6 +365,9 @@ function PackageCreateModal({ open, onClose }: { open: boolean; onClose: () => v
             <div className="flex gap-3 items-center min-h-[42px]">
               <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 cursor-pointer">
                 <input type="checkbox" checked={isTrial} onChange={(e) => setIsTrial(e.target.checked)} className="w-4 h-4" /> Trial
+              </label>
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 cursor-pointer">
+                <input type="checkbox" checked={includesVideoPembelajaran} onChange={(e) => setIncludesVideoPembelajaran(e.target.checked)} data-testid="pkg-includes-video" className="w-4 h-4" /> Video Pembelajaran
               </label>
             </div>
           </div>
@@ -403,6 +409,7 @@ function PackageCard({
   const [description, setDescription] = useState(pkg.description);
   const [price, setPrice] = useState(pkg.price);
   const [isTrial, setIsTrial] = useState(pkg.isTrial);
+  const [includesVideoPembelajaran, setIncludesVideoPembelajaran] = useState(pkg.includesVideoPembelajaran);
   const [startDate, setStartDate] = useState(isoToLocalDatetime(pkg.startDate));
   const [endDate, setEndDate] = useState(isoToLocalDatetime(pkg.endDate));
   const [showConfirm, setShowConfirm] = useState(false);
@@ -417,6 +424,7 @@ function PackageCard({
         description: description.trim(),
         price,
         isTrial,
+        includesVideoPembelajaran,
         startDate: localDatetimeToIso(startDate),
         endDate: localDatetimeToIso(endDate),
       },
@@ -452,6 +460,9 @@ function PackageCard({
               <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 cursor-pointer">
                 <input type="checkbox" checked={isTrial} onChange={(e) => setIsTrial(e.target.checked)} className="w-4 h-4" /> Trial
               </label>
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 cursor-pointer">
+                <input type="checkbox" checked={includesVideoPembelajaran} onChange={(e) => setIncludesVideoPembelajaran(e.target.checked)} className="w-4 h-4" /> Video Pembelajaran
+              </label>
             </div>
           </div>
           <DateRangeField
@@ -482,6 +493,7 @@ function PackageCard({
           <div className="flex flex-wrap items-center gap-2">
             <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${STATUS_COLORS[getEntityStatus(pkg)]}`}>{STATUS_LABELS[getEntityStatus(pkg)]}</span>
             {pkg.isTrial && <span className="text-xs font-bold text-amber-500 bg-amber-50 px-2 py-0.5 rounded-md">Trial</span>}
+            {pkg.includesVideoPembelajaran && <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">🎬 Video</span>}
             <Button variant="outline" size="sm" onClick={() => setEditing(true)}>✏️</Button>
             <Button variant="outline" size="sm" onClick={() => setShowTryoutSelector(true)}>🎯 Tryout</Button>
             <Button variant="danger" size="sm" onClick={() => setShowConfirm(true)}>🗑️</Button>
