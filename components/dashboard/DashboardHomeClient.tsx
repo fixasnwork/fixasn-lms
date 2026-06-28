@@ -24,7 +24,6 @@ export default function DashboardHomeClient({ userName }: Props) {
   const router = useRouter();
   const { data: summary, isLoading, isError } = useDashboardSummaryQuery();
   const { data: videoData } = useUserVideos();
-  console.info("summary:", summary);
 
   const remainingTryouts = summary?.remainingTryouts ?? null;
   const completedTryouts = summary?.completedTryouts ?? null;
