@@ -1,8 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { StatCard, Button, Card } from "@/components/ui";
 import { useDashboardSummaryQuery } from "@/hooks/useDashboardSummary";
+import { useUserVideos } from "@/hooks/useVideoQueries";
 
 interface Props {
   userName: string;
@@ -21,12 +23,14 @@ const CATEGORY_BARS: ReadonlyArray<{
 export default function DashboardHomeClient({ userName }: Props) {
   const router = useRouter();
   const { data: summary, isLoading, isError } = useDashboardSummaryQuery();
+  const { data: videoData } = useUserVideos();
   console.info("summary:", summary);
 
   const remainingTryouts = summary?.remainingTryouts ?? null;
   const completedTryouts = summary?.completedTryouts ?? null;
   const rank = summary?.rank ?? null;
   const categoryScores = summary?.categoryScores ?? { twk: 0, tiu: 0, tkp: 0 };
+  const hasVideoAccess = videoData?.hasAccess ?? false;
 
   return (
     <div>
@@ -60,7 +64,12 @@ export default function DashboardHomeClient({ userName }: Props) {
           value={isLoading ? "—" : rank === null ? "—" : `#${rank}`}
           color="#B45309"
         />
-        <StatCard icon="🎬" label="Akses Video" value="Belum" color="#9CA3AF" />
+        <StatCard
+          icon="🎬"
+          label="Akses Video"
+          value={hasVideoAccess ? "Aktif" : "Locked"}
+          color={hasVideoAccess ? "#16A34A" : "#9CA3AF"}
+        />
       </div>
 
       {isError && (
@@ -76,12 +85,21 @@ export default function DashboardHomeClient({ userName }: Props) {
             <h3 className="font-extrabold text-base text-brand m-0">
               📈 Progress Per Materi
             </h3>
-            <span
-              className="text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200"
-              title="Akses Video akan tersedia dalam waktu dekat."
-            >
-              🎬 Video Coming soon
-            </span>
+            {hasVideoAccess ? (
+              <Link
+                href="/video"
+                className="text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition-colors"
+              >
+                🎬 Tonton video belajar →
+              </Link>
+            ) : (
+              <Link
+                href="/buy"
+                className="text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors"
+              >
+                🎬 Beli paket video →
+              </Link>
+            )}
           </div>
           {CATEGORY_BARS.map(({ key, label, color }) => {
             const pct = categoryScores[key];
