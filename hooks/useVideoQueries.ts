@@ -9,7 +9,6 @@
 // ─────────────────────────────────────────────
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Video, VideoListResponse } from "@/lib/types";
-import { parseYouTubeId } from "@/lib/video";
 
 /* ── Admin: list all videos ───────────────────────────────────── */
 export function useAdminVideos() {
@@ -88,19 +87,12 @@ export function useUpdateVideo() {
       await queryClient.cancelQueries({ queryKey: ["admin-videos"] });
       const previous = queryClient.getQueryData<Video[]>(["admin-videos"]);
       if (previous) {
-        // Normalize youtubeId for the optimistic cache so the UI never
-        // shows the raw URL form (the server normalizes server-side; the
-        // cache briefly mirrors that). Only include youtubeId in the
-        // merge when the caller provided it, to avoid undefined overwriting
-        // the existing string value.
-        const normalized = {
-          ...input,
-          ...(input.youtubeId
-            ? { youtubeId: parseYouTubeId(input.youtubeId) ?? input.youtubeId }
-            : {}),
-        };
+        // The form sends the already-normalized 11-char youtubeId (validated
+        // client-side via parseYouTubeId). The server re-validates and
+        // stores the same value, so the optimistic cache mirrors it
+        // directly. No re-normalization needed here.
         queryClient.setQueryData<Video[]>(["admin-videos"], (current = []) =>
-          current.map((v) => (v.id === input.id ? { ...v, ...normalized } : v))
+          current.map((v) => (v.id === input.id ? { ...v, ...input } : v))
         );
       }
       return { previous };

@@ -25,11 +25,13 @@ export default function VideoPage() {
   const [successMsg, setSuccessMsg] = useState("");
 
   const openCreate = () => {
+    setSuccessMsg("");
     setEditing(null);
     setShowForm(true);
   };
 
   const openEdit = (video: Video) => {
+    setSuccessMsg("");
     setEditing(video);
     setShowForm(true);
   };
@@ -37,6 +39,8 @@ export default function VideoPage() {
   const closeForm = () => {
     setShowForm(false);
     setEditing(null);
+    createMutation.reset();
+    updateMutation.reset();
   };
 
   const onSubmit = (input: CreateVideoInput | UpdateVideoInput) => {
