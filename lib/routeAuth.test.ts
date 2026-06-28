@@ -27,6 +27,7 @@ vi.mock('@/lib/deviceSession', async () => {
 import { auth } from '@/auth';
 import prisma from '@/lib/prisma';
 import { requireActiveSession } from '@/lib/routeAuth';
+import { DEVICE_SECRET_COOKIE_NAME, hashDeviceSecret, isAdminRole } from '@/lib/deviceSession';
 
 const mockSession = {
   user: {
@@ -75,5 +76,145 @@ describe('requireActiveSession - ban check', () => {
       where: { email: 'banned@example.com' },
       select: { isBlocked: true },
     });
+  });
+});
+
+describe('requireActiveSession - active session validation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(isAdminRole).mockReturnValue(false);
+  });
+
+  function makeRequestWithCookie(cookieValue: string): NextRequest {
+    const req = new NextRequest('http://localhost/api/protected');
+    req.cookies.set(DEVICE_SECRET_COOKIE_NAME, cookieValue);
+    return req;
+  }
+
+  it('returns ok:true on bootstrap: matching JWT version, DB hash is null (no cookie needed)', async () => {
+    vi.mocked(auth as () => Promise<typeof mockSession | null>).mockResolvedValue(mockSession);
+    vi.mocked(prisma.user.findUnique)
+      .mockResolvedValueOnce({ isBlocked: false } as never)
+      .mockResolvedValueOnce({
+        activeSessionVersion: 1,
+        activeDeviceSecretHash: null,
+      } as never);
+
+    // No fxns_state cookie in the request — typical first request after fresh sign-in.
+    const result = await requireActiveSession(makeRequest());
+
+    expect(result.ok).toBe(true);
+  });
+
+  it('returns ok:true when JWT version and device secret hash match (happy path)', async () => {
+    const deviceSecret = 'valid-secret-value';
+    const deviceSecretHash = hashDeviceSecret(deviceSecret);
+
+    vi.mocked(auth as () => Promise<typeof mockSession | null>).mockResolvedValue(mockSession);
+    vi.mocked(prisma.user.findUnique)
+      .mockResolvedValueOnce({ isBlocked: false } as never)
+      .mockResolvedValueOnce({
+        activeSessionVersion: 1,
+        activeDeviceSecretHash: deviceSecretHash,
+      } as never);
+
+    const result = await requireActiveSession(makeRequestWithCookie(deviceSecret));
+
+    expect(result.ok).toBe(true);
+  });
+
+  it('returns ok:true on bootstrap: DB has hash but cookie missing (re-sync needed)', async () => {
+    vi.mocked(auth as () => Promise<typeof mockSession | null>).mockResolvedValue(mockSession);
+    vi.mocked(prisma.user.findUnique)
+      .mockResolvedValueOnce({ isBlocked: false } as never)
+      .mockResolvedValueOnce({
+        activeSessionVersion: 1,
+        activeDeviceSecretHash: 'some-existing-hash',
+      } as never);
+
+    const result = await requireActiveSession(makeRequest());
+
+    expect(result.ok).toBe(true);
+  });
+
+  it('returns ok:true on bootstrap: cookie present but hash mismatch (stale cookie, re-sync needed)', async () => {
+    vi.mocked(auth as () => Promise<typeof mockSession | null>).mockResolvedValue(mockSession);
+    vi.mocked(prisma.user.findUnique)
+      .mockResolvedValueOnce({ isBlocked: false } as never)
+      .mockResolvedValueOnce({
+        activeSessionVersion: 1,
+        activeDeviceSecretHash: 'hash-of-X',
+      } as never);
+
+    const result = await requireActiveSession(makeRequestWithCookie('Y'));
+
+    expect(result.ok).toBe(true);
+  });
+
+  it('returns 401 on version-mismatch even if DB hash is null (bootstrap does not widen)', async () => {
+    const staleVersionSession = {
+      ...mockSession,
+      user: { ...mockSession.user, activeSessionVersion: 99 },
+    };
+    vi.mocked(auth as () => Promise<typeof mockSession | null>).mockResolvedValue(staleVersionSession);
+    vi.mocked(prisma.user.findUnique)
+      .mockResolvedValueOnce({ isBlocked: false } as never)
+      .mockResolvedValueOnce({
+        activeSessionVersion: 1,
+        activeDeviceSecretHash: null,
+      } as never);
+
+    const result = await requireActiveSession(makeRequest());
+    expect(result.ok).toBe(false);
+    expect((result as { ok: false; response: Response }).response.status).toBe(401);
+  });
+
+  it('returns 401 when isSessionStale is true (stale short-circuits before bootstrap)', async () => {
+    const staleSession = { ...mockSession, isSessionStale: true };
+    vi.mocked(auth as () => Promise<typeof mockSession | null>).mockResolvedValue(staleSession);
+    vi.mocked(prisma.user.findUnique)
+      .mockResolvedValueOnce({ isBlocked: false } as never)
+      .mockResolvedValueOnce({
+        activeSessionVersion: 1,
+        activeDeviceSecretHash: null,
+      } as never);
+
+    const result = await requireActiveSession(makeRequest());
+    expect(result.ok).toBe(false);
+    expect((result as { ok: false; response: Response }).response.status).toBe(401);
+  });
+
+  it('returns 401 on missing-session-version (null token version in JWT, not bootstrap)', async () => {
+    const { activeSessionVersion: _, ...userWithoutVersion } = mockSession.user;
+    const noVersionSession = { ...mockSession, user: userWithoutVersion };
+    vi.mocked(auth as () => Promise<typeof mockSession | null>).mockResolvedValue(
+      noVersionSession as unknown as typeof mockSession,
+    );
+    vi.mocked(prisma.user.findUnique)
+      .mockResolvedValueOnce({ isBlocked: false } as never)
+      .mockResolvedValueOnce({
+        activeSessionVersion: 1,
+        activeDeviceSecretHash: null,
+      } as never);
+
+    const result = await requireActiveSession(makeRequest());
+    expect(result.ok).toBe(false);
+    expect((result as { ok: false; response: Response }).response.status).toBe(401);
+  });
+
+  it('bypasses device-secret validation for admin role (no prisma calls)', async () => {
+    vi.mocked(isAdminRole).mockReturnValue(true);
+    const adminSession = {
+      ...mockSession,
+      user: { ...mockSession.user, role: 'admin' },
+    };
+    vi.mocked(auth as () => Promise<typeof mockSession | null>).mockResolvedValue(adminSession);
+
+    // Even with a wrong/missing cookie, admin should pass through.
+    const result = await requireActiveSession(makeRequestWithCookie('wrong-cookie'));
+
+    expect(result.ok).toBe(true);
+    // Admin bypass returns BEFORE any prisma.user.findUnique call.
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
   });
 });

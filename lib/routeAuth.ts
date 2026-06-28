@@ -66,6 +66,23 @@ export async function requireActiveSession(request: NextRequest): Promise<Authen
   });
 
   if (!activeCheck.ok) {
+    // Bootstrap exception: the device secret needs to be (re-)synced.
+    // Covers three transient states that all resolve via a single call to
+    // POST /api/auth/device-secret:
+    //   - missing-device-secret-hash: fresh sign-in, hash not yet minted
+    //   - missing-device-secret-cookie: cookie cleared/expired/lost
+    //   - invalid-device-secret: stale cookie from a previous session
+    // The user has a valid JWT (matching version), so the sync endpoint
+    // will mint a fresh hash and cookie. The window is transient and does
+    // not widen the attack surface: an attacker with a valid JWT can
+    // already call the sync endpoint to obtain a new cookie.
+    if (
+      activeCheck.reason === 'missing-device-secret-hash' ||
+      activeCheck.reason === 'missing-device-secret-cookie' ||
+      activeCheck.reason === 'invalid-device-secret'
+    ) {
+      return { ok: true, session: activeSession };
+    }
     const response = NextResponse.json({ error: STALE_SESSION_MESSAGE }, { status: 401 });
     clearDeviceSecretCookie(response);
     return { ok: false, response };

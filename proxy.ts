@@ -56,7 +56,15 @@ export default auth(async (req: NextAuthRequest) => {
     });
 
     if (!activeCheck.ok) {
-      if (activeCheck.reason === "missing-device-secret-hash") {
+      // Bootstrap exception: the device secret needs to be (re-)synced.
+      // Mirrors the API guard in lib/routeAuth.ts — three transient
+      // states that all resolve via a single call to
+      // POST /api/auth/device-secret. See routeAuth.ts for rationale.
+      if (
+        activeCheck.reason === "missing-device-secret-hash" ||
+        activeCheck.reason === "missing-device-secret-cookie" ||
+        activeCheck.reason === "invalid-device-secret"
+      ) {
         return NextResponse.next();
       }
       const redirect = NextResponse.redirect(buildLoginRedirectWithReason(req));
