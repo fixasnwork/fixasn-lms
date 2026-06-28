@@ -106,6 +106,25 @@ export async function POST(request: NextRequest) {
     },
   });
 
+  // Mirror to UserPurchase: pending payments grant access per the
+  // video-pembelajaran spec ("Pending purchase grants access"). The
+  // @@unique([userId, packageId]) constraint makes the upsert idempotent
+  // — re-submits or retries never duplicate the access grant. The
+  // `update: { deletedAt: null }` re-activates a previously soft-deleted
+  // grant (e.g., a prior rejected payment for the same package).
+  await prisma.userPurchase.upsert({
+    where: { userId_packageId: { userId, packageId } },
+    create: {
+      userId,
+      packageId,
+      paymentId: data.id,
+    },
+    update: {
+      paymentId: data.id,
+      deletedAt: null,
+    },
+  });
+
   return NextResponse.json({
     success: true,
     payment: mapPayment(data),
@@ -137,6 +156,38 @@ export async function PUT(request: NextRequest) {
       ...(body.blockReason !== undefined ? { blockReason: body.blockReason } : {}),
     },
   });
+
+  // Mirror status transitions to the linked UserPurchase so the access
+  // check (`/api/videos`) reflects the admin's decision. verified → grant
+  // access (upsert in case the row was missing — e.g., payment created
+  // before this hook existed). rejected/expired/blocked → soft-delete
+  // the linked grant so access is revoked. Other status values
+  // (pending, etc.) leave the UserPurchase untouched.
+  if (body.status === 'verified') {
+    await prisma.userPurchase.upsert({
+      where: {
+        userId_packageId: { userId: data.userId, packageId: data.packageId },
+      },
+      create: {
+        userId: data.userId,
+        packageId: data.packageId,
+        paymentId: data.id,
+      },
+      update: {
+        paymentId: data.id,
+        deletedAt: null,
+      },
+    });
+  } else if (
+    body.status === 'rejected' ||
+    body.status === 'expired' ||
+    body.status === 'blocked'
+  ) {
+    await prisma.userPurchase.updateMany({
+      where: { paymentId: data.id, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
+  }
 
   return NextResponse.json({
     success: true,

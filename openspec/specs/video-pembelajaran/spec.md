@@ -77,7 +77,7 @@ Client components that render checkboxes or text inputs bound to a `Package` fie
 - **THEN** the browser console emits zero warnings of the form "A component is changing an uncontrolled input to be controlled."
 
 ### Requirement: User access derives from non-rejected purchase
-The system SHALL grant video access to a user when (a) their role is `admin`, OR (b) they have a `UserPurchase` row whose `status` is not in `{rejected, expired}` AND whose `package.includesVideoPembelajaran === true`.
+The system SHALL grant video access to a user when (a) their role is `admin`, OR (b) they have a `UserPurchase` row whose `status` is not in `{rejected, expired}` AND whose `package.includesVideoPembelajaran === true`. The `UserPurchase` row MUST be created as a side effect of the payment lifecycle: `POST /api/payments` MUST upsert a `UserPurchase` for the same `(userId, packageId)` immediately after the `Payment` is created (pending payments grant access), `PUT /api/payments` MUST upsert the `UserPurchase` when the admin transitions a payment to `verified` (idempotent — handles payments that pre-date this fix), and `PUT /api/payments` MUST soft-delete the linked `UserPurchase` when the admin transitions a payment to `rejected` / `expired` / `blocked`. The upsert key SHALL be the `@@unique([userId, packageId])` constraint so re-submits, retries, and status flip-flops collapse to a single active grant per user per package.
 
 #### Scenario: Pending purchase grants access
 - **WHEN** a user has a `UserPurchase` with `status: "pending"` for a video-enabled package
@@ -106,6 +106,22 @@ The system SHALL grant video access to a user when (a) their role is `admin`, OR
 #### Scenario: Trial flag is irrelevant
 - **WHEN** a user has a `UserPurchase` for a package where `isTrial: true` but `includesVideoPembelajaran: false`
 - **THEN** `GET /api/videos` returns `hasAccess: false`.
+
+#### Scenario: Payment creation grants access immediately
+- **WHEN** a user successfully POSTs to `/api/payments` (with valid `packageId` and either an existing or new payment intent)
+- **THEN** the server creates a `Payment` row AND upserts a `UserPurchase` row for the same `(userId, packageId)` with `paymentId` pointing at the new payment
+- **AND** a subsequent `GET /api/videos` returns `hasAccess: true` for the buyer if the linked package has `includesVideoPembelajaran: true`.
+
+#### Scenario: Admin verification is idempotent
+- **WHEN** an admin PUTs a payment's `status` to `verified`
+- **THEN** the server upserts a `UserPurchase` row for the payment's `(userId, packageId)` if one does not already exist
+- **AND** if a soft-deleted `UserPurchase` already exists for that pair (e.g., a previously-rejected payment), the upsert MUST set `deletedAt: null` and re-activate the grant
+- **AND** if an active `UserPurchase` already exists, the upsert MUST update `paymentId` to the verified payment and leave `deletedAt: null`.
+
+#### Scenario: Admin deny revokes the access grant
+- **WHEN** an admin PUTs a payment's `status` to `rejected`, `expired`, or `blocked`
+- **THEN** the server soft-deletes the linked `UserPurchase` row by setting `deletedAt: now()`
+- **AND** a subsequent `GET /api/videos` returns `hasAccess: false` for the buyer if the soft-deleted row was the only grant for a video-enabled package.
 
 ### Requirement: Unauthenticated requests are rejected
 The system SHALL require an active session for `GET /api/videos` and any `/api/admin/videos*` route.
