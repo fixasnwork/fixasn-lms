@@ -29,6 +29,7 @@ export default function AdminSidebar() {
     { id: 'soal', icon: '📝', label: 'Bank Soal' },
     { id: 'payments', icon: '💳', label: 'Verifikasi Bayar', count: pendingCount },
     { id: 'settings', icon: '⚙️', label: 'Pengaturan' },
+    { id: 'video', icon: '🎬', label: 'Video Belajar' },
     { id: 'landing', icon: '🌐', label: 'Landing Page' },
   ];
   const primaryMobileItems = navItems.slice(0, 3);

@@ -8,9 +8,10 @@ interface CardProps {
   style?: React.CSSProperties;
   hover?: boolean;
   onClick?: () => void;
+  "data-testid"?: string;
 }
 
-export default function Card({ children, className = '', style = {}, hover = false, onClick }: CardProps) {
+export default function Card({ children, className = '', style = {}, hover = false, onClick, "data-testid": dataTestId }: CardProps) {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -26,6 +27,7 @@ export default function Card({ children, className = '', style = {}, hover = fal
         ${className}
       `}
       style={style}
+      data-testid={dataTestId}
     >
       {children}
     </div>

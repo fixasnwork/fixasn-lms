@@ -15,6 +15,8 @@ interface ButtonProps {
   disabled?: boolean;
   className?: string;
   style?: React.CSSProperties;
+  type?: "button" | "submit" | "reset";
+  "data-testid"?: string;
 }
 
 export default function Button({
@@ -25,6 +27,8 @@ export default function Button({
   disabled = false,
   className = "",
   style = {},
+  type = "button",
+  "data-testid": dataTestId,
 }: ButtonProps) {
   const baseStyles = `
     font-bold border-none rounded-lg transition-all duration-180
@@ -52,6 +56,8 @@ export default function Button({
     <button
       onClick={onClick}
       disabled={disabled}
+      type={type}
+      data-testid={dataTestId}
       className={`${baseStyles} ${sizeStyles} ${variantStyles} ${className}`}
       style={style}
     >
