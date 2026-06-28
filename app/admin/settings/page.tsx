@@ -405,11 +405,12 @@ function PackageCard({
   const deletePackage = useDeletePackage();
 
   const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(pkg.name);
-  const [description, setDescription] = useState(pkg.description);
-  const [price, setPrice] = useState(pkg.price);
-  const [isTrial, setIsTrial] = useState(pkg.isTrial);
-  const [includesVideoPembelajaran, setIncludesVideoPembelajaran] = useState(pkg.includesVideoPembelajaran);
+  const [name, setName] = useState(pkg.name ?? '');
+  const [description, setDescription] = useState(pkg.description ?? '');
+  const [price, setPrice] = useState(pkg.price ?? 0);
+  // Coerce to boolean so checkboxes stay controlled even when DB returns null/undefined
+  const [isTrial, setIsTrial] = useState(Boolean(pkg.isTrial));
+  const [includesVideoPembelajaran, setIncludesVideoPembelajaran] = useState(Boolean(pkg.includesVideoPembelajaran));
   const [startDate, setStartDate] = useState(isoToLocalDatetime(pkg.startDate));
   const [endDate, setEndDate] = useState(isoToLocalDatetime(pkg.endDate));
   const [showConfirm, setShowConfirm] = useState(false);
@@ -541,10 +542,10 @@ function BankCard({
   const updateBank = useUpdateBank();
   const deleteBank = useDeleteBank();
 
-  const [bankName, setBankName] = useState(bank.bankName);
-  const [accountNumber, setAccountNumber] = useState(bank.accountNumber);
-  const [accountHolder, setAccountHolder] = useState(bank.accountHolder);
-  const [isActive, setIsActive] = useState(bank.isActive);
+  const [bankName, setBankName] = useState(bank.bankName ?? '');
+  const [accountNumber, setAccountNumber] = useState(bank.accountNumber ?? '');
+  const [accountHolder, setAccountHolder] = useState(bank.accountHolder ?? '');
+  const [isActive, setIsActive] = useState(Boolean(bank.isActive));
   const [showConfirm, setShowConfirm] = useState(false);
 
   const save = () => {

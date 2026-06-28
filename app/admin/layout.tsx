@@ -48,6 +48,9 @@ export default async function AdminLayout({
           description: p.description,
           price: p.price,
           isTrial: p.isTrial,
+          // Coerce at the boundary — mirrors app/api/packages/route.ts mapper.
+          // Pre-migration rows may have NULL despite schema @default(false).
+          includesVideoPembelajaran: Boolean(p.includesVideoPembelajaran),
           startDate: p.startDate?.toISOString() ?? null,
           endDate: p.endDate?.toISOString() ?? null,
           tryoutCount: Math.max(p.tryoutCount, p._count.packageTryouts),

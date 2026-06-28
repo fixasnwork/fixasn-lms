@@ -318,7 +318,6 @@ export function usePackages() {
       const data = await res.json();
       return data.packages as Package[];
     },
-    staleTime: 5 * 60_000,
   });
 }
 

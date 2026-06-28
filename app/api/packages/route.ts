@@ -28,7 +28,7 @@ function mapPackage(pkg: {
   description: string;
   price: number;
   isTrial: boolean;
-  includesVideoPembelajaran: boolean;
+  includesVideoPembelajaran: boolean | null;
   tryoutCount: number;
   startDate: Date | null;
   endDate: Date | null;
@@ -41,7 +41,10 @@ function mapPackage(pkg: {
     description: pkg.description,
     price: pkg.price,
     isTrial: pkg.isTrial,
-    includesVideoPembelajaran: pkg.includesVideoPembelajaran,
+    // Coerce at the API boundary: pre-migration rows may have NULL despite
+    // schema default(false). Without this, the UI badge/checkbox would
+    // silently show false for those rows.
+    includesVideoPembelajaran: Boolean(pkg.includesVideoPembelajaran),
     startDate: pkg.startDate ? pkg.startDate.toISOString() : null,
     endDate: pkg.endDate ? pkg.endDate.toISOString() : null,
     tryoutCount: pkg.tryoutCount,
