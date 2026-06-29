@@ -93,6 +93,14 @@ export default function VideoTable({
                   {formatDuration(video.durationSec)}
                 </span>
               )}
+              {video.pdfPageCount && video.pdfPageCount > 0 && (
+                <span
+                  className="text-emerald-600 font-semibold"
+                  data-testid={`video-table-pdf-${video.id}`}
+                >
+                  📄 {video.pdfPageCount} halaman
+                </span>
+              )}
               <span className="text-gray-300">Sort: {video.sortOrder}</span>
             </div>
           </div>
@@ -175,7 +183,15 @@ export default function VideoTable({
                   </Badge>
                 </td>
                 <td className="px-3 py-2.5">
-                  <div className="flex gap-1.5">
+                  <div className="flex gap-1.5 items-center">
+                    {video.pdfPageCount && video.pdfPageCount > 0 && (
+                      <span
+                        className="text-xs text-emerald-600 font-semibold mr-1"
+                        data-testid={`video-table-pdf-${video.id}`}
+                      >
+                        📄 {video.pdfPageCount}
+                      </span>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"

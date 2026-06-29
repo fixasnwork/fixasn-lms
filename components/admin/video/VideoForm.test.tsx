@@ -1,7 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import VideoForm from "./VideoForm";
 import type { Video } from "@/lib/types";
+
+function withQueryClient(node: React.ReactNode) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return <QueryClientProvider client={client}>{node}</QueryClientProvider>;
+}
 
 const sampleVideo: Video = {
   id: 1,
@@ -40,7 +46,9 @@ describe("VideoForm", () => {
     const onCancel = vi.fn();
 
     render(
-      <VideoForm initial={sampleVideo} onSubmit={onSubmit} onCancel={onCancel} />
+      withQueryClient(
+        <VideoForm initial={sampleVideo} onSubmit={onSubmit} onCancel={onCancel} />
+      )
     );
 
     // Title should be pre-filled

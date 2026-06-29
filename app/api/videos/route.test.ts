@@ -22,6 +22,8 @@ const mockPrisma = vi.hoisted(() => ({
           durationSec: 888,
           sortOrder: 1,
           isPublished: true,
+          pdfUrl: "uploads/videos/1/module.pdf",
+          pdfPageCount: 5,
           createdAt: new Date("2026-01-01T00:00:00Z"),
           updatedAt: new Date("2026-01-01T00:00:00Z"),
         },
@@ -30,6 +32,12 @@ const mockPrisma = vi.hoisted(() => ({
   },
   userPurchase: {
     findFirst: vi.fn(),
+  },
+  user: {
+    findUnique: vi.fn().mockImplementation(async () => ({ id: "user-uuid-1" })),
+  },
+  videoProgress: {
+    findMany: vi.fn().mockResolvedValue([]),
   },
 }));
 
@@ -79,6 +87,10 @@ function makeReq(): NextRequest {
 
 beforeEach(() => {
   mockPrisma.userPurchase.findFirst.mockReset();
+  mockPrisma.user.findUnique.mockReset();
+  mockPrisma.user.findUnique.mockResolvedValue({ id: "user-uuid-1" });
+  mockPrisma.videoProgress.findMany.mockReset();
+  mockPrisma.videoProgress.findMany.mockResolvedValue([]);
 });
 
 describe("GET /api/videos", () => {
@@ -121,6 +133,31 @@ describe("GET /api/videos", () => {
     expect(data.videos).toHaveLength(1);
     // Admins must NOT trigger the purchase check.
     expect(mockPrisma.userPurchase.findFirst).not.toHaveBeenCalled();
+  });
+
+  // Security: the original PDF's storage path must NOT be returned to
+  // non-admin callers. Without this guarantee, an authenticated user can
+  // reconstruct the Supabase public URL and download the un-watermarked
+  // original, bypassing the watermarking pipeline entirely.
+  it("strips pdfUrl from the user-facing response", async () => {
+    resetSession({ admin: false });
+    mockPrisma.userPurchase.findFirst.mockResolvedValueOnce({ id: "purchase-uuid-1" });
+    const res = await GET(makeReq());
+    const data = await res.json();
+    expect(data.videos).toHaveLength(1);
+    expect(data.videos[0]).not.toHaveProperty("pdfUrl");
+    // pdfPageCount is preserved because the user page needs it to render
+    // the "📄 Modul" button.
+    expect(data.videos[0].pdfPageCount).toBe(5);
+  });
+
+  // Admin callers may see pdfUrl so they can manage the PDF.
+  it("includes pdfUrl for admin callers", async () => {
+    resetSession({ admin: true });
+    const res = await GET(makeReq());
+    const data = await res.json();
+    expect(data.videos).toHaveLength(1);
+    expect(data.videos[0].pdfUrl).toBe("uploads/videos/1/module.pdf");
   });
 
   // Fix 5: assert the where-clause filters are applied.

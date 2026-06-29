@@ -12,12 +12,14 @@ import {
 } from "@/hooks/useVideoQueries";
 import type { Video } from "@/lib/types";
 import type { CreateVideoInput, UpdateVideoInput } from "@/hooks/useVideoQueries";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function VideoPage() {
   const { data: videos = [], isLoading, error } = useAdminVideos();
   const createMutation = useCreateVideo();
   const updateMutation = useUpdateVideo();
   const deleteMutation = useDeleteVideo();
+  const queryClient = useQueryClient();
 
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Video | null>(null);
@@ -34,6 +36,20 @@ export default function VideoPage() {
     setSuccessMsg("");
     setEditing(video);
     setShowForm(true);
+  };
+
+  // When the form's PDF upload/delete succeeds, the hook's onSuccess
+  // already invalidates `['admin-videos']`, but the local `editing` state
+  // still points at the pre-upload Video. Look it up in the fresh cache
+  // (or fall back to the previous value) and re-mount the form with the
+  // new pdfPageCount by bumping the `key`.
+  const refreshEditingFromCache = () => {
+    if (!editing) return;
+    const fresh = queryClient.getQueryData<Video[]>(["admin-videos"]);
+    if (fresh) {
+      const next = fresh.find((v) => v.id === editing.id);
+      if (next) setEditing(next);
+    }
   };
 
   const closeForm = () => {
@@ -145,6 +161,7 @@ export default function VideoPage() {
             initial={editing ?? undefined}
             onSubmit={onSubmit}
             onCancel={closeForm}
+            onPdfChanged={refreshEditingFromCache}
             isSubmitting={
               createMutation.isPending || updateMutation.isPending
             }

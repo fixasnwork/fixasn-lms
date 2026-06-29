@@ -109,6 +109,12 @@ export interface Package {
 }
 
 // ── Videos (Video Pembelajaran) ───────────────
+
+/**
+ * Full Video shape as seen by the admin API. Includes `pdfUrl`, which
+ * is the storage path of the original uploaded PDF and is private —
+ * never sent to non-admin callers.
+ */
 export interface Video {
   id: number;
   title: string;
@@ -118,12 +124,53 @@ export interface Video {
   durationSec: number | null;
   sortOrder: number;
   isPublished: boolean;
+  /** Storage path of the original uploaded PDF (private; admin-only). */
+  pdfUrl: string | null;
+  /** Count of pages successfully rasterized to PNG at upload time. */
+  pdfPageCount: number | null;
   createdAt: string;
   updatedAt: string;
 }
 
+/**
+ * Video shape as seen by user-facing endpoints. Deliberately omits
+ * `pdfUrl` so the original PDF's storage path is never returned to a
+ * non-admin caller. The `pdfPageCount` is kept because the user page
+ * needs it to render the "📄 Modul" button.
+ */
+export type PublicVideo = Omit<Video, "pdfUrl">;
+
+/**
+ * Per-user playback state for a single video. `null` when no
+ * `VideoProgress` row exists for the (userId, videoId) pair.
+ */
+export interface VideoProgressSummary {
+  lastSecond: number;
+  watchedSeconds: number;
+  completedAt: string | null;
+}
+
+/** User-facing video with the requesting user's progress attached. */
+export interface VideoWithProgress extends PublicVideo {
+  /** Per-user playback state. `null` for admins and for users with no progress row. */
+  progress: VideoProgressSummary | null;
+}
+
+/** Admin-facing video with the requesting user's progress attached. */
+export interface AdminVideoWithProgress extends Video {
+  /** Per-user playback state. `null` for admins and for users with no progress row. */
+  progress: VideoProgressSummary | null;
+}
+
 export interface VideoListResponse {
-  videos: Video[];
+  /**
+   * For non-admin callers every entry is a `VideoWithProgress` (no
+   * `pdfUrl`). For admin callers every entry is an
+   * `AdminVideoWithProgress` (includes `pdfUrl`). The union is the
+   * smallest type that satisfies both branches without forcing the
+   * admin response to leak `pdfUrl` to the user side or vice versa.
+   */
+  videos: (VideoWithProgress | AdminVideoWithProgress)[];
   /**
    * `true` if the caller should see the catalog. For `admin` role this is
    * always true. For `user` role it is true iff a non-rejected, non-expired

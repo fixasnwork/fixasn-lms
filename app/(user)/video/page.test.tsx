@@ -20,8 +20,30 @@ vi.mock("next/link", () => ({
 
 /* ── Mock the hook ─────────────────────────────────────────────── */
 const mockUseUserVideos = vi.fn();
+const mockUseVideoProgressQuery = vi.fn().mockReturnValue({ data: null });
 vi.mock("@/hooks/useVideoQueries", () => ({
   useUserVideos: () => mockUseUserVideos(),
+  useFetchVideoProgress: (...args: unknown[]) => mockUseVideoProgressQuery(...args),
+}));
+
+vi.mock("@/hooks/useVideoProgress", () => ({
+  useVideoProgress: () => ({
+    saveProgress: vi.fn(),
+    flushPending: vi.fn(),
+  }),
+}));
+
+vi.mock("@/components/video/YouTubePlayer", () => ({
+  default: ({ youtubeId, initialSecond }: { youtubeId: string; initialSecond: number }) => (
+    <div data-testid="youtube-player-mock" data-youtube-id={youtubeId} data-initial-second={initialSecond}>
+      YouTubePlayer mock
+    </div>
+  ),
+}));
+
+vi.mock("@/components/video/PdfViewerModal", () => ({
+  default: ({ video }: { video: unknown }) =>
+    video ? <div data-testid="pdf-viewer-mock">PDF mock</div> : null,
 }));
 
 const sampleVideo: Video = {
@@ -42,6 +64,7 @@ const sampleVideoTKP: Video = { ...sampleVideo, id: 3, title: "Pengantar TKP", y
 
 beforeEach(() => {
   mockUseUserVideos.mockReset();
+  mockUseVideoProgressQuery.mockReturnValue({ data: null });
 });
 
 describe("VideoPage — render branches", () => {
@@ -95,17 +118,75 @@ describe("VideoPage — render branches", () => {
     expect(screen.getByTestId("video-mulai-3")).toBeInTheDocument();
   });
 
-  it("clicking Mulai opens player modal with iframe", () => {
+  it("clicking Mulai opens player modal with YouTubePlayer", () => {
     const data: VideoListResponse = { videos: [sampleVideo], hasAccess: true, accessReason: null };
     mockUseUserVideos.mockReturnValue({ data, isLoading: false, error: null });
     render(<VideoPage />);
     fireEvent.click(screen.getByTestId("video-mulai-1"));
     const modal = screen.getByTestId("video-player-modal");
     expect(modal).toBeInTheDocument();
-    const iframe = modal.querySelector("iframe");
-    expect(iframe).not.toBeNull();
-    expect(iframe?.getAttribute("src")).toBe(
-      "https://www.youtube.com/embed/dQw4w9WgXcQ?rel=0"
-    );
+    const player = screen.getByTestId("youtube-player-mock");
+    expect(player).toBeInTheDocument();
+    expect(player.getAttribute("data-youtube-id")).toBe("dQw4w9WgXcQ");
+  });
+
+  it("uses ▶ Mulai label when no progress is present", () => {
+    const data: VideoListResponse = { videos: [sampleVideo], hasAccess: true, accessReason: null };
+    mockUseUserVideos.mockReturnValue({ data, isLoading: false, error: null });
+    render(<VideoPage />);
+    expect(screen.getByTestId("video-mulai-1").textContent).toBe("▶ Mulai");
+  });
+
+  it("uses ▶ Lanjut dari m:ss label when progress is in-progress", () => {
+    const data: VideoListResponse = {
+      videos: [
+        { ...sampleVideo, progress: { lastSecond: 75, watchedSeconds: 80, completedAt: null } },
+      ],
+      hasAccess: true,
+      accessReason: null,
+    };
+    mockUseUserVideos.mockReturnValue({ data, isLoading: false, error: null });
+    render(<VideoPage />);
+    expect(screen.getByTestId("video-mulai-1").textContent).toBe("▶ Lanjut dari 1:15");
+  });
+
+  it("uses ▶ Tonton Lagi label when progress is completed", () => {
+    const data: VideoListResponse = {
+      videos: [
+        {
+          ...sampleVideo,
+          progress: {
+            lastSecond: 888,
+            watchedSeconds: 888,
+            completedAt: "2026-06-15T10:00:00.000Z",
+          },
+        },
+      ],
+      hasAccess: true,
+      accessReason: null,
+    };
+    mockUseUserVideos.mockReturnValue({ data, isLoading: false, error: null });
+    render(<VideoPage />);
+    expect(screen.getByTestId("video-mulai-1").textContent).toBe("▶ Tonton Lagi");
+  });
+
+  it("does NOT render the 📄 Modul button when pdfPageCount is missing", () => {
+    const data: VideoListResponse = { videos: [sampleVideo], hasAccess: true, accessReason: null };
+    mockUseUserVideos.mockReturnValue({ data, isLoading: false, error: null });
+    render(<VideoPage />);
+    expect(screen.queryByTestId("video-pdf-1")).toBeNull();
+  });
+
+  it("renders the 📄 Modul button when pdfPageCount > 0 and opens the PDF modal", () => {
+    const data: VideoListResponse = {
+      videos: [{ ...sampleVideo, pdfPageCount: 12 }],
+      hasAccess: true,
+      accessReason: null,
+    };
+    mockUseUserVideos.mockReturnValue({ data, isLoading: false, error: null });
+    render(<VideoPage />);
+    expect(screen.getByTestId("video-pdf-1")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("video-pdf-1"));
+    expect(screen.getByTestId("pdf-viewer-mock")).toBeInTheDocument();
   });
 });

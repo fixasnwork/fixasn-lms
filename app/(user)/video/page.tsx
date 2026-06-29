@@ -1,11 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Card, Modal, Button, Badge } from "@/components/ui";
-import { useUserVideos } from "@/hooks/useVideoQueries";
-import type { Video, VideoCategory } from "@/lib/types";
+import { useUserVideos, useFetchVideoProgress } from "@/hooks/useVideoQueries";
+import { useVideoProgress } from "@/hooks/useVideoProgress";
+import YouTubePlayer from "@/components/video/YouTubePlayer";
+import PdfViewerModal from "@/components/video/PdfViewerModal";
+import { formatResumeLabel } from "@/lib/formatResumeLabel";
+import type { Video, VideoCategory, VideoWithProgress } from "@/lib/types";
 
 const CATEGORY_ORDER: VideoCategory[] = ["TWK", "TIU", "TKP"];
 
@@ -15,7 +19,7 @@ const CATEGORY_COLORS: Record<VideoCategory, { bg: string; text: string }> = {
   TKP: { bg: "#FFFBEB", text: "#D97706" },
 };
 
-function formatDuration(seconds: number | null): string | null {
+function formatDur(seconds: number | null): string | null {
   if (seconds == null) return null;
   const total = Math.max(0, Math.floor(seconds));
   const m = Math.floor(total / 60);
@@ -25,7 +29,25 @@ function formatDuration(seconds: number | null): string | null {
 
 export default function VideoPage() {
   const { data, isLoading, error } = useUserVideos();
-  const [playing, setPlaying] = useState<Video | null>(null);
+  const [playing, setPlaying] = useState<VideoWithProgress | null>(null);
+  const [readingPdf, setReadingPdf] = useState<VideoWithProgress | null>(null);
+
+  // Per-video progress save + flush hooks. The hook is created once at
+  // page level and shared across player mounts so flushPending() always
+  // targets the latest payload.
+  const { saveProgress, flushPending } = useVideoProgress();
+  // For the "fresh on open" check we fetch the latest progress for the
+  // currently-playing video. The result is a refetch on every open so
+  // the saved position is current even after a long pause.
+  const playingId = playing?.id ?? null;
+  const { data: liveProgress } = useFetchVideoProgress(playingId);
+
+  // Flush any pending save when the page itself unmounts.
+  useEffect(() => {
+    return () => {
+      flushPending();
+    };
+  }, [flushPending]);
 
   // 1. Loading
   if (isLoading) {
@@ -127,7 +149,11 @@ export default function VideoPage() {
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {videos.map((video) => {
-                const duration = formatDuration(video.durationSec);
+                const duration = formatDur(video.durationSec);
+                const resume = formatResumeLabel(video.progress);
+                const hasPdf =
+                  typeof video.pdfPageCount === "number" &&
+                  video.pdfPageCount > 0;
                 return (
                   <Card
                     key={video.id}
@@ -158,19 +184,37 @@ export default function VideoPage() {
                           {video.description}
                         </p>
                       )}
-                      <div className="mt-auto flex items-center justify-between gap-2">
+                      <div className="mt-auto flex items-center justify-between gap-2 flex-wrap">
                         {duration ? (
                           <span className="text-xs text-gray-400">⏱ {duration}</span>
                         ) : (
                           <span />
                         )}
-                        <Button
-                          size="sm"
-                          onClick={() => setPlaying(video)}
-                          data-testid={`video-mulai-${video.id}`}
-                        >
-                          ▶ Mulai
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          {hasPdf && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setPlaying(null);
+                                setReadingPdf(video);
+                              }}
+                              data-testid={`video-pdf-${video.id}`}
+                            >
+                              📄 Modul
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setReadingPdf(null);
+                              setPlaying(video);
+                            }}
+                            data-testid={`video-mulai-${video.id}`}
+                          >
+                            {resume.label}
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </Card>
@@ -181,21 +225,36 @@ export default function VideoPage() {
         );
       })}
 
-      {/* Player modal */}
+      {/* Player modal — wraps YouTubePlayer with auto-save */}
       <Modal
         open={playing !== null}
-        onClose={() => setPlaying(null)}
+        onClose={() => {
+          flushPending();
+          setPlaying(null);
+        }}
         title={playing?.title ?? "Video Player"}
         width={720}
       >
         {playing && (
           <div data-testid="video-player-modal">
-            <iframe
-              src={`https://www.youtube.com/embed/${playing.youtubeId}?rel=0`}
-              className="w-full aspect-video rounded-xl bg-black"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              title={playing.title}
+            <YouTubePlayer
+              key={playing.id}
+              youtubeId={playing.youtubeId}
+              initialSecond={liveProgress?.lastSecond ?? playing.progress?.lastSecond ?? 0}
+              onProgress={(sec) => {
+                saveProgress({
+                  videoId: playing.id,
+                  lastSecond: sec,
+                  watchedSecondsDelta: 0,
+                });
+              }}
+              onCompleted={() => {
+                saveProgress({
+                  videoId: playing.id,
+                  lastSecond: 0,
+                  completed: true,
+                });
+              }}
             />
             <div className="flex items-center justify-between mt-3 text-xs text-gray-500">
               {playing.description && (
@@ -208,6 +267,12 @@ export default function VideoPage() {
           </div>
         )}
       </Modal>
+
+      {/* PDF viewer modal — separate, never co-mounts with the player */}
+      <PdfViewerModal
+        video={readingPdf as Video | null}
+        onClose={() => setReadingPdf(null)}
+      />
     </div>
   );
 }

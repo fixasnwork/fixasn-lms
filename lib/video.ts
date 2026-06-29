@@ -5,11 +5,18 @@
 //   ALLOWED_VIDEO_CATEGORIES — valid Video.category values
 // ─────────────────────────────────────────────
 
-import type { Video, VideoCategory } from "@/lib/types";
+import type {
+  AdminVideoWithProgress,
+  PublicVideo,
+  Video,
+  VideoCategory,
+  VideoProgressSummary,
+  VideoWithProgress,
+} from "@/lib/types";
 
 export const ALLOWED_VIDEO_CATEGORIES: ReadonlyArray<VideoCategory> = ["TWK", "TIU", "TKP"];
 
-/** Shared mapper: Prisma video row → API response shape. */
+/** Shared mapper: Prisma video row → admin API response shape (includes `pdfUrl`). */
 export function mapVideo(v: {
   id: number;
   title: string;
@@ -19,6 +26,8 @@ export function mapVideo(v: {
   durationSec: number | null;
   sortOrder: number;
   isPublished: boolean;
+  pdfUrl: string | null;
+  pdfPageCount: number | null;
   createdAt: Date;
   updatedAt: Date;
 }): Video {
@@ -31,9 +40,40 @@ export function mapVideo(v: {
     durationSec: v.durationSec,
     sortOrder: v.sortOrder,
     isPublished: v.isPublished,
+    pdfUrl: v.pdfUrl,
+    pdfPageCount: v.pdfPageCount,
     createdAt: v.createdAt.toISOString(),
     updatedAt: v.updatedAt.toISOString(),
   };
+}
+
+/**
+ * User-facing mapper: Prisma video row → public API response shape.
+ * Deliberately omits `pdfUrl` so the original PDF's storage path is
+ * never returned to a non-admin caller. The PDF anti-extraction
+ * pipeline requires that the storage path remains secret; if it leaks,
+ * an unauthenticated request to the public Supabase bucket can
+ * download the un-watermarked original.
+ */
+export function mapPublicVideo(v: Parameters<typeof mapVideo>[0]): PublicVideo {
+  const { pdfUrl: _omit, ...rest } = mapVideo(v);
+  return rest;
+}
+
+/** Admin mapper: attach the requesting user's per-video progress to a video. */
+export function mapVideoWithProgress(
+  v: Parameters<typeof mapVideo>[0],
+  progress: VideoProgressSummary | null
+): AdminVideoWithProgress {
+  return { ...mapVideo(v), progress };
+}
+
+/** User mapper: attach progress to a public video (omits `pdfUrl`). */
+export function mapPublicVideoWithProgress(
+  v: Parameters<typeof mapVideo>[0],
+  progress: VideoProgressSummary | null
+): VideoWithProgress {
+  return { ...mapPublicVideo(v), progress };
 }
 
 // All URL regexes are end-anchored with `(?=$|[?&#/])` so an id longer

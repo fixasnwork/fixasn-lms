@@ -8,7 +8,7 @@
 // All endpoints are under /api (admin: /api/admin/videos, user: /api/videos).
 // ─────────────────────────────────────────────
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Video, VideoListResponse } from "@/lib/types";
+import type { Video, VideoListResponse, VideoProgressSummary } from "@/lib/types";
 
 /* ── Admin: list all videos ───────────────────────────────────── */
 export function useAdminVideos() {
@@ -147,5 +147,82 @@ export function useUserVideos() {
       return (await res.json()) as VideoListResponse;
     },
     staleTime: 60_000,
+  });
+}
+
+/* ── Admin: upload PDF module for a video ─────────────────────── */
+export interface UploadVideoPdfInput {
+  videoId: number;
+  file: File;
+}
+
+export interface UploadVideoPdfResult {
+  success: boolean;
+  pdfUrl: string | null;
+  pdfPageCount: number | null;
+  failedPages?: number[];
+}
+
+export function useUploadVideoPdf() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: UploadVideoPdfInput): Promise<UploadVideoPdfResult> => {
+      const form = new FormData();
+      form.append("file", input.file);
+      const res = await fetch(`/api/admin/videos/${input.videoId}/pdf`, {
+        method: "POST",
+        body: form,
+      });
+      const json = (await res.json()) as
+        | UploadVideoPdfResult
+        | { error: string };
+      if (!res.ok) {
+        const msg = "error" in json ? json.error : "Upload PDF gagal";
+        throw new Error(msg);
+      }
+      return json as UploadVideoPdfResult;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-videos"] });
+      queryClient.invalidateQueries({ queryKey: ["user-videos"] });
+    },
+  });
+}
+
+/* ── Admin: delete PDF module for a video ─────────────────────── */
+export function useDeleteVideoPdf() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (videoId: number): Promise<{ success: boolean }> => {
+      const res = await fetch(`/api/admin/videos/${videoId}/pdf`, { method: "DELETE" });
+      const json = (await res.json()) as { success: boolean } | { error: string };
+      if (!res.ok) {
+        const msg = "error" in json ? json.error : "Hapus PDF gagal";
+        throw new Error(msg);
+      }
+      return json as { success: boolean };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-videos"] });
+      queryClient.invalidateQueries({ queryKey: ["user-videos"] });
+    },
+  });
+}
+
+/* ── User: progress for a single video ────────────────────────── */
+export function useFetchVideoProgress(videoId: number | null) {
+  return useQuery<VideoProgressSummary | null>({
+    enabled: typeof videoId === "number" && videoId > 0,
+    queryKey: ["video-progress", videoId],
+    queryFn: async (): Promise<VideoProgressSummary | null> => {
+      if (typeof videoId !== "number" || videoId <= 0) return null;
+      const res = await fetch(`/api/videos/${videoId}/progress`, { cache: "no-store" });
+      if (!res.ok) throw new Error("Failed to fetch progress");
+      // The server returns `{ progress: null }` when no row exists
+      // (HTTP 200), and `{ progress: { lastSecond, ... } }` otherwise.
+      const data = (await res.json()) as { progress: VideoProgressSummary | null };
+      return data.progress;
+    },
+    staleTime: 0,
   });
 }

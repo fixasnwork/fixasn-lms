@@ -41,6 +41,7 @@ model User {
   purchases       UserPurchase[]
   attempts        TryoutAttempt[]
   userPermissions UserPermission[]
+  videoProgress   VideoProgress[]
 
   @@map("users")
 }
@@ -355,6 +356,11 @@ model Video {
   durationSec Int?     @db.Integer
   sortOrder   Int      @default(0)
   isPublished Boolean  @default(false)
+  // Optional PDF module attachment. pdfUrl is the storage path of the
+  // original PDF (private; served only via signed URLs). pdfPageCount is
+  // the number of pages successfully rasterized to PNG at upload time.
+  pdfUrl       String? @db.Text
+  pdfPageCount Int?    @db.Integer
 
   createdAt   DateTime  @default(now()) @db.Timestamptz(6)
   createdBy   String?   @db.Text
@@ -364,6 +370,32 @@ model Video {
   updatedIP   String?   @db.Text
   deletedAt   DateTime? @db.Timestamptz(6)
 
+  progress VideoProgress[]
+
   @@index([category, isPublished, sortOrder])
   @@map("videos")
+}
+
+// ── Video Progress (per-user playback state) ────────────────────────────
+// One row per (user, video). Upserted on every save from the YouTube
+// player. Cascades on User hard-delete.
+model VideoProgress {
+  userId         String   @db.Uuid
+  videoId        Int
+  lastSecond     Int      @default(0)
+  // Monotonically non-decreasing total watch time in seconds. The server
+  // upsert uses Math.max(existing, incoming) so client clock skew or
+  // accidental resets cannot roll it back.
+  watchedSeconds Int      @default(0)
+  // Set only when the YouTube 'ended' event fires (state 0). Never set
+  // by progress percentage or seek-to-end heuristics.
+  completedAt    DateTime? @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt       @db.Timestamptz(6)
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@id([userId, videoId])
+  @@index([videoId])
+  @@map("videoProgress")
 }

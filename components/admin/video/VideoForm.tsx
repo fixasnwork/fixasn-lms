@@ -4,7 +4,12 @@ import { useState, useCallback } from "react";
 import type { Video, VideoCategory } from "@/lib/types";
 import { parseYouTubeId, ALLOWED_VIDEO_CATEGORIES } from "@/lib/video";
 import { Button } from "@/components/ui";
-import type { CreateVideoInput, UpdateVideoInput } from "@/hooks/useVideoQueries";
+import {
+  useUploadVideoPdf,
+  useDeleteVideoPdf,
+  type CreateVideoInput,
+  type UpdateVideoInput,
+} from "@/hooks/useVideoQueries";
 
 export interface VideoFormProps {
   initial?: Video;
@@ -12,6 +17,8 @@ export interface VideoFormProps {
   onCancel: () => void;
   isSubmitting?: boolean;
   errorMessage?: string;
+  /** Called after a successful PDF upload or delete so the parent can re-fetch. */
+  onPdfChanged?: () => void;
 }
 
 const CATEGORY_COLORS: Record<VideoCategory, string> = {
@@ -34,6 +41,7 @@ export default function VideoForm({
   onCancel,
   isSubmitting = false,
   errorMessage,
+  onPdfChanged,
 }: VideoFormProps) {
   const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
@@ -48,6 +56,11 @@ export default function VideoForm({
     initial ? String(initial.sortOrder) : "0"
   );
   const [isPublished, setIsPublished] = useState(initial?.isPublished ?? false);
+
+  // PDF state lives entirely inside <VideoPdfSection> so the mutation
+  // hooks only mount when an admin is editing an existing video.
+  // Create-mode tests that don't provide a QueryClientProvider keep
+  // working.
 
   // Derived: live-parse the youtubeInput on every change
   const parsedId = parseYouTubeId(youtubeInput);
@@ -241,6 +254,24 @@ export default function VideoForm({
         </div>
       )}
 
+      {/* ── PDF Module (edit only) ────────────────── */}
+      <div className="border-t border-gray-200 pt-4">
+        <label className="text-sm font-bold text-gray-700 block mb-1.5">
+          Modul PDF <span className="text-gray-400 font-normal">(opsional)</span>
+        </label>
+        {!initial ? (
+          <p className="text-xs text-gray-500">
+            Simpan video terlebih dahulu, kemudian tambahkan modul PDF dari mode edit.
+          </p>
+        ) : (
+          <VideoPdfSection
+            videoId={initial.id}
+            pdfPageCount={initial.pdfPageCount ?? null}
+            onChanged={onPdfChanged}
+          />
+        )}
+      </div>
+
       {/* ── Footer ───────────────────────────────── */}
       <div className="flex justify-end gap-2 pt-2">
         <Button variant="outline" size="sm" onClick={onCancel} disabled={isSubmitting}>
@@ -250,6 +281,106 @@ export default function VideoForm({
           {isSubmitting ? "Menyimpan..." : initial ? "Simpan Perubahan" : "Tambah Video"}
         </Button>
       </div>
+    </div>
+  );
+}
+
+/* ── Sub-component: PDF upload/delete controls ────────────────── */
+// Lives in its own component so the mutation hooks only mount when an
+// admin is editing an existing video. Create-mode tests that don't
+// provide a QueryClientProvider still work.
+function VideoPdfSection({
+  videoId,
+  pdfPageCount,
+  onChanged,
+}: {
+  videoId: number;
+  pdfPageCount: number | null;
+  onChanged?: () => void;
+}) {
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const uploadPdf = useUploadVideoPdf();
+  const deletePdf = useDeleteVideoPdf();
+  const isUploadingPdf = uploadPdf.isPending;
+  const isDeletingPdf = deletePdf.isPending;
+  const pdfBusy = isUploadingPdf || isDeletingPdf;
+
+  const onUpload = useCallback(() => {
+    if (!pdfFile) {
+      setPdfError("Pilih file PDF terlebih dahulu");
+      return;
+    }
+    setPdfError(null);
+    uploadPdf.mutate(
+      { videoId, file: pdfFile },
+      {
+        onSuccess: () => {
+          setPdfFile(null);
+          onChanged?.();
+        },
+        onError: (e) => setPdfError(e instanceof Error ? e.message : "Upload gagal"),
+      }
+    );
+  }, [pdfFile, videoId, uploadPdf, onChanged]);
+
+  const onDelete = useCallback(() => {
+    if (!window.confirm("Hapus modul PDF? Tindakan ini tidak dapat dibatalkan.")) return;
+    setPdfError(null);
+    deletePdf.mutate(videoId, {
+      onSuccess: () => onChanged?.(),
+      onError: (e) => setPdfError(e instanceof Error ? e.message : "Hapus gagal"),
+    });
+  }, [videoId, deletePdf, onChanged]);
+
+  return (
+    <div className="flex flex-col gap-2">
+      {pdfPageCount && pdfPageCount > 0 ? (
+        <div className="flex items-center gap-2 text-xs text-gray-700">
+          <span className="font-semibold">📄 Modul terpasang · {pdfPageCount} halaman</span>
+        </div>
+      ) : (
+        <div className="text-xs text-gray-500">Belum ada modul PDF terpasang.</div>
+      )}
+      <div className="flex items-center gap-2 flex-wrap">
+        <input
+          type="file"
+          accept="application/pdf"
+          onChange={(e) => {
+            setPdfError(null);
+            setPdfFile(e.target.files?.[0] ?? null);
+          }}
+          disabled={pdfBusy}
+          data-testid="video-pdf-input"
+          className="text-xs"
+        />
+        {pdfFile && (
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={onUpload}
+            disabled={pdfBusy}
+          >
+            {isUploadingPdf ? "Mengunggah..." : pdfPageCount ? "Ganti Modul" : "Upload Modul"}
+          </Button>
+        )}
+        {pdfPageCount && pdfPageCount > 0 && (
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={onDelete}
+            disabled={pdfBusy}
+          >
+            {isDeletingPdf ? "Menghapus..." : "Hapus Modul"}
+          </Button>
+        )}
+      </div>
+      {pdfError && (
+        <div className="text-xs text-red-500 font-semibold">{pdfError}</div>
+      )}
+      <p className="text-xs text-gray-400">
+        Maks 20MB, 200 halaman, format .pdf. Modul akan dipecah menjadi gambar per halaman.
+      </p>
     </div>
   );
 }

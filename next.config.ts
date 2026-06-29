@@ -7,7 +7,11 @@ const isDev = process.env.NODE_ENV !== "production";
 // for the Video Pembelajaran player.
 const prodCsp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://accounts.google.com",
+  // YouTube's iframe API script URL matches the page's protocol (http
+  // or https) per youtube-player/dist/loadYouTubeIframeApi.js, so we
+  // list both schemes. The script is loaded from the YouTube domain
+  // either way.
+  "script-src 'self' 'unsafe-inline' https://accounts.google.com https://www.youtube.com http://www.youtube.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
@@ -22,7 +26,7 @@ const prodCsp = [
 // Only applied when NODE_ENV !== 'production'.
 const devCsp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://www.youtube.com http://www.youtube.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
@@ -40,6 +44,15 @@ const nextConfig: NextConfig = {
     root: __dirname,
   },
   output: "standalone",
+  // Mark native-binding server packages as external so Turbopack does
+  // not try to bundle the .node binaries. These are loaded at runtime
+  // via require(); the bundler must leave them alone.
+  serverExternalPackages: [
+    "@napi-rs/canvas", // PDF page rasterization (lib/pdfPageRender.ts)
+    "pdfjs-dist",       // PDF parser (transitive via pdf-to-img)
+    "pdf-to-img",       // PDF wrapper; uses dynamic require() on pdfjs-dist
+    "sharp",            // PDF watermark compositing (lib/pdfWatermark.ts)
+  ],
   experimental: {
     authInterrupts: true,
   },
