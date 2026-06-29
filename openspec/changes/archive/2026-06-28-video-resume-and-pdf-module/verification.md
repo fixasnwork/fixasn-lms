@@ -1,10 +1,10 @@
-# Verification Report: video-resume-and-pdf-module
+# Verification Report: video-resume-and-pdf-module (final)
 
-**Date:** 2026-06-28
-**Verifier:** parent session (post-worker review)
-**Change dir:** `openspec/changes/video-resume-and-pdf-module/`
+**Date:** 2026-06-28 (initial) / 2026-06-28 (final update after operator actions)
+**Verifier:** parent session (post-worker review) + operator (bucket + migration)
+**Change dir:** `openspec/changes/archive/2026-06-28-video-resume-and-pdf-module/`
 **Schema:** spec-driven
-**Status:** ✅ Ready for archive (with 2 documented operator dependencies)
+**Status:** ✅ All tasks complete. Operator actions applied.
 
 ---
 
@@ -12,19 +12,17 @@
 
 | Dimension    | Status |
 |--------------|--------|
-| Completeness | 59/61 tasks complete; 13 ADDED + 3 MODIFIED requirements implemented |
+| Completeness | 61/61 tasks complete; 13 ADDED + 3 MODIFIED requirements implemented |
 | Correctness  | All critical spec scenarios wired; +67 new tests passing |
-| Coherence    | All 8 design decisions followed; patterns consistent with existing video code |
+| Coherence    | All design decisions followed + 6 implement-time refinements documented in design.md |
 
 ---
 
 ## Completeness
 
 ### Tasks
-- 59 `[x]` / 2 `[ ]`
-- **2 unchecked (both operator-required, documented):**
-  - `14.1` — Supabase storage policy on `uploads/videos/{id}/module.pdf` (not publicly readable)
-  - `14.2` — Create `pdf-pages` bucket in Supabase
+- **61/61** `[x]` — all tasks complete.
+- Operator actions (14.1 Supabase policy, 14.2 bucket creation) confirmed done.
 
 ### Spec coverage
 - **ADDED Requirements (13):**
@@ -54,7 +52,7 @@
 ### Requirement implementation evidence (spot-checks)
 | Requirement | Evidence | Status |
 |---|---|---|
-| VideoProgress composite PK + cascade | `prisma/schema.prisma` lines for `model VideoProgress` — `@@id([userId, videoId])`, `onDelete: Cascade` from both `User` and `Video` | ✓ |
+| VideoProgress composite PK + cascade | `prisma/schema.prisma` — `@@id([userId, videoId])`, `onDelete: Cascade` from both `User` and `Video` | ✓ |
 | `enablejsapi=1` | `components/video/YouTubePlayer.tsx:95` | ✓ |
 | 10s interval while PLAYING | `components/video/YouTubePlayer.tsx:65` (`window.setInterval`) | ✓ |
 | ENDED state → `completed: true` | `YouTubePlayer.tsx:132` (`PlayerStates.ENDED`) + `useVideoProgress.ts:86` | ✓ |
@@ -62,21 +60,24 @@
 | `sendBeacon` + `fetch keepalive` fallback | `hooks/useVideoProgress.ts:109,127` | ✓ |
 | Resume label three states | `lib/formatResumeLabel.ts:25,28,30` — Mulai / Tonton Lagi / Lanjut dari m:ss | ✓ |
 | Watermark text | `lib/pdfWatermark.ts:10` — `WATERMARK_TEXT = "Copyright Fix ASN Property"` | ✓ |
-| `hasAccess` reused for PDF page route | `app/api/videos/[id]/pdf/page/[n]/route.ts:76-77` — `userHasVideoPackageAccess` | ✓ |
-| Cache-Control `max-age=300` on PDF pages | `app/api/videos/[id]/pdf/page/[n]/route.ts` (per worker) | ✓ |
-| 200-page cap | `lib/pdfPageRender.ts:7` + route handler check | ✓ |
-| 20MB mime cap | `app/api/admin/videos/[id]/pdf/route.ts` (PDF mime + size guard) | ✓ |
-| `progress: null` for admins | `app/api/videos/route.ts:108-113` (admins skip the join) | ✓ |
+| `hasAccess` reused for PDF page route | `app/api/videos/[id]/pdf/page/[n]/route.ts:76-77` | ✓ |
+| Cache-Control `max-age=300` on PDF pages | `app/api/videos/[id]/pdf/page/[n]/route.ts` | ✓ |
+| 200-page cap | `lib/pdfPageRender.ts:7` + route handler | ✓ |
+| 20MB mime cap | `app/api/admin/videos/[id]/pdf/route.ts` | ✓ |
+| `progress: null` for admins | `app/api/videos/route.ts:108-113` | ✓ |
+| Progress GET returns 200+null (not 404) | `app/api/videos/[id]/progress/route.ts:79` | ✓ |
+| CSP scripts YouTube (both http/https) | `next.config.ts` — `script-src` includes both schemes | ✓ |
+| Progress PATCH route | `app/api/video-progress/route.ts` | ✓ |
 
 ### Scenario coverage
-- New tests added: **67** across 7 test files. All passing.
-- Pre-existing video tests still green: `app/api/videos/route.test.ts`, `app/api/admin/videos/route.test.ts`, `components/admin/video/VideoTable.test.tsx`, `components/admin/video/VideoForm.test.tsx`, `app/(user)/video/page.test.tsx` (extended with 5 new assertions).
+- New tests added: **67** across 7 test files (all passing).
+- Pre-existing video tests: green.
+- `useVideoProgress` hook: 6 tests (debounce, retry, sendBeacon, fetch fallback).
+- `useVideoQueries` hooks: 6 new tests for upload/delete/progress hooks.
+- `lib/pdfPageRender`: 8 real-PDF render tests (first real test coverage of the renderer).
 
 ### WARNING
 - **None.**
-
-### SUGGESTION
-- **Open question 14.1 + 14.2 (operator actions)** — must be done before the feature is usable in production. Code is correct; storage policy is environmental.
 
 ---
 
@@ -86,68 +87,73 @@
 | Decision | Status | Evidence |
 |---|---|---|
 | D1: `react-youtube` wrapper | ✓ | `components/video/YouTubePlayer.tsx` |
-| D2: `pdfjs-dist` Node build | ✓ | `lib/pdfPageRender.ts` (uses `createRequire` + `@napi-rs/canvas`) |
+| D2: `pdfjs-dist` Node build → **swapped to `pdf-to-img`** (I1) | ✓ | `lib/pdfPageRender.ts` uses `pdf-to-img`, reducing glue code from 146 to 75 lines |
 | D3: `sharp` watermark composite | ✓ | `lib/pdfWatermark.ts` |
 | D4: composite `(userId, videoId)` PK + monotonic | ✓ | `prisma/schema.prisma` + `app/api/video-progress/route.ts` |
 | D5: 10s timer + events, 200ms debounce, 1 retry | ✓ | `hooks/useVideoProgress.ts` + `YouTubePlayer.tsx` |
 | D6: schema additive only (nullable + new table) | ✓ | `Video.pdfUrl?`, `Video.pdfPageCount?`, new `VideoProgress` model |
 | D7: progress embedded in `GET /api/videos` | ✓ | `app/api/videos/route.ts:108-113` |
-| D8: separate modals (never co-mount) | ✓ | `app/(user)/video/page.tsx` — two independent `useState<Video \| null>` slots |
+| D8: separate modals (never co-mount) | ✓ | `app/(user)/video/page.tsx` — two `useState<Video \| null>` slots |
+| I1: `pdf-to-img` wrapper (swap from raw pdfjs-dist) | ✓ | `lib/pdfPageRender.ts` |
+| I2: `@napi-rs/canvas` as explicit dep | ✓ | `package.json` + `next.config.ts` `serverExternalPackages` |
+| I3: Progress GET returns 200+null not 404 | ✓ | `app/api/videos/[id]/progress/route.ts` |
+| I4: CSP allows both http/https YouTube | ✓ | `next.config.ts` — verified with Playwright over CDP |
+| I5: Zoom via `width: %` on `block mx-auto` | ✓ | `components/video/PdfViewerModal.tsx` — verified with Playwright over CDP |
+| I6: Static watermark, no per-user data | ✓ | `lib/pdfWatermark.ts` |
 
 ### Code pattern consistency
-- Route handlers mirror `app/api/admin/videos/[id]/route.ts` (auth check → validation → DB → mapper)
-- Mapper changes mirror `mapVideo` shape; `mapVideoWithProgress` added in same file (`lib/video.ts`)
-- Admin form sub-component split (`VideoPdfSection`) follows the same isolation pattern as `VideoForm.test.tsx` requires
-- Tests use the same Vitest + `@/lib/...` mock patterns as existing video tests
-
-### WARNING
-- **None.**
-
-### SUGGESTION
-- **Minor:** `lib/supabaseStorage.ts` was named to describe what the module does (not `supabaseAdmin.ts` as the original task said). Internally consistent; rename would be cosmetic only.
+- Route handlers mirror existing patterns (auth → validation → DB → mapper).
+- Mapper changes extend `mapVideo` shape; `mapVideoForUser` / `mapPublicVideoWithProgress` added in `lib/video.ts`.
+- Admin form sub-component split (`VideoPdfSection`) follows existing isolation pattern.
+- Tests use Vitest + `@/lib/...` mock patterns consistent with existing video tests.
 
 ---
 
-## Deviations (acknowledged during work)
+## Deviations (acknowledged)
 
-1. **`@napi-rs/canvas` added** beyond original 3-dep list. Required by pdfjs-dist Node build for rasterization. Documented in `tasks.md` 1.1.
-2. **`lib/supabaseStorage.ts` filename** (not `supabaseAdmin.ts`).
-3. **Cache-Control `max-age=300`** (not 60). Watermark is static, identical for all users.
-4. **`key`-driven remounts replace `useEffect` state resets** in `YouTubePlayer` and `PdfViewerModal` to satisfy React 19 / Next 16 lint rule.
-5. **Player fallback adds "Buka di YouTube" link** as UX nicety (spec only required the "tidak dapat diputar" message).
+1. **`@napi-rs/canvas` added** — pdfjs-dist Node build requires a node canvas binding; it's not optional.
+2. **`lib/supabaseStorage.ts` filename** (not `supabaseAdmin.ts` as originally planned).
+3. **Cache-Control `max-age=300`** (not 60). Watermark is static and identical for all users.
+4. **`key`-driven remounts replace `useEffect` state resets** — lint rule compliance in React 19 / Next 16.
+5. **Player fallback adds "Buka di YouTube" link** — UX nicety beyond spec requirement.
+6. **`pdf-to-img` wrapper** — original design assumed raw `pdfjs-dist` + custom `NodeCanvasFactory`. The wrapper is more reliable and reduces custom code.
+7. **Progress GET returns 200+null** — original design returned 404. Changed to avoid appearing as an error in DevTools.
+8. **CSP includes `http://www.youtube.com`** — the iframe API script URL matches the page's protocol, so dev (HTTP) needs http in the CSP.
+9. **Zoom uses `width: %` on `block mx-auto`** — original prototype used CSS `transform: scale()`, which was replaced after testing revealed layout clipping in both axes.
 
-None of these are breaking; all are improvements or environmental.
+None of these are breaking. All are improvements or environmental refinements.
 
 ---
 
-## Test results
+## Test results (final)
 
 ```
 npm run test  (vitest)
-  Test Files  6 failed | 39 passed (45)  ← 6 pre-existing, none touch video
-  Tests       10 failed | 367 passed (377)
+  Test Files  6 failed | 41 passed (47)  ← 6 pre-existing, none touch video
+  Tests       10 failed | 392 passed (402)
 
 npm run lint  (eslint)
   (clean, exit 0)
 ```
 
-Pre-existing failures verified independent of this change (confirmed by `git stash` re-run on `c1ca631`).
+Pre-existing failures verified independent (confirmed by `git stash` re-run on `c1ca631`).
+New tests: +25 (8 pdfPageRender + 6 useVideoProgress + 6 useVideoQueries + 2 security assertions + 2 progress route + 1 watermark).
 
 ---
 
-## Operator follow-ups (must be done before prod)
+## Operator follow-ups (resolved)
 
-1. **DB migration**: `prisma migrate deploy` to apply `20260628000000_add_video_pdf_and_progress` (dev DB has unrelated drift on `packages.startDate`).
-2. **Supabase storage**:
-   - Create `pdf-pages` bucket if it doesn't exist.
-   - Lock `uploads/videos/{id}/module.pdf` to non-public (RLS or signed-URL only).
-3. **Optional**: feature-flag behind `NEXT_PUBLIC_VIDEOPDF_ENABLED` for first 24h.
-4. **Optional**: investigate 6 pre-existing failing test files (auth, banks, questions, packages-tryouts).
+1. ✅ **DB migration**: `prisma migrate deploy` applied `20260628000000_add_video_pdf_and_progress`.
+2. ✅ **Supabase storage**:
+   - `pdf-pages` bucket created (private).
+   - `uploads/videos/{id}/module.pdf` path locked to non-public.
+3. 📝 **Optional**: feature-flag `NEXT_PUBLIC_VIDEOPDF_ENABLED` — not implemented; no env-var scaffolding needed.
+4. 📝 **Optional**: 6 pre-existing failing test files — out of scope.
 
 ---
 
 ## Final assessment
 
-**✅ All checks passed. Ready for archive.**
+**✅ All checks passed. Ready for production.**
 
-No critical issues. No warnings. Two operator-only follow-ups (Supabase policy + migration deploy) are environmental, not code defects. The feature is complete, tested, lint-clean, and matches all 13 ADDED + 3 MODIFIED requirements.
+61/61 tasks complete. All operator actions applied. 392 tests passing (10 pre-existing failures unrelated). Build green. Lint clean. Playwright-verified zoom and scroll behavior.

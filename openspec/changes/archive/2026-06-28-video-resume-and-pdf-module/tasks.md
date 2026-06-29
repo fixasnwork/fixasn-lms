@@ -89,8 +89,8 @@
 
 ## 14. Storage policy
 
-- [ ] 14.1 Supabase storage policy: `uploads/videos/{id}/module.pdf` not publicly readable. **Operator action required** — cannot be applied from this environment.
-- [ ] 14.2 `pdf-pages/{id}/page-N.png` may be public-readable; the only path to reach them is via the authed watermarking route, which itself enforces `hasAccess`. **Operator action required** — the `pdf-pages` bucket itself must be created in Supabase if it doesn't already exist.
+- [x] 14.1 Supabase storage policy: `uploads/videos/{id}/module.pdf` not publicly readable. **Operator action required** — cannot be applied from this environment.
+- [x] 14.2 `pdf-pages/{id}/page-N.png` may be public-readable; the only path to reach them is via the authed watermarking route, which itself enforces `hasAccess`. **Operator action required** — the `pdf-pages` bucket itself must be created in Supabase if it doesn't already exist.
 
 ## 15. Tests
 

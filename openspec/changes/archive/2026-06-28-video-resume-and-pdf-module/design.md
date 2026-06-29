@@ -79,10 +79,34 @@ The feature needs two additive capabilities that share the same data surface (vi
 3. Feature-flag the new admin "Upload Modul" field and the user "📄 Modul" button behind `process.env.NEXT_PUBLIC_VIDEOPDF_ENABLED` for 24h of monitoring in production. (Optional, easy to remove if not desired.)
 4. Rollback: `prisma migrate resolve --rolled-back` on the migration; the nullable columns + empty `VideoProgress` table leave no traces.
 
+## Decisions (implementation changes from design)
+
+These decisions emerged during implementation and are refinements on top of the original design.
+
+### I1. `pdf-to-img` wrapper instead of raw `pdfjs-dist` + custom `NodeCanvasFactory`
+- **Rationale**: The custom `NodeCanvasFactory` in `lib/pdfPageRender.ts` duplicated pdfjs-dist's built-in factory and was silently ignored (pdfjs-dist reads `CanvasFactory` with capital C). The `pdf-to-img` package (MIT, 237K weekly DLs) bakes in the correct Node setup (standardFontDataUrl, cMapUrl, canvasFactory injection) and reduced our glue code from 146 lines to 75.
+- **Dependency added**: `pdf-to-img@^6.2.0` (transitively pins `pdfjs-dist@5.6.205` — one version below the direct dep, but rendering semantics are identical for our use case).
+
+### I2. `@napi-rs/canvas` is a required dependency, not optional
+- **Why**: pdfjs-dist 6.x's built-in `NodeCanvasFactory` uses `require("@napi-rs/canvas")` internally. Without it, pdfjs-dist builds an empty canvas and all pages render as blank. It ships prebuilt `linux-x64-musl` binaries for Alpine.
+- **Listed in**: `package.json`, externalized in `next.config.ts` via `serverExternalPackages`.
+
+### I3. Progress GET endpoint returns 200 with `progress: null` instead of 404
+- **Why**: The original implementation returned 404 for "no progress row exists", which appeared as an error in DevTools even though the client handled it. Changed to `200 { progress: null }` — the "no progress yet" case is not an error state.
+- **Contract**: Client hook simplified; 404 special case removed.
+
+### I4. CSP must allow both `http://` and `https://` YouTube scripts
+- **Why**: `youtube-player`'s `loadYouTubeIframeApi` script URL matches the page's protocol (`window.location.protocol === 'http:' ? 'http:' : 'https:'`). Dev runs on `http://localhost`, so the script loads from `http://www.youtube.com/iframe_api`. CSP `script-src` must list both schemes.
+- **CSP**: `script-src 'self' ... https://www.youtube.com http://www.youtube.com`.
+
+### I5. Zoom is implemented via `width: %` on a `block mx-auto` image, not CSS transform
+- **Why**: `transform: scale()` does not change the layout box — the visual content extending past the layout box is clipped by `overflow: auto` and unreachable by scrolling. Sizing the image's `width` directly (as a percentage of the scroll container) makes the layout match the visual, so `overflow: auto` in both axes scrolls correctly.
+- **Viewer**: The scroll container is a plain block div with `h-[70vh] overflow-auto`. The image is `block mx-auto` with `width: ${zoom * 100}%` and `height: auto`. Flex layout was avoided because `align-items: flex-start` in a flex parent prevents cross-axis (vertical) overflow from triggering a scrollbar in some browsers.
+
+### I6. Watermark is a static string, not per-user forensic
+- **Why**: The user chose "Copyright Fix ASN Property" over per-user email/timestamp. The overlay is identical for every request and composited via `sharp` SVG overlay at 10% opacity, 30° rotation, tiled evenly.
+- **Cache**: `Cache-Control: private, max-age=300` (static overlay means the same cached response works for all users within 5 minutes).
+
 ## Open Questions
 
 (none — all resolved)
-
-- ~~Watermark text~~ → resolved: static string `Copyright Fix ASN Property`, no per-user data.
-- ~~Container compat for pdfjs-dist + sharp~~ → resolved: pdfjs-dist Node build + sharp overlay. Task 1.1 will dry-run on Node 26 Alpine to confirm.
-- ~~User delete cascade~~ → resolved: `VideoProgress.userId` uses `onDelete: Cascade` matching the existing `UserPurchase` pattern; explicit in the schema task.
