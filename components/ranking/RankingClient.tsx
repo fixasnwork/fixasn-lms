@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Card, Button } from "@/components/ui";
 import type { RankingEntry } from "@/lib/ranking";
 
 // ── types ────────────────────────────────────
+export type ScoreType = "total" | "twk" | "tiu" | "tkp";
+
 interface Props {
 	all: RankingEntry[];
 	weekly: RankingEntry[];
@@ -24,13 +26,33 @@ function getScoreBarWidth(score: number, maxScore: number): string {
 	return `${Math.min((score / maxScore) * 100, 100)}%`;
 }
 
+/** Extract the score for the selected metric. Exported so Podium and
+ *  RankingRow (in this file) and TryoutRankingPanel can share the lookup. */
+export function getMetricScore(entry: RankingEntry, metric: ScoreType): number {
+	if (metric === "twk") return entry.twkScore;
+	if (metric === "tiu") return entry.tiuScore;
+	if (metric === "tkp") return entry.tkpScore;
+	return entry.totalScore;
+}
+
 // ── component ────────────────────────────────
 export default function RankingClient({ all, weekly, monthly }: Props) {
 	const router = useRouter();
 	const [tab, setTab] = useState<"all" | "weekly" | "monthly">("all");
+	const [scoreType, setScoreType] = useState<ScoreType>("total");
 
 	const data = tab === "weekly" ? weekly : tab === "monthly" ? monthly : all;
-	const maxScore = data.length > 0 ? data[0].totalScore : 350;
+
+	// Re-sort by selected metric. useMemo so the sort only runs when
+	// data or scoreType change — not on every render.
+	const sortedData = useMemo(() => {
+		return [...data].sort(
+			(a, b) => getMetricScore(b, scoreType) - getMetricScore(a, scoreType),
+		);
+	}, [data, scoreType]);
+
+	const maxScore =
+		sortedData.length > 0 ? getMetricScore(sortedData[0], scoreType) : 350;
 
 	// ── empty state ────────────────────────────
 	if (data.length === 0) {
@@ -44,6 +66,8 @@ export default function RankingClient({ all, weekly, monthly }: Props) {
 				</p>
 
 				<TabBar tab={tab} setTab={setTab} />
+
+				<ScoreTypeBar scoreType={scoreType} setScoreType={setScoreType} />
 
 				<Card className="p-12 text-center">
 					<div className="text-5xl mb-4">📭</div>
@@ -63,8 +87,8 @@ export default function RankingClient({ all, weekly, monthly }: Props) {
 	}
 
 	// ── data available ─────────────────────────
-	const top3 = data.slice(0, 3);
-	const rest = data; // all entries shown in table
+	const top3 = sortedData.slice(0, 3);
+	const rest = sortedData; // all entries shown in table
 
 	return (
 		<div>
@@ -75,15 +99,22 @@ export default function RankingClient({ all, weekly, monthly }: Props) {
 				Bersaing dan pantau posisimu di ranking nasional
 			</p>
 
-			<Podium top3={top3} maxScore={maxScore} />
+			<Podium top3={top3} maxScore={maxScore} metric={scoreType} />
 
 			<TabBar tab={tab} setTab={setTab} />
+
+			<ScoreTypeBar scoreType={scoreType} setScoreType={setScoreType} />
 
 			{/* Ranking table — shows all entries (rank 1+) */}
 			<Card className="p-0 overflow-hidden">
 				<div className="flex flex-col gap-0">
 					{rest.map((entry, i) => (
-						<RankingRow key={entry.userId} entry={entry} rank={i + 1} />
+						<RankingRow
+							key={entry.userId}
+							entry={entry}
+							rank={i + 1}
+							scoreType={scoreType}
+						/>
 					))}
 				</div>
 			</Card>
@@ -101,6 +132,39 @@ export default function RankingClient({ all, weekly, monthly }: Props) {
 					</Button>
 				</Card>
 			</div>
+		</div>
+	);
+}
+
+// ── Score-type bar (exported for re-use in TryoutRankingPanel) ──
+export function ScoreTypeBar({
+	scoreType,
+	setScoreType,
+}: {
+	scoreType: ScoreType;
+	setScoreType: (t: ScoreType) => void;
+}) {
+	const tabs: { id: ScoreType; label: string }[] = [
+		{ id: "total", label: "📊 Total" },
+		{ id: "twk", label: "📝 TWK" },
+		{ id: "tiu", label: "🧮 TIU" },
+		{ id: "tkp", label: "🧠 TKP" },
+	];
+	return (
+		<div className="flex gap-2 mb-4">
+			{tabs.map((t) => (
+				<button
+					key={t.id}
+					onClick={() => setScoreType(t.id)}
+					className={`px-4 py-1.5 rounded-full font-bold text-xs cursor-pointer border-2 transition-all ${
+						scoreType === t.id
+							? "border-blue-600 bg-blue-600 text-white"
+							: "border-gray-200 bg-white text-gray-500 hover:border-blue-400"
+					}`}
+				>
+					{t.label}
+				</button>
+			))}
 		</div>
 	);
 }
@@ -140,12 +204,15 @@ export function TabBar({
 export function Podium({
 	top3,
 	maxScore,
+	metric = "total",
 }: {
 	top3: RankingEntry[];
 	maxScore: number;
+	metric?: ScoreType;
 }) {
 	// 1 entry only — centered gold
 	if (top3.length === 1) {
+		const score = getMetricScore(top3[0], metric);
 		return (
 			<div className="flex justify-center items-end gap-3 mb-6 px-4">
 				<div className="flex flex-col items-center flex-1 -mt-3">
@@ -160,11 +227,9 @@ export function Podium({
 					<div className="font-extrabold text-base text-brand text-center">
 						{top3[0].name.split(" ")[0]}
 					</div>
-					<div className="font-black text-2xl text-amber-600">
-						{top3[0].totalScore}
-					</div>
+					<div className="font-black text-2xl text-amber-600">{score}</div>
 					<ScoreBar
-						score={top3[0].totalScore}
+						score={score}
 						maxScore={maxScore}
 						color="from-amber-500 to-yellow-400"
 						bg="bg-amber-100"
@@ -176,6 +241,8 @@ export function Podium({
 
 	// 2 entries — 1st center, 2nd left
 	if (top3.length === 2) {
+		const score0 = getMetricScore(top3[0], metric);
+		const score1 = getMetricScore(top3[1], metric);
 		return (
 			<div className="flex justify-center items-end gap-3 mb-6 px-4">
 				{/* 2nd place */}
@@ -191,11 +258,9 @@ export function Podium({
 					<div className="font-extrabold text-sm text-gray-800 text-center">
 						{top3[1].name.split(" ")[0]}
 					</div>
-					<div className="font-black text-base text-gray-600">
-						{top3[1].totalScore}
-					</div>
+					<div className="font-black text-base text-gray-600">{score1}</div>
 					<ScoreBar
-						score={top3[1].totalScore}
+						score={score1}
 						maxScore={maxScore}
 						color="from-gray-400 to-gray-300"
 						bg="bg-gray-200"
@@ -215,11 +280,9 @@ export function Podium({
 					<div className="font-extrabold text-base text-brand text-center">
 						{top3[0].name.split(" ")[0]}
 					</div>
-					<div className="font-black text-2xl text-amber-600">
-						{top3[0].totalScore}
-					</div>
+					<div className="font-black text-2xl text-amber-600">{score0}</div>
 					<ScoreBar
-						score={top3[0].totalScore}
+						score={score0}
 						maxScore={maxScore}
 						color="from-amber-500 to-yellow-400"
 						bg="bg-amber-100"
@@ -230,6 +293,9 @@ export function Podium({
 	}
 
 	// 3+ entries — full podium: 2nd | 1st | 3rd
+	const score0 = getMetricScore(top3[0], metric);
+	const score1 = getMetricScore(top3[1], metric);
+	const score2 = getMetricScore(top3[2], metric);
 	return (
 		<div className="flex justify-center items-end gap-3 mb-6 px-4">
 			{/* 2nd place */}
@@ -245,11 +311,9 @@ export function Podium({
 				<div className="font-extrabold text-sm text-gray-800 text-center">
 					{top3[1].name.split(" ")[0]}
 				</div>
-				<div className="font-black text-base text-gray-600">
-					{top3[1].totalScore}
-				</div>
+				<div className="font-black text-base text-gray-600">{score1}</div>
 				<ScoreBar
-					score={top3[1].totalScore}
+					score={score1}
 					maxScore={maxScore}
 					color="from-gray-400 to-gray-300"
 					bg="bg-gray-200"
@@ -269,11 +333,9 @@ export function Podium({
 				<div className="font-extrabold text-base text-brand text-center">
 					{top3[0].name.split(" ")[0]}
 				</div>
-				<div className="font-black text-2xl text-amber-600">
-					{top3[0].totalScore}
-				</div>
+				<div className="font-black text-2xl text-amber-600">{score0}</div>
 				<ScoreBar
-					score={top3[0].totalScore}
+					score={score0}
 					maxScore={maxScore}
 					color="from-amber-500 to-yellow-400"
 					bg="bg-amber-100"
@@ -293,11 +355,9 @@ export function Podium({
 				<div className="font-extrabold text-sm text-gray-800 text-center">
 					{top3[2].name.split(" ")[0]}
 				</div>
-				<div className="font-black text-base text-gray-600">
-					{top3[2].totalScore}
-				</div>
+				<div className="font-black text-base text-gray-600">{score2}</div>
 				<ScoreBar
-					score={top3[2].totalScore}
+					score={score2}
 					maxScore={maxScore}
 					color="from-amber-700 to-yellow-600"
 					bg="bg-amber-200"
@@ -370,10 +430,13 @@ function ScoreBar({
 export function RankingRow({
 	entry,
 	rank,
+	scoreType = "total",
 }: {
 	entry: RankingEntry;
 	rank: number;
+	scoreType?: ScoreType;
 }) {
+	const displayScore = getMetricScore(entry, scoreType);
 	return (
 		<div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors">
 			{/* rank number */}
@@ -412,9 +475,7 @@ export function RankingRow({
 
 			{/* score */}
 			<div className="flex flex-col items-end flex-shrink-0">
-				<div className="font-black text-base text-brand">
-					{entry.totalScore}
-				</div>
+				<div className="font-black text-base text-brand">{displayScore}</div>
 				<div className="text-[10px] text-gray-400">poin</div>
 			</div>
 		</div>

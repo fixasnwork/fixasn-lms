@@ -10,6 +10,9 @@ export interface RankingEntry {
 	avatar: string | null;
 	initials: string;
 	totalScore: number;
+	twkScore: number;
+	tiuScore: number;
+	tkpScore: number;
 	tryoutCount: number;
 	packages: string; // comma-separated, may be empty
 }
@@ -34,6 +37,9 @@ export async function getRankingData(since?: Date): Promise<RankingEntry[]> {
 			userId: true,
 			tryoutId: true,
 			totalScore: true,
+			twkScore: true,
+			tiuScore: true,
+			tkpScore: true,
 			updatedAt: true,
 			user: {
 				select: {
@@ -49,17 +55,36 @@ export async function getRankingData(since?: Date): Promise<RankingEntry[]> {
 
 	if (attempts.length === 0) return [];
 
-	// ── 2. Aggregate: max score per user per tryout, earliest updatedAt ─
-	const userTryoutMax = new Map<string, Map<number, number>>();
+	// ── 2. Aggregate: best attempt (by totalScore) per (user, tryout) ─
+	// Approach A: sub-scores (TWK/TIU/TKP) come from the same attempt
+	// that has the highest totalScore. This keeps the invariant that
+	// sub-scores always add up to totalScore.
+	interface BestAttempt {
+		totalScore: number;
+		twkScore: number;
+		tiuScore: number;
+		tkpScore: number;
+		updatedAt: Date;
+	}
+	const userTryoutBest = new Map<string, Map<number, BestAttempt>>();
 	const userEarliestAt = new Map<string, Date>();
 
 	for (const a of attempts) {
-		if (!userTryoutMax.has(a.userId)) {
-			userTryoutMax.set(a.userId, new Map());
+		if (!userTryoutBest.has(a.userId)) {
+			userTryoutBest.set(a.userId, new Map());
 		}
-		const tryoutScores = userTryoutMax.get(a.userId)!;
-		const currentMax = tryoutScores.get(a.tryoutId) ?? 0;
-		tryoutScores.set(a.tryoutId, Math.max(currentMax, a.totalScore));
+		const tryoutBest = userTryoutBest.get(a.userId)!;
+		const current = tryoutBest.get(a.tryoutId);
+		// Replace if no current best, or this attempt has a higher totalScore
+		if (!current || a.totalScore > current.totalScore) {
+			tryoutBest.set(a.tryoutId, {
+				totalScore: a.totalScore,
+				twkScore: a.twkScore,
+				tiuScore: a.tiuScore,
+				tkpScore: a.tkpScore,
+				updatedAt: a.updatedAt,
+			});
+		}
 
 		// track earliest updatedAt per user (tie-breaker)
 		const prev = userEarliestAt.get(a.userId);
@@ -68,19 +93,31 @@ export async function getRankingData(since?: Date): Promise<RankingEntry[]> {
 		}
 	}
 
-	// ── 3. Build user ranking list (totalScore, tryoutCount, user) ─────
+	// ── 3. Build user ranking list (sum each metric across tryouts) ──
 	const userRankings: Array<{
 		userId: string;
 		name: string;
 		avatar: string | null;
 		totalScore: number;
+		twkScore: number;
+		tiuScore: number;
+		tkpScore: number;
 		tryoutCount: number;
 		earliestUpdatedAt: Date;
 	}> = [];
 
-	for (const [userId, tryoutScores] of userTryoutMax) {
-		const totalScore = [...tryoutScores.values()].reduce((s, v) => s + v, 0);
-		const tryoutCount = tryoutScores.size;
+	for (const [userId, tryoutBest] of userTryoutBest) {
+		let totalScore = 0;
+		let twkScore = 0;
+		let tiuScore = 0;
+		let tkpScore = 0;
+		for (const attempt of tryoutBest.values()) {
+			totalScore += attempt.totalScore;
+			twkScore += attempt.twkScore;
+			tiuScore += attempt.tiuScore;
+			tkpScore += attempt.tkpScore;
+		}
+		const tryoutCount = tryoutBest.size;
 		// pick the first attempt's user info (same userId → same user)
 		const userInfo = attempts.find((a) => a.userId === userId)!.user;
 
@@ -89,6 +126,9 @@ export async function getRankingData(since?: Date): Promise<RankingEntry[]> {
 			name: userInfo.name,
 			avatar: userInfo.avatar,
 			totalScore,
+			twkScore,
+			tiuScore,
+			tkpScore,
 			tryoutCount,
 			earliestUpdatedAt: userEarliestAt.get(userId)!,
 		});
@@ -132,6 +172,9 @@ export async function getRankingData(since?: Date): Promise<RankingEntry[]> {
 			avatar: r.avatar,
 			initials: getInitials(r.name),
 			totalScore: r.totalScore,
+			twkScore: r.twkScore,
+			tiuScore: r.tiuScore,
+			tkpScore: r.tkpScore,
 			tryoutCount: r.tryoutCount,
 			packages: (pkgMap.get(r.userId) ?? []).join(", "),
 		}))
@@ -252,6 +295,9 @@ export async function getTryoutRanking(
 			userId: true,
 			tryoutId: true,
 			totalScore: true,
+			twkScore: true,
+			tiuScore: true,
+			tkpScore: true,
 			finishedAt: true,
 			user: {
 				select: { id: true, name: true, avatar: true, email: true },
@@ -261,11 +307,16 @@ export async function getTryoutRanking(
 
 	if (attempts.length === 0) return [];
 
-	// Per-user best score + earliest finishedAt for the tryout
+	// Per-user best (by totalScore) + earliest finishedAt for the tryout.
+	// Approach A: sub-scores come from the best attempt, so they always
+	// add up to totalScore.
 	const userBest = new Map<
 		string,
 		{
 			score: number;
+			twkScore: number;
+			tiuScore: number;
+			tkpScore: number;
 			earliestFinishedAt: Date;
 			name: string;
 			avatar: string | null;
@@ -282,6 +333,9 @@ export async function getTryoutRanking(
 		) {
 			userBest.set(a.userId, {
 				score: a.totalScore,
+				twkScore: a.twkScore,
+				tiuScore: a.tiuScore,
+				tkpScore: a.tkpScore,
 				earliestFinishedAt: a.finishedAt,
 				name: a.user.name,
 				avatar: a.user.avatar,
@@ -304,6 +358,9 @@ export async function getTryoutRanking(
 		avatar: v.avatar,
 		initials: getInitials(v.name),
 		totalScore: v.score,
+		twkScore: v.twkScore,
+		tiuScore: v.tiuScore,
+		tkpScore: v.tkpScore,
 		tryoutCount: 1, // one tryout by definition
 		packages: "",
 	}));
@@ -322,22 +379,42 @@ export async function getUserTryoutRank(
 	userId: string,
 	tryoutId: number,
 	since?: Date,
-): Promise<{ rank: number; score: number } | null> {
+): Promise<{
+	rank: number;
+	score: number;
+	twkScore: number;
+	tiuScore: number;
+	tkpScore: number;
+} | null> {
 	const attempts = await prisma.tryoutAttempt.findMany({
 		where: {
 			tryoutId,
 			deletedAt: null,
 			finishedAt: { not: null, ...(since && { gte: since }) },
 		},
-		select: { userId: true, totalScore: true, finishedAt: true },
+		select: {
+			userId: true,
+			totalScore: true,
+			twkScore: true,
+			tiuScore: true,
+			tkpScore: true,
+			finishedAt: true,
+		},
 	});
 
 	if (attempts.length === 0) return null;
 
-	// Per-user best (max totalScore; tie-break earliest finishedAt)
+	// Per-user best (max totalScore; tie-break earliest finishedAt).
+	// Approach A: sub-scores come from the same best attempt.
 	const userBest = new Map<
 		string,
-		{ score: number; earliestFinishedAt: Date }
+		{
+			score: number;
+			twkScore: number;
+			tiuScore: number;
+			tkpScore: number;
+			earliestFinishedAt: Date;
+		}
 	>();
 	for (const a of attempts) {
 		if (!a.finishedAt) continue;
@@ -349,6 +426,9 @@ export async function getUserTryoutRank(
 		) {
 			userBest.set(a.userId, {
 				score: a.totalScore,
+				twkScore: a.twkScore,
+				tiuScore: a.tiuScore,
+				tkpScore: a.tkpScore,
 				earliestFinishedAt: a.finishedAt,
 			});
 		}
@@ -371,7 +451,13 @@ export async function getUserTryoutRank(
 		}
 	}
 
-	return { rank: ahead + 1, score: mine.score };
+	return {
+		rank: ahead + 1,
+		score: mine.score,
+		twkScore: mine.twkScore,
+		tiuScore: mine.tiuScore,
+		tkpScore: mine.tkpScore,
+	};
 }
 
 /**

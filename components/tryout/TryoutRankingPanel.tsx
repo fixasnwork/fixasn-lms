@@ -6,10 +6,17 @@
 // podium, a sticky "your row" card, and a scrollable list of other
 // participants. Renders plain — no celebration effect on top-3.
 // ─────────────────────────────────────────────
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui";
-import { Podium, RankingRow, TabBar } from "@/components/ranking/RankingClient";
+import {
+	Podium,
+	RankingRow,
+	ScoreTypeBar,
+	TabBar,
+	getMetricScore,
+} from "@/components/ranking/RankingClient";
+import type { ScoreType } from "@/components/ranking/RankingClient";
 import type { RankingEntry } from "@/lib/ranking";
 
 type Period = "all" | "weekly" | "monthly";
@@ -29,6 +36,7 @@ export default function TryoutRankingPanel({
 	viewerUserId: string;
 }) {
 	const [period, setPeriod] = useState<Period>("all");
+	const [scoreType, setScoreType] = useState<ScoreType>("total");
 	const headingRef = useRef<HTMLHeadingElement>(null);
 
 	// Move keyboard focus to the heading when the panel first mounts
@@ -48,6 +56,22 @@ export default function TryoutRankingPanel({
 		},
 		staleTime: 60_000,
 	});
+
+	// Re-sort by selected metric. useMemo so the sort only runs when
+	// the underlying entries array or scoreType change — not on every
+	// render. Must be called unconditionally (before any early returns)
+	// per Rules of Hooks. We also memoise `entries` itself so the
+	// useMemo dep reference stays stable when `data` is undefined or
+	// when the server returns the same data reference.
+	const entries = useMemo(() => data?.entries ?? [], [data]);
+	const viewer = data?.viewer ?? null;
+	const participantCount = data?.participantCount ?? 0;
+
+	const sortedEntries = useMemo(() => {
+		return [...entries].sort(
+			(a, b) => getMetricScore(b, scoreType) - getMetricScore(a, scoreType),
+		);
+	}, [entries, scoreType]);
 
 	if (isLoading) {
 		return (
@@ -69,19 +93,29 @@ export default function TryoutRankingPanel({
 		);
 	}
 
-	const { entries, viewer, participantCount } = data;
-	const top3 = entries.slice(0, 3);
-	const maxScore = entries[0]?.totalScore ?? 350;
+	const top3 = sortedEntries.slice(0, 3);
+	const maxScore = sortedEntries[0]
+		? getMetricScore(sortedEntries[0], scoreType)
+		: 350;
 
-	// Pre-compute the original rank for each user (1-based, from the
-	// server's sort order) BEFORE filtering the viewer out of the list.
+	// Pre-compute the rank for each user (1-based) from the CURRENT sort
+	// order so ranks match whichever metric the user picked.
 	const rankByUserId = new Map<string, number>(
-		entries.map((e, i) => [e.userId, i + 1]),
+		sortedEntries.map((e, i) => [e.userId, i + 1]),
 	);
-	const list = entries.filter((e) => e.userId !== viewerUserId);
+	const list = sortedEntries.filter((e) => e.userId !== viewerUserId);
 	const viewerEntry = viewer
-		? entries.find((e) => e.userId === viewerUserId)
+		? sortedEntries.find((e) => e.userId === viewerUserId)
 		: null;
+
+	// Recompute viewer's rank from the current sort so it matches the
+	// selected metric (e.g. "You're #2 by TWK" vs "You're #5 by Total").
+	const computedViewerRank = viewerEntry
+		? (rankByUserId.get(viewerUserId) ?? null)
+		: null;
+	const viewerDisplayScore = viewerEntry
+		? getMetricScore(viewerEntry, scoreType)
+		: 0;
 
 	// Period-aware empty-state copy. When the user filters to Mingguan /
 	// Bulanan and there are no participants in that window, the message
@@ -109,7 +143,7 @@ export default function TryoutRankingPanel({
 
 			{/* Podium + sticky your-row only when there's data */}
 			{participantCount > 0 && top3.length > 0 && (
-				<Podium top3={top3} maxScore={maxScore} />
+				<Podium top3={top3} maxScore={maxScore} metric={scoreType} />
 			)}
 
 			{participantCount > 0 && viewer && viewerEntry && (
@@ -120,7 +154,7 @@ export default function TryoutRankingPanel({
 				>
 					<div className="flex items-center gap-4">
 						<div className="w-12 h-12 rounded-full bg-brand text-white flex items-center justify-center font-black text-lg flex-shrink-0">
-							{viewer.rank}
+							{computedViewerRank}
 						</div>
 						<div className="flex-1 min-w-0">
 							<div className="text-[10px] font-bold uppercase text-gray-500 tracking-wide">
@@ -130,7 +164,9 @@ export default function TryoutRankingPanel({
 								{viewerEntry.name}{" "}
 								<span className="text-xs font-bold text-gray-500">(Kamu)</span>
 							</div>
-							<div className="text-xs text-gray-500">{viewer.score} poin</div>
+							<div className="text-xs text-gray-500">
+								{viewerDisplayScore} poin
+							</div>
 						</div>
 						<div className="text-right flex-shrink-0">
 							<div className="text-[10px] text-gray-400">dari</div>
@@ -147,6 +183,10 @@ export default function TryoutRankingPanel({
 			    even when the current period has zero participants (the bug). */}
 			<div role="tablist" aria-label="Periode ranking">
 				<TabBar tab={period} setTab={setPeriod} />
+			</div>
+
+			<div role="tablist" aria-label="Kategori skor">
+				<ScoreTypeBar scoreType={scoreType} setScoreType={setScoreType} />
 			</div>
 
 			{participantCount === 0 ? (
@@ -175,6 +215,7 @@ export default function TryoutRankingPanel({
 									key={entry.userId}
 									entry={entry}
 									rank={rankByUserId.get(entry.userId) ?? 0}
+									scoreType={scoreType}
 								/>
 							))}
 						</div>
