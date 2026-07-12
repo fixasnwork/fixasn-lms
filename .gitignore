@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+.pi-subagents
+.pi
+.kiro
+.husky
+.fallow
+.codex
+.claude

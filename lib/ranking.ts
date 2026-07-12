@@ -1,17 +1,17 @@
 // ─────────────────────────────────────────────
 // Ranking data aggregation (Prisma type‑safe, no raw SQL)
 // ─────────────────────────────────────────────
-import prisma from '@/lib/prisma';
-import { getInitials } from '@/lib/utils';
+import prisma from "@/lib/prisma";
+import { getInitials } from "@/lib/utils";
 
 export interface RankingEntry {
-  userId: string;
-  name: string;
-  avatar: string | null;
-  initials: string;
-  totalScore: number;
-  tryoutCount: number;
-  packages: string; // comma-separated, may be empty
+	userId: string;
+	name: string;
+	avatar: string | null;
+	initials: string;
+	totalScore: number;
+	tryoutCount: number;
+	packages: string; // comma-separated, may be empty
 }
 
 /**
@@ -24,120 +24,120 @@ export interface RankingEntry {
  * @returns Array sorted by totalScore DESC, max 100 entries
  */
 export async function getRankingData(since?: Date): Promise<RankingEntry[]> {
-  // ── 1. Fetch all attempts (with user info) ──────────────────────────
-  const attempts = await prisma.tryoutAttempt.findMany({
-    where: {
-      deletedAt: null,
-      ...(since && { createdAt: { gte: since } }),
-    },
-    select: {
-      userId: true,
-      tryoutId: true,
-      totalScore: true,
-      updatedAt: true,
-      user: {
-        select: {
-          id: true,
-          name: true,
-          avatar: true,
-          email: true,
-        },
-      },
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+	// ── 1. Fetch all attempts (with user info) ──────────────────────────
+	const attempts = await prisma.tryoutAttempt.findMany({
+		where: {
+			deletedAt: null,
+			...(since && { createdAt: { gte: since } }),
+		},
+		select: {
+			userId: true,
+			tryoutId: true,
+			totalScore: true,
+			updatedAt: true,
+			user: {
+				select: {
+					id: true,
+					name: true,
+					avatar: true,
+					email: true,
+				},
+			},
+		},
+		orderBy: { createdAt: "desc" },
+	});
 
-  if (attempts.length === 0) return [];
+	if (attempts.length === 0) return [];
 
-  // ── 2. Aggregate: max score per user per tryout, earliest updatedAt ─
-  const userTryoutMax = new Map<string, Map<number, number>>();
-  const userEarliestAt = new Map<string, Date>();
+	// ── 2. Aggregate: max score per user per tryout, earliest updatedAt ─
+	const userTryoutMax = new Map<string, Map<number, number>>();
+	const userEarliestAt = new Map<string, Date>();
 
-  for (const a of attempts) {
-    if (!userTryoutMax.has(a.userId)) {
-      userTryoutMax.set(a.userId, new Map());
-    }
-    const tryoutScores = userTryoutMax.get(a.userId)!;
-    const currentMax = tryoutScores.get(a.tryoutId) ?? 0;
-    tryoutScores.set(a.tryoutId, Math.max(currentMax, a.totalScore));
+	for (const a of attempts) {
+		if (!userTryoutMax.has(a.userId)) {
+			userTryoutMax.set(a.userId, new Map());
+		}
+		const tryoutScores = userTryoutMax.get(a.userId)!;
+		const currentMax = tryoutScores.get(a.tryoutId) ?? 0;
+		tryoutScores.set(a.tryoutId, Math.max(currentMax, a.totalScore));
 
-    // track earliest updatedAt per user (tie-breaker)
-    const prev = userEarliestAt.get(a.userId);
-    if (!prev || a.updatedAt < prev) {
-      userEarliestAt.set(a.userId, a.updatedAt);
-    }
-  }
+		// track earliest updatedAt per user (tie-breaker)
+		const prev = userEarliestAt.get(a.userId);
+		if (!prev || a.updatedAt < prev) {
+			userEarliestAt.set(a.userId, a.updatedAt);
+		}
+	}
 
-  // ── 3. Build user ranking list (totalScore, tryoutCount, user) ─────
-  const userRankings: Array<{
-    userId: string;
-    name: string;
-    avatar: string | null;
-    totalScore: number;
-    tryoutCount: number;
-    earliestUpdatedAt: Date;
-  }> = [];
+	// ── 3. Build user ranking list (totalScore, tryoutCount, user) ─────
+	const userRankings: Array<{
+		userId: string;
+		name: string;
+		avatar: string | null;
+		totalScore: number;
+		tryoutCount: number;
+		earliestUpdatedAt: Date;
+	}> = [];
 
-  for (const [userId, tryoutScores] of userTryoutMax) {
-    const totalScore = [...tryoutScores.values()].reduce((s, v) => s + v, 0);
-    const tryoutCount = tryoutScores.size;
-    // pick the first attempt's user info (same userId → same user)
-    const userInfo = attempts.find((a) => a.userId === userId)!.user;
+	for (const [userId, tryoutScores] of userTryoutMax) {
+		const totalScore = [...tryoutScores.values()].reduce((s, v) => s + v, 0);
+		const tryoutCount = tryoutScores.size;
+		// pick the first attempt's user info (same userId → same user)
+		const userInfo = attempts.find((a) => a.userId === userId)!.user;
 
-    userRankings.push({
-      userId,
-      name: userInfo.name,
-      avatar: userInfo.avatar,
-      totalScore,
-      tryoutCount,
-      earliestUpdatedAt: userEarliestAt.get(userId)!,
-    });
-  }
+		userRankings.push({
+			userId,
+			name: userInfo.name,
+			avatar: userInfo.avatar,
+			totalScore,
+			tryoutCount,
+			earliestUpdatedAt: userEarliestAt.get(userId)!,
+		});
+	}
 
-  // ── 4. Fetch packages for all ranked users ──────────────────────────
-  const userIds = userRankings.map((r) => r.userId);
+	// ── 4. Fetch packages for all ranked users ──────────────────────────
+	const userIds = userRankings.map((r) => r.userId);
 
-  const purchases = await prisma.userPurchase.findMany({
-    where: {
-      userId: { in: userIds },
-      deletedAt: null,
-      package: { deletedAt: null },
-    },
-    include: {
-      package: { select: { name: true } },
-    },
-  });
+	const purchases = await prisma.userPurchase.findMany({
+		where: {
+			userId: { in: userIds },
+			deletedAt: null,
+			package: { deletedAt: null },
+		},
+		include: {
+			package: { select: { name: true } },
+		},
+	});
 
-  // ── 5. Build packages map ───────────────────────────────────────────
-  const pkgMap = new Map<string, string[]>();
-  for (const p of purchases) {
-    if (!pkgMap.has(p.userId)) pkgMap.set(p.userId, []);
-    const names = pkgMap.get(p.userId)!;
-    if (!names.includes(p.package.name)) {
-      names.push(p.package.name);
-    }
-  }
+	// ── 5. Build packages map ───────────────────────────────────────────
+	const pkgMap = new Map<string, string[]>();
+	for (const p of purchases) {
+		if (!pkgMap.has(p.userId)) pkgMap.set(p.userId, []);
+		const names = pkgMap.get(p.userId)!;
+		if (!names.includes(p.package.name)) {
+			names.push(p.package.name);
+		}
+	}
 
-  // ── 6. Sort, map, limit ─────────────────────────────────────────
-  const rankings: RankingEntry[] = userRankings
-    .sort((a, b) => {
-      // primary: higher score first
-      if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
-      // tie-breaker: earlier attempt first
-      return a.earliestUpdatedAt.getTime() - b.earliestUpdatedAt.getTime();
-    })
-    .map((r) => ({
-      userId: r.userId,
-      name: r.name,
-      avatar: r.avatar,
-      initials: getInitials(r.name),
-      totalScore: r.totalScore,
-      tryoutCount: r.tryoutCount,
-      packages: (pkgMap.get(r.userId) ?? []).join(', '),
-    }))
-    .slice(0, 100);
+	// ── 6. Sort, map, limit ─────────────────────────────────────────
+	const rankings: RankingEntry[] = userRankings
+		.sort((a, b) => {
+			// primary: higher score first
+			if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+			// tie-breaker: earlier attempt first
+			return a.earliestUpdatedAt.getTime() - b.earliestUpdatedAt.getTime();
+		})
+		.map((r) => ({
+			userId: r.userId,
+			name: r.name,
+			avatar: r.avatar,
+			initials: getInitials(r.name),
+			totalScore: r.totalScore,
+			tryoutCount: r.tryoutCount,
+			packages: (pkgMap.get(r.userId) ?? []).join(", "),
+		}))
+		.slice(0, 100);
 
-  return rankings;
+	return rankings;
 }
 
 /**
@@ -151,73 +151,291 @@ export async function getRankingData(since?: Date): Promise<RankingEntry[]> {
  * @returns `{ rank, totalScore, tryoutCount }` or `null` if the user has no attempts.
  */
 export interface UserRank {
-  rank: number;
-  totalScore: number;
-  tryoutCount: number;
+	rank: number;
+	totalScore: number;
+	tryoutCount: number;
 }
 
 export async function getUserRank(
-  userId: string,
-  since?: Date
+	userId: string,
+	since?: Date,
 ): Promise<UserRank | null> {
-  // Fetch all attempts (whole set) so we can rank against every user,
-  // not just the target. Mirrors `getRankingData` selection.
-  const attempts = await prisma.tryoutAttempt.findMany({
-    where: {
-      deletedAt: null,
-      ...(since && { createdAt: { gte: since } }),
-    },
-    select: {
-      userId: true,
-      tryoutId: true,
-      totalScore: true,
-      updatedAt: true,
-    },
-  });
+	// Fetch all attempts (whole set) so we can rank against every user,
+	// not just the target. Mirrors `getRankingData` selection.
+	const attempts = await prisma.tryoutAttempt.findMany({
+		where: {
+			deletedAt: null,
+			...(since && { createdAt: { gte: since } }),
+		},
+		select: {
+			userId: true,
+			tryoutId: true,
+			totalScore: true,
+			updatedAt: true,
+		},
+	});
 
-  if (attempts.length === 0) return null;
+	if (attempts.length === 0) return null;
 
-  // Aggregate: per user → (per tryoutId → max totalScore) + earliest updatedAt
-  const userTryoutMax = new Map<string, Map<number, number>>();
-  const userEarliestAt = new Map<string, Date>();
+	// Aggregate: per user → (per tryoutId → max totalScore) + earliest updatedAt
+	const userTryoutMax = new Map<string, Map<number, number>>();
+	const userEarliestAt = new Map<string, Date>();
 
-  for (const a of attempts) {
-    if (!userTryoutMax.has(a.userId)) {
-      userTryoutMax.set(a.userId, new Map());
-    }
-    const tryoutScores = userTryoutMax.get(a.userId)!;
-    const currentMax = tryoutScores.get(a.tryoutId) ?? 0;
-    tryoutScores.set(a.tryoutId, Math.max(currentMax, a.totalScore));
+	for (const a of attempts) {
+		if (!userTryoutMax.has(a.userId)) {
+			userTryoutMax.set(a.userId, new Map());
+		}
+		const tryoutScores = userTryoutMax.get(a.userId)!;
+		const currentMax = tryoutScores.get(a.tryoutId) ?? 0;
+		tryoutScores.set(a.tryoutId, Math.max(currentMax, a.totalScore));
 
-    const prev = userEarliestAt.get(a.userId);
-    if (!prev || a.updatedAt < prev) {
-      userEarliestAt.set(a.userId, a.updatedAt);
-    }
-  }
+		const prev = userEarliestAt.get(a.userId);
+		if (!prev || a.updatedAt < prev) {
+			userEarliestAt.set(a.userId, a.updatedAt);
+		}
+	}
 
-  if (!userTryoutMax.has(userId)) return null;
+	if (!userTryoutMax.has(userId)) return null;
 
-  const myScores = userTryoutMax.get(userId)!;
-  const myTotal = [...myScores.values()].reduce((s, v) => s + v, 0);
-  const myEarliest = userEarliestAt.get(userId)!;
+	const myScores = userTryoutMax.get(userId)!;
+	const myTotal = [...myScores.values()].reduce((s, v) => s + v, 0);
+	const myEarliest = userEarliestAt.get(userId)!;
 
-  // Count users who rank ahead of me.
-  // ahead = strictly higher totalScore, OR (equal totalScore AND earlier updatedAt)
-  let ahead = 0;
-  for (const [otherId, otherScores] of userTryoutMax) {
-    if (otherId === userId) continue;
-    const otherTotal = [...otherScores.values()].reduce((s, v) => s + v, 0);
-    if (otherTotal > myTotal) {
-      ahead += 1;
-    } else if (otherTotal === myTotal) {
-      const otherEarliest = userEarliestAt.get(otherId)!;
-      if (otherEarliest < myEarliest) ahead += 1;
-    }
-  }
+	// Count users who rank ahead of me.
+	// ahead = strictly higher totalScore, OR (equal totalScore AND earlier updatedAt)
+	let ahead = 0;
+	for (const [otherId, otherScores] of userTryoutMax) {
+		if (otherId === userId) continue;
+		const otherTotal = [...otherScores.values()].reduce((s, v) => s + v, 0);
+		if (otherTotal > myTotal) {
+			ahead += 1;
+		} else if (otherTotal === myTotal) {
+			const otherEarliest = userEarliestAt.get(otherId)!;
+			if (otherEarliest < myEarliest) ahead += 1;
+		}
+	}
 
-  return {
-    rank: ahead + 1,
-    totalScore: myTotal,
-    tryoutCount: myScores.size,
-  };
+	return {
+		rank: ahead + 1,
+		totalScore: myTotal,
+		tryoutCount: myScores.size,
+	};
+}
+
+// ─────────────────────────────────────────────
+// Per-tryout ranking (pembahasan tab)
+// ─────────────────────────────────────────────
+
+/**
+ * Fetch per-tryout leaderboard.
+ * - For each user, only the best (max totalScore) finished attempt for THIS
+ *   tryout counts
+ * - Tie-breaker: earliest finishedAt
+ * - Filters: deletedAt IS NULL, finishedAt IS NOT NULL
+ *
+ * @param tryoutId The tryout to rank for.
+ * @param since    Optional Date — only attempts with `finishedAt >= since`
+ *                 count (used by the weekly/monthly period filters).
+ * @returns Array sorted by score DESC, then earliest finishedAt ASC.
+ */
+export async function getTryoutRanking(
+	tryoutId: number,
+	since?: Date,
+): Promise<RankingEntry[]> {
+	const attempts = await prisma.tryoutAttempt.findMany({
+		where: {
+			tryoutId,
+			deletedAt: null,
+			finishedAt: { not: null, ...(since && { gte: since }) },
+		},
+		select: {
+			userId: true,
+			tryoutId: true,
+			totalScore: true,
+			finishedAt: true,
+			user: {
+				select: { id: true, name: true, avatar: true, email: true },
+			},
+		},
+	});
+
+	if (attempts.length === 0) return [];
+
+	// Per-user best score + earliest finishedAt for the tryout
+	const userBest = new Map<
+		string,
+		{
+			score: number;
+			earliestFinishedAt: Date;
+			name: string;
+			avatar: string | null;
+		}
+	>();
+
+	for (const a of attempts) {
+		if (!a.finishedAt) continue; // satisfy TS — the where filter already excluded these
+		const prev = userBest.get(a.userId);
+		if (
+			!prev ||
+			a.totalScore > prev.score ||
+			(a.totalScore === prev.score && a.finishedAt < prev.earliestFinishedAt)
+		) {
+			userBest.set(a.userId, {
+				score: a.totalScore,
+				earliestFinishedAt: a.finishedAt,
+				name: a.user.name,
+				avatar: a.user.avatar,
+			});
+		}
+	}
+
+	// Sort the map entries directly so the comparator can read `score` and
+	// `earliestFinishedAt` from the captured tuple value (no Map.get, no
+	// non-null assertions on a Map that we just built ourselves).
+	const sortedEntries = [...userBest.entries()].sort(([, a], [, b]) => {
+		if (b.score !== a.score) return b.score - a.score;
+		// Tie-break: earlier finishedAt wins.
+		return a.earliestFinishedAt.getTime() - b.earliestFinishedAt.getTime();
+	});
+
+	return sortedEntries.map(([userId, v]) => ({
+		userId,
+		name: v.name,
+		avatar: v.avatar,
+		initials: getInitials(v.name),
+		totalScore: v.score,
+		tryoutCount: 1, // one tryout by definition
+		packages: "",
+	}));
+}
+
+/**
+ * Per-tryout rank helper for a single user. Returns the user's rank and
+ * best score on this tryout, or `null` if the user has no finished attempt
+ * for it.
+ *
+ * @param userId   User identifier (email in this codebase).
+ * @param tryoutId Tryout identifier.
+ * @param since    Optional Date — only attempts with `finishedAt >= since`.
+ */
+export async function getUserTryoutRank(
+	userId: string,
+	tryoutId: number,
+	since?: Date,
+): Promise<{ rank: number; score: number } | null> {
+	const attempts = await prisma.tryoutAttempt.findMany({
+		where: {
+			tryoutId,
+			deletedAt: null,
+			finishedAt: { not: null, ...(since && { gte: since }) },
+		},
+		select: { userId: true, totalScore: true, finishedAt: true },
+	});
+
+	if (attempts.length === 0) return null;
+
+	// Per-user best (max totalScore; tie-break earliest finishedAt)
+	const userBest = new Map<
+		string,
+		{ score: number; earliestFinishedAt: Date }
+	>();
+	for (const a of attempts) {
+		if (!a.finishedAt) continue;
+		const prev = userBest.get(a.userId);
+		if (
+			!prev ||
+			a.totalScore > prev.score ||
+			(a.totalScore === prev.score && a.finishedAt < prev.earliestFinishedAt)
+		) {
+			userBest.set(a.userId, {
+				score: a.totalScore,
+				earliestFinishedAt: a.finishedAt,
+			});
+		}
+	}
+
+	const mine = userBest.get(userId);
+	if (!mine) return null;
+
+	// Count users who rank ahead of me
+	let ahead = 0;
+	for (const [otherId, other] of userBest) {
+		if (otherId === userId) continue;
+		if (other.score > mine.score) {
+			ahead += 1;
+		} else if (
+			other.score === mine.score &&
+			other.earliestFinishedAt < mine.earliestFinishedAt
+		) {
+			ahead += 1;
+		}
+	}
+
+	return { rank: ahead + 1, score: mine.score };
+}
+
+/**
+ * Period → lookback window. `all` returns undefined (no filter).
+ * Unknown values fall back to `all` (defensive — the route layer also
+ * normalises this, but the helper is callable directly from tests).
+ */
+export function periodSince(
+	period: string | null | undefined,
+): Date | undefined {
+	if (period === "weekly")
+		return new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+	if (period === "monthly")
+		return new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+	return undefined;
+}
+
+// ─────────────────────────────────────────────
+// In-memory TTL cache with single-flight dedup
+// ─────────────────────────────────────────────
+
+interface CacheEntry<T> {
+	data: T;
+	expiresAt: number;
+}
+const ttlCache = new Map<string, CacheEntry<unknown>>();
+const inFlight = new Map<string, Promise<unknown>>();
+
+/**
+ * Caches the result of `compute` under `key` for `ttlMs`. Concurrent
+ * callers for the same key share a single invocation of `compute`
+ * (single-flight dedup). Process-local — multi-instance deploys do NOT
+ * share state; entries will diverge until TTL expires.
+ */
+export function withTtlCache<T>(
+	key: string,
+	ttlMs: number,
+	compute: () => Promise<T>,
+): Promise<T> {
+	const now = Date.now();
+	const hit = ttlCache.get(key) as CacheEntry<T> | undefined;
+	if (hit && hit.expiresAt > now) {
+		return Promise.resolve(hit.data);
+	}
+
+	// Reuse an in-flight promise if one exists for this key
+	const existing = inFlight.get(key) as Promise<T> | undefined;
+	if (existing) return existing;
+
+	const p = compute()
+		.then((data) => {
+			ttlCache.set(key, { data, expiresAt: Date.now() + ttlMs });
+			return data;
+		})
+		.finally(() => {
+			inFlight.delete(key);
+		});
+
+	inFlight.set(key, p);
+	return p;
+}
+
+/** Test-only: drop everything. Not exported in normal builds. */
+export function __resetRankingCache(): void {
+	ttlCache.clear();
+	inFlight.clear();
 }

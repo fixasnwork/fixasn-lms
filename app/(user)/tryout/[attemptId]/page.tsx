@@ -9,139 +9,139 @@ import { useAttempt, useUpdateAttempt } from "@/hooks/useTryoutQueries";
 import TryoutReviewMode from "@/components/tryout/TryoutReviewMode";
 
 export default function TryoutAttemptPage({
-  params,
+	params,
 }: {
-  params: Promise<{ attemptId: string }>;
+	params: Promise<{ attemptId: string }>;
 }) {
-  const { attemptId } = use(params);
-  const router = useRouter();
+	const { attemptId } = use(params);
+	const router = useRouter();
 
-  const { data, isFetching, error } = useAttempt(attemptId);
-  const updateAttempt = useUpdateAttempt(attemptId);
+	const { data, isFetching, error } = useAttempt(attemptId);
+	const updateAttempt = useUpdateAttempt(attemptId);
 
-  // ── Browser-close guard ──
-  // Only register while an in-progress attempt is mounted. The native
-  // `beforeunload` dialog ("Changes you made may not be saved") is the
-  // only mechanism the browser exposes for this; custom messages are
-  // ignored by every modern browser for security reasons. The user is
-  // directed to the in-app "Simpan & Keluar" modal for a friendlier
-  // confirmation when navigating via the sidebar.
-  useEffect(() => {
-    if (!data || data.attempt.finishedAt) return;
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      // Setting returnValue (any string) is what actually triggers the
-      // native prompt; the value itself is ignored by the browser.
-      e.returnValue = "";
-    };
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [data]);
+	// ── Browser-close guard ──
+	// Only register while an in-progress attempt is mounted. The native
+	// `beforeunload` dialog ("Changes you made may not be saved") is the
+	// only mechanism the browser exposes for this; custom messages are
+	// ignored by every modern browser for security reasons. The user is
+	// directed to the in-app "Simpan & Keluar" modal for a friendlier
+	// confirmation when navigating via the sidebar.
+	useEffect(() => {
+		if (!data || data.attempt.finishedAt) return;
+		const handler = (e: BeforeUnloadEvent) => {
+			e.preventDefault();
+			// Setting returnValue (any string) is what actually triggers the
+			// native prompt; the value itself is ignored by the browser.
+			e.returnValue = "";
+		};
+		window.addEventListener("beforeunload", handler);
+		return () => window.removeEventListener("beforeunload", handler);
+	}, [data]);
 
-  if (isFetching) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex items-center gap-2 text-gray-400 text-sm">
-          <span className="inline-block w-5 h-5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
-          Memuat tryout...
-        </div>
-      </div>
-    );
-  }
+	if (isFetching) {
+		return (
+			<div className="min-h-screen flex items-center justify-center">
+				<div className="flex items-center gap-2 text-gray-400 text-sm">
+					<span className="inline-block w-5 h-5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+					Memuat tryout...
+				</div>
+			</div>
+		);
+	}
 
-  if (error || !data) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-4xl mb-3">⚠️</div>
-          <h2 className="font-black text-xl text-brand mb-2">
-            Tryout Tidak Ditemukan
-          </h2>
-          <p className="text-sm text-gray-400 mb-4">
-            {error instanceof Error
-              ? error.message
-              : "Terjadi kesalahan saat memuat tryout."}
-          </p>
-          <Button
-            variant="primary"
-            onClick={() => router.push("/tryout")}
-          >
-            ← Kembali ke Daftar Tryout
-          </Button>
-        </div>
-      </div>
-    );
-  }
+	if (error || !data) {
+		return (
+			<div className="min-h-screen flex items-center justify-center">
+				<div className="text-center">
+					<div className="text-4xl mb-3">⚠️</div>
+					<h2 className="font-black text-xl text-brand mb-2">
+						Tryout Tidak Ditemukan
+					</h2>
+					<p className="text-sm text-gray-400 mb-4">
+						{error instanceof Error
+							? error.message
+							: "Terjadi kesalahan saat memuat tryout."}
+					</p>
+					<Button variant="primary" onClick={() => router.push("/tryout")}>
+						← Kembali ke Daftar Tryout
+					</Button>
+				</div>
+			</div>
+		);
+	}
 
-  const { attempt, tryout } = data;
-  const isCompleted = !!attempt.finishedAt;
+	const { attempt, tryout } = data;
+	const isCompleted = !!attempt.finishedAt;
 
-  // If completed, show review mode
-  if (isCompleted) {
-    return (
-      <TryoutReviewMode
-        questions={tryout.questions}
-        answers={attempt.answers}
-        name={tryout.name}
-        raguRaguFlags={attempt.raguRagu ?? {}}
-        scores={{
-          twk: attempt.twkScore,
-          tiu: attempt.tiuScore,
-          tkp: attempt.tkpScore,
-        }}
-        onBack={() => router.push("/tryout")}
-        onRetry={async () => {
-          // Create new attempt for the same tryout
-          try {
-            const res = await fetch("/api/tryout-attempts/resume", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ tryoutId: tryout.id }),
-            });
-            const result = await res.json();
-            if (result.success) {
-              router.push(`/tryout/${result.attempt.id}`);
-            }
-          } catch {
-            // Fallback: just go back to list
-            router.push("/tryout");
-          }
-        }}
-      />
-    );
-  }
+	// If completed, show review mode
+	if (isCompleted) {
+		return (
+			<TryoutReviewMode
+				questions={tryout.questions}
+				answers={attempt.answers}
+				name={tryout.name}
+				raguRaguFlags={attempt.raguRagu ?? {}}
+				scores={{
+					twk: attempt.twkScore,
+					tiu: attempt.tiuScore,
+					tkp: attempt.tkpScore,
+				}}
+				tryoutId={tryout.id}
+				attemptId={attempt.id}
+				viewerUserId={attempt.userId}
+				onBack={() => router.push("/tryout")}
+				onRetry={async () => {
+					// Create new attempt for the same tryout
+					try {
+						const res = await fetch("/api/tryout-attempts/resume", {
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({ tryoutId: tryout.id }),
+						});
+						const result = await res.json();
+						if (result.success) {
+							router.push(`/tryout/${result.attempt.id}`);
+						}
+					} catch {
+						// Fallback: just go back to list
+						router.push("/tryout");
+					}
+				}}
+			/>
+		);
+	}
 
-  // In-progress: show tryout engine
-  return (
-    <TryoutEngine
-      attemptId={attemptId}
-      questions={tryout.questions}
-      durationMin={tryout.durationMin || (tryout.isTrial ? 15 : 100)}
-      setName={tryout.isTrial ? "Trial Gratis" : tryout.name}
-      isTrial={tryout.isTrial}
-      preloadedAnswers={attempt.answers}
-      preloadedRaguRagu={attempt.raguRagu ?? {}}
-      // Resume-seed: only meaningful when the server returned a saved timer.
-      // The engine itself guards against stale/legacy nulls.
-      initialTimeLeftSeconds={attempt.timeLeftSeconds ?? null}
-      // Save-and-exit routes the user back to the list page; the engine
-      // already flushed answers + timer + flags before invoking onExit.
-      onExit={() => router.push("/tryout")}
-      onFinish={async (answers: Record<number, number>) => {
-        try {
-          const scores = calculateScoring(tryout.questions, answers);
-          await updateAttempt.mutateAsync({
-            twkScore: scores.TWK,
-            tiuScore: scores.TIU,
-            tkpScore: scores.TKP,
-            totalScore: scores.total,
-            answers,
-          });
-        } catch (err) {
-          alert(err instanceof Error ? err.message : "Gagal menyimpan hasil");
-        }
-      }}
-      onBack={() => router.push("/tryout")}
-    />
-  );
+	// In-progress: show tryout engine
+	return (
+		<TryoutEngine
+			attemptId={attemptId}
+			questions={tryout.questions}
+			durationMin={tryout.durationMin || (tryout.isTrial ? 15 : 100)}
+			setName={tryout.isTrial ? "Trial Gratis" : tryout.name}
+			isTrial={tryout.isTrial}
+			preloadedAnswers={attempt.answers}
+			preloadedRaguRagu={attempt.raguRagu ?? {}}
+			// Resume-seed: only meaningful when the server returned a saved timer.
+			// The engine itself guards against stale/legacy nulls.
+			initialTimeLeftSeconds={attempt.timeLeftSeconds ?? null}
+			// Save-and-exit routes the user back to the list page; the engine
+			// already flushed answers + timer + flags before invoking onExit.
+			onExit={() => router.push("/tryout")}
+			onFinish={async (answers: Record<number, number>) => {
+				try {
+					const scores = calculateScoring(tryout.questions, answers);
+					await updateAttempt.mutateAsync({
+						twkScore: scores.TWK,
+						tiuScore: scores.TIU,
+						tkpScore: scores.TKP,
+						totalScore: scores.total,
+						answers,
+					});
+				} catch (err) {
+					alert(err instanceof Error ? err.message : "Gagal menyimpan hasil");
+				}
+			}}
+			onBack={() => router.push("/tryout")}
+		/>
+	);
 }
