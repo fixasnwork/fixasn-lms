@@ -592,8 +592,7 @@ export default function SoalPage() {
                       Nilai:{" "}
                       <input
                         type="number"
-                        min={1}
-                        max={5}
+                        min={0}
                         value={soalForm.tkpValues[index]}
                         onChange={(e) => {
                           const values = [...soalForm.tkpValues];
