@@ -20,7 +20,7 @@ Branch: `staging` (clean, no uncommitted changes as of this snapshot).
 **Data sources** (`page.tsx:22-29`):
 
 | Hook | API | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `usePackages()` | `GET /api/packages` | Lightweight metadata only. |
 | `useTryouts()` | `GET /api/tryouts` | Grouped by `packageId`; each item carries `_questionCount`. |
 | `useUserPayments(userEmail)` | `GET /api/payments?userId=…` | "Honor system" — no ownership check on the API. |
@@ -49,6 +49,7 @@ Branch: `staging` (clean, no uncommitted changes as of this snapshot).
 **Auth gate:** server-side via `requireActiveSession` in the API (see §3.2). The page itself has no auth check.
 
 **`onFinish` callback** (`page.tsx:105-118`):
+
 1. `calculateScoring(tryout.questions, answers)` (see §6).
 2. `useUpdateAttempt.mutateAsync({ twkScore, tiuScore, tkpScore, totalScore, answers })` PUTs to `/api/tryout-attempts/{attemptId}`. The server stamps `finishedAt = new Date()` when score fields are present (see §3.2 PUT).
 3. **No navigation away** — the user stays on the result view in `TryoutEngine` (or returns via `onBack`).
@@ -69,6 +70,7 @@ Directory: `components/tryout/` (4 source files + 3 test files).
 The live runner. Three internal phases: `ready` (start screen) → `running` (questions) → `result` (post-submit score + pembahasan).
 
 **Props** (`TryoutEngine.tsx:146-156`):
+
 ```ts
 attemptId?: string;
 questions: Question[];
@@ -84,6 +86,7 @@ preloadedRaguRagu?: Record<number, boolean>;
 **Internal state** (`TryoutEngine.tsx:170-184`): `answers`, `raguRagu`, `cur`, `timeLeft`, `phase`, `showMobileNav`, `timerRef`, `shouldRehydrate` ref (vestigial — set by the autosave hook but never read by the engine's rehydration effect at L196-205), `prevPreloaded` ref.
 
 **Hooks used** (`TryoutEngine.tsx:8-9, 169, 186-191`):
+
 - `useLogoConfig()` — header brand mark.
 - `useUpdateAttemptFlags(attemptId)` — **immediate (non-debounced)** ragu-ragu writes on finish and on timer expiry.
 - `useAutosaveAnswers({ attemptId, phase, timeLeft, shouldRehydrateRef })` — see §4.
@@ -105,6 +108,7 @@ preloadedRaguRagu?: Record<number, boolean>;
 The pembahasan screen for finished attempts.
 
 **Props** (`TryoutReviewMode.tsx:9-25`):
+
 ```ts
 questions, answers, name, scores, raguRaguFlags = {}, onBack, onRetry
 ```
@@ -136,7 +140,7 @@ No mutations, no network. Renders "Lihat Pembahasan" → `onView(attemptId)` →
 ## 3. Server APIs (auth matrix)
 
 | Route | Method | Auth on user-facing calls | Hot path? |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `/api/tryout-attempts` | GET | **none** | history list (page-level) |
 | `/api/tryout-attempts` | POST | **none** | legacy, **dead code** — not called by runner |
 | `/api/tryout-attempts/[id]` | GET | `requireActiveSession` | **main runner entry** |
@@ -190,7 +194,7 @@ prisma.tryoutAttempt.findUnique({
 ### 3.4 `/api/tryouts/[tryoutId]` (`[tryoutId]/route.ts`, 246 lines)
 
 | Method | Auth | Behavior |
-|---|---|---|
+| --- | --- | --- |
 | GET | **none** | Returns tryout metadata only (no questions). 400 invalid id, 404 not found / soft-deleted (L10-41). |
 | PUT | `requireAdmin` (L70) | Full update `name`/`isTrial`/`sortOrder`/`durationMin`/`startDate`/`endDate`. Rejects `startDate >= endDate`. 400/404. |
 | PATCH | `requireAdmin` (L154) | Single-purpose: update only `durationMin`. Used by admin soal page. |
@@ -199,14 +203,14 @@ prisma.tryoutAttempt.findUnique({
 ### 3.5 `/api/tryouts/[tryoutId]/questions` (`[tryoutId]/questions/route.ts`, 227 lines)
 
 | Method | Auth | Behavior |
-|---|---|---|
+| --- | --- | --- |
 | GET | **none** (L104-152) | `Question[]` with options ordered by `optionIndex`. Filters `deletedAt: null` on tryout. **Returns `correctAnswer`, `explanation`, `optionImage` unauthenticated — LEAK (see §10).** |
 | POST | `requireAdmin` (L158) | Body: `{ category, question, questionImage, correctAnswer, explanation, explanationImage, options: [{ optionIndex, optionText, optionImage, tkpValue }] }`. Validates category ∈ TWK/TIU/TKP, `question \|\| questionImage`, ≥2 options (text trimmed OR image), non-TKP must have `correctAnswer` ∈ [0,4]. Normalizes options: truncates to 5, drops empty (L28-38). Single transaction: creates `Question` + nested options, then appends `TryoutQuestion` row with `sortOrder = (lastLink?.sortOrder ?? 0) + 1`. |
 
 ### 3.6 `/api/tryouts/[tryoutId]/questions/[questionId]` (`[questionId]/route.ts`, 195 lines)
 
 | Method | Auth | Behavior |
-|---|---|---|
+| --- | --- | --- |
 | PUT | `requireAdmin` (L108) | Same body shape as POST. **Requires the `TryoutQuestion` link to exist** (L125-131, else 404). Transaction: updates `Question`, **deletes all options then re-creates** (L147-156). Link row left in place. |
 | DELETE | `requireAdmin` (L175) | **Only deletes the `TryoutQuestion` join row** (L186-188), not the `Question`. So `Question` rows persist after "delete" and can be referenced by other tryouts. Matches `admin-settings-catalog-management` spec "Tryouts are shared entities across packages". |
 
@@ -230,7 +234,7 @@ prisma.tryoutAttempt.findUnique({
 The runner-relevant exports:
 
 | Export | Line | queryKey | API | Invalidations |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `usePackages` | 282-293 | `['packages']` | `GET /api/packages` | — |
 | `useTryouts` | 5-15 | `['tryouts']` | `GET /api/tryouts` | — |
 | `useTryoutsWithQuestions` | 17-27 | `['tryouts','questions']` | `GET /api/tryouts?include=questions` | — |
@@ -252,6 +256,7 @@ The runner-relevant exports:
 **`queueFlagUpdate`** (L196-224): module-level debouncer — `flagDebouncers: Map<attemptId, {timer, latest}>`. Each call: merges new flags into `latest`, clears any existing timer, sets a 250 ms timer. When fired, `flushFlags` does a raw `fetch(... {method:'PUT'})` with no error surfacing. Empty payloads short-circuit. **No revalidation** — relies on next `useAttempt` refetch for reconciliation.
 
 **`useUpdateAttemptFlags`** (immediate, non-debounced, L243-279):
+
 - `onMutate`: optimistic merge into `['attempt', attemptId]` cache.
 - `onError`: rolls back to `ctx.prev`.
 - `onSettled`: invalidates `['attempt', attemptId]`.
@@ -265,6 +270,7 @@ The runner-relevant exports:
 `AUTOSAVE_DELAY = 60_000` (L7).
 
 **Contract** (L9-19):
+
 ```ts
 useAutosaveAnswers({ attemptId, phase, timeLeft, shouldRehydrateRef })
 → { tryScheduleAutosave, flushAnswers, syncAnswers }
@@ -273,6 +279,7 @@ useAutosaveAnswers({ attemptId, phase, timeLeft, shouldRehydrateRef })
 **Internal refs** (L22-34): `timerRef`, `answersRef`, `flushRef`, `schedRef`, `phaseRef`, `timeRef`, `attemptRef`. All updated on every render via direct `phaseRef.current = phase` etc. — eslint-disabled.
 
 **`tryScheduleAutosave`** (L71-73) → `schedRef.current()` which:
+
 - Bails if `phase !== 'running'` or `timeLeft < 5000` (L58).
 - Bails if `Object.keys(answers).length === 0`.
 - Bails if a timer is already running — **60s no-reset rule** (matches spec).
@@ -285,6 +292,7 @@ useAutosaveAnswers({ attemptId, phase, timeLeft, shouldRehydrateRef })
 **`useEffect` on `phase/timeLeft`** (L80-87): if phase leaves "running" or timeLeft drops below 5s, clear any pending timer. Implements "no autosave in final 5s" rule.
 
 **`useEffect` on mount** (L90-122): installs three listeners:
+
 1. `visibilitychange`:
    - `hidden` → `flushRef.current()`.
    - `visible` → sets `shouldRehydrateRef.current = true` and `queryClient.invalidateQueries({queryKey:['attempt', attemptId]})`.
@@ -294,6 +302,7 @@ useAutosaveAnswers({ attemptId, phase, timeLeft, shouldRehydrateRef })
 ### 4.3 sendBeacon bug (likely)
 
 `useAutosaveAnswers.ts:99-105`:
+
 ```ts
 const handlePageHide = () => {
   const blob = new Blob(
@@ -313,23 +322,26 @@ const handlePageHide = () => {
 `lib/scoring.ts` (31 lines, pure functions, no side effects).
 
 ### 5.1 `getScore(q, answerIdx)` — `lib/scoring.ts:3-10`
+
 ```ts
 if (answerIdx === undefined || answerIdx === null) return 0;
 if (q.category === "TKP") {
   const opt = q.options[answerIdx];
   return opt?.tkpValue ?? 0;
 }
-return answerIdx === q.correctAnswer ? 5 : 0;
+return answerIdx === q.correctAnswer ? 1 : 0;
 ```
 
 Rules:
-- **TWK & TIU:** correct = 5 points, wrong or missing = 0. **No negative scoring.**
+
+- **TWK & TIU:** correct = 1 point, wrong or missing = 0. **No negative scoring.**
 - **TKP:** uses the option's `tkpValue` (typically 1–5 per option, set by admin in `data/questions.ts` and stored in `QuestionOption.tkpValue` Int?). Missing option index = 0.
 - **Required inputs:** fully-loaded `Question` (must have `category`, `correctAnswer` for non-TKP, `options[].tkpValue` for TKP) + user's selected option index.
 
 ### 5.2 `calculateScoring(questions, answers)` — `lib/scoring.ts:12-21`
 
 Sums per category using `getScore`, returns `{TWK, TIU, TKP, total}`. Used by:
+
 - `app/(user)/tryout/[attemptId]/page.tsx:107` — final scores before the `useUpdateAttempt` PUT.
 - `TryoutEngine.tsx:243-247` — live totals for the result card.
 
@@ -340,7 +352,7 @@ Sums per category using `getScore`, returns `{TWK, TIU, TKP, total}`. Used by:
 
 ### 5.4 Thresholds
 
-TWK pass = 65 (5 × 13 correct), TIU pass = 80 (5 × 16 correct), TKP pass = 166. Hard-coded in `TryoutEngine.tsx:354-356` and the page header at `TryoutEngine.tsx:350`. **Not read from any config** — change requires code edit.
+TWK pass = 13 correct (out of 30), TIU pass = 16 correct (out of 35), TKP pass = 166. Hard-coded in `TryoutEngine.tsx:487-489` and the page header at `TryoutEngine.tsx:483`. **Not read from any config** — change requires code edit.
 
 ---
 
@@ -349,6 +361,7 @@ TWK pass = 65 (5 × 13 correct), TIU pass = 80 (5 × 16 correct), TKP pass = 166
 ### 6.1 Page-level (server)
 
 `app/(user)/layout.tsx:14-26`:
+
 ```ts
 const session = await auth();
 if (!session?.user) redirect('/login');
@@ -363,6 +376,7 @@ Uses `auth()` from `@/auth` (NextAuth v5) which reads the session cookie.
 ### 6.2 API-level: `lib/routeAuth.ts` (75 lines)
 
 `requireActiveSession(request)` — `lib/routeAuth.ts:30-75`:
+
 1. `const session = (await auth()) as Session | null` (L31).
 2. `!session?.user || !email` → 401 `Unauthorized` + `clearDeviceSecretCookie` (L34-38).
 3. `isAdminRole(role)` → allow through (admins skip device-secret checks) (L41-44).
@@ -376,6 +390,7 @@ Uses `auth()` from `@/auth` (NextAuth v5) which reads the session cookie.
 ### 6.3 `lib/deviceSession.ts` (122 lines)
 
 Single-active-device enforcement:
+
 - `DEVICE_SECRET_COOKIE_NAME = 'fxns_state'` (L6).
 - `STALE_SESSION_MESSAGE = 'Akun Anda telah masuk di perangkat lain. Silakan masuk kembali untuk melanjutkan.'` (L7).
 - `generateDeviceSecret()` — 32 random bytes, base64url (L12-14).
@@ -466,7 +481,7 @@ Junction: `id Int`, `tryoutId`, `questionId Int` FKs (cascade), `sortOrder Int @
 ### 7.10 Feature → DB column mapping
 
 | Feature | Schema-backed? |
-|---|---|
+| --- | --- |
 | Ragu-ragu flag | ✅ `AttemptAnswer.raguRagu` |
 | Autosave | ❌ No autosave-specific column. PUT body `{answers: Record<number,number>}` is the only signal. Spec mandates no `finishedAt` touch. |
 | Package-closed gate | ✅ `startDate`/`endDate` on Package + Tryout. Env override `TRYOUT_DATE_PERIOD_ENABLED` (mentioned in spec, **not wired** in `app/` or `lib/`). |
@@ -519,7 +534,7 @@ Six Requirement blocks:
 ### 9.2 Other tryout specs (existence summary)
 
 | Spec | Key reqs |
-|---|---|
+| --- | --- |
 | `tryout-ragu-ragu-flag/spec.md` (105L) | User toggles flag in runner; server writes `AttemptAnswer.raguRagu`; yellow border + 🚩 badge on flagged card; yellow dot on palette tile; flag is **per-attempt** (not carried over); read-only after submit; "X dari Y soal ditandai Ragu-ragu" in summary. |
 | `finished-attempt-list/spec.md` (113L) | `TryoutAttempt.finishedAt` set on first score-writing PUT, preserved on subsequent PUTs, untouched on flag-only PUT. `/tryout/[attemptId]` renders `TryoutReviewMode` iff `finishedAt` non-null. List at `/tryout` shows reverse-chronological "Daftar Tryout Selesai" cards, filtered to active+owned+finished attempts. Each card has one "Lihat Pembahasan" button. |
 | `tryout-attempt-availability/spec.md` (56L) | `POST /api/tryout-attempts` returns 403 `reason: "out_of_window"` (tryout inactive/scheduled/expired) or `reason: "package_closed"` (parent package not active). Centralized in `lib/availability.ts` `isAvailable(entity)`. Mentions env override `TRYOUT_DATE_PERIOD_ENABLED` (falsy → disabled) — **not yet wired** anywhere in `app/` or `lib/`. |
@@ -527,7 +542,7 @@ Six Requirement blocks:
 | `tryout-date-period/spec.md` (41L) | Same date-only model for `Tryout`. Admin form has date inputs. |
 | `per-tryout-question-fetch/spec.md` (56L) | `GET /api/tryouts/[tryoutId]/questions` returns `{ questions: Question[] }` with nested options. `useTryoutQuestions(tryoutId)` React Query hook with `staleTime: 5min`. |
 | `tryout-page-view/spec.md` (102L) | Trial card always visible. Available packages with "Beli" → `/buy`. Owned packages with "0/N" / "N/N" progress. Best score per tryout. Mulai button creates/resumes attempt. Loading spinner. |
-| `admin-question-bank-display/spec.md` (43L) | `SoalTable` MUST render every option that has `optionText || optionImage` (image-only options are visible). Mobile list and desktop table parity. Option images MUST use `next/image` with explicit width/height. |
+| `admin-question-bank-display/spec.md` (43L) | `SoalTable` MUST render every option that has `optionText | | optionImage` (image-only options are visible). Mobile list and desktop table parity. Option images MUST use `next/image` with explicit width/height. |
 | `admin-settings-catalog-management/spec.md` (171L) | Database-backed package/tryout/bank CRUD with admin guard. Package delete blocked if any `Payment`/`UserPurchase` exists. Tryout delete blocked if any `TryoutAttempt` exists. `PackageTryout` replacement is atomic and updates `tryoutCount`. `BankAccount` soft-delete via `deletedAt`. Tryouts are **shared entities across packages** (edits sync). Trial tryout in a paid package shows a "Trial" indicator. |
 | `user-package-catalog/spec.md` (52L) | Soft-deleted packages hidden from user pages. Active paid packages visible regardless of `isTrial`. "Dimiliki" indicator on owned packages (no truncation). Payment submission uses DB package id. |
 
@@ -625,7 +640,7 @@ Used only by seed scripts (`prisma/seed.ts`); live types live in `lib/types.ts`.
 From `git log --oneline -n 20 -- app/(user)/tryout hooks/useAutosaveAnswers.ts hooks/useTryoutQueries.ts app/api/tryout-attempts components/tryout`, the 5 most recent tryout-relevant:
 
 | SHA | Date | Title | Files touched |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `4cf4258` | 2026-06-14 | **feat(tryout): autosave answers every 60s with server rehydration** | `useAutosaveAnswers.ts` (new, 125 lines), `useTryoutQueries.ts` (+17), `TryoutEngine.tsx` (+33), `[attemptId]/route.ts` (+13), `resume/route.ts` (+5), spec `openspec/specs/tryout-answer-autosave/spec.md` (new, 111 lines) |
 | `ba5d669` | 2026-06-14 | **feat(tryout): add finished attempts list with review shortcut** | `app/(user)/tryout/page.tsx` (+87), `FinishedAttemptCard.tsx` (new, 65 lines), `[attemptId]/route.ts` (+14), `useTryoutQueries.ts` (+2), `lib/types.ts` (+1), `prisma/schema.prisma` (+9 `finishedAt` column), spec `openspec/specs/finished-attempt-list/spec.md` |
 | `0e04cd1` | 2026-06-14 | **feat(tryout): add Ragu-ragu flag + fix package-closed gate** | `TryoutEngine.tsx` (+83), `TryoutReviewMode.tsx` (+46), `[attemptId]/route.ts` (+23), `resume/route.ts` (+30), `useTryoutQueries.ts` (+74), `lib/types.ts` (+8), `prisma/schema.prisma` (+7 `raguRagu` column), spec `openspec/specs/tryout-ragu-ragu-flag/spec.md` |
@@ -635,6 +650,7 @@ From `git log --oneline -n 20 -- app/(user)/tryout hooks/useAutosaveAnswers.ts h
 ### Per-commit detail
 
 **`0e04cd1` — Ragu-ragu flag + package-closed fix:**
+
 - New `AttemptAnswer.raguRagu: Boolean @default(false)` column.
 - `useUpdateAttemptFlags` hook (immediate PUT) with optimistic update + rollback.
 - `queueFlagUpdate` module-level debouncer (250ms) for in-session flag toggles.
@@ -644,6 +660,7 @@ From `git log --oneline -n 20 -- app/(user)/tryout hooks/useAutosaveAnswers.ts h
 - **Resume fix:** `isPackageAvailable` only checks the package the user paid through, not all linked packages. Regression test added.
 
 **`ba5d669` — Finished attempts list:**
+
 - New `TryoutAttempt.finishedAt: DateTime?` column (replaces `totalScore > 0` heuristic).
 - New `FinishedAttemptCard` component, list rendered at bottom of `/tryout`.
 - `useAttemptHistory` hook wired up.
@@ -651,6 +668,7 @@ From `git log --oneline -n 20 -- app/(user)/tryout hooks/useAutosaveAnswers.ts h
 - Tryout-attempt GET returns `finishedAt`.
 
 **`4cf4258` — Autosave:**
+
 - `useAutosaveAnswers` hook (new) with 60s no-reset cadence.
 - `useUpdateAttemptAnswers` hook (fire-and-forget mutation) — separate from `useUpdateAttempt` (which writes scores + finishedAt).
 - Engine: `tryScheduleAutosave()` on every answer click, `flushAnswers()` on visibility-hidden, `sendBeacon` on `pagehide`/`beforeunload`. Server rehydrates on visibility-visible by invalidating `['attempt', id]`.
@@ -669,7 +687,7 @@ From `git log --oneline -n 20 -- app/(user)/tryout hooks/useAutosaveAnswers.ts h
 ## 12. File Inventory (verified present at scout time)
 
 | Area | Files |
-|---|---|
+| --- | --- |
 | Pages | `app/(user)/tryout/page.tsx`, `app/(user)/tryout/[attemptId]/{page,loading,error}.tsx`, `app/(user)/tryout/{loading,error}.tsx` |
 | Components | `components/tryout/{TryoutEngine,PembahasanNavigator,TryoutReviewMode,FinishedAttemptCard}.tsx` (+ test files) |
 | Hooks | `hooks/{useTryoutQueries,useAutosaveAnswers}.ts` (+ test files) |
