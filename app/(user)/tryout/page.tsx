@@ -75,9 +75,7 @@ export default function TryoutPage() {
   for (const a of attemptHistory) {
     if (a.finishedAt) continue;
     if (inProgressByTryout.has(a.tryoutId)) continue; // first/most-recent wins
-    const answeredCount = a.answers
-      ? Object.keys(a.answers).length
-      : 0;
+    const answeredCount = a.answers ? Object.keys(a.answers).length : 0;
     inProgressByTryout.set(a.tryoutId, {
       id: a.id,
       answeredCount,
@@ -212,17 +210,21 @@ export default function TryoutPage() {
               {inProgressByTryout.size > 0 && (
                 <div className="mb-5 rounded-xl border-2 border-amber-300 bg-amber-50 px-4 py-3 text-center">
                   <div className="font-extrabold text-sm text-amber-800">
-                    ⏳ Kamu punya {inProgressByTryout.size} tryout yang belum selesai
+                    ⏳ Kamu punya {inProgressByTryout.size} tryout yang belum
+                    selesai
                   </div>
                   <div className="text-xs text-amber-700 mt-0.5">
-                    Klik tombol <strong>Lanjutkan</strong> di bawah untuk kembali ke tryout tersebut.
+                    Klik tombol <strong>Lanjutkan</strong> di bawah untuk
+                    kembali ke tryout tersebut.
                   </div>
                 </div>
               )}
               <div className="flex gap-5 overflow-x-auto pt-4 pb-2 -mx-1 px-1">
                 {ownedPackages.map((pkg) => {
                   // Get tryouts for this package
-                  const pkgTryouts = (tryoutBanks[pkg.id] || []).filter((t) => isAvailable(t));
+                  const pkgTryouts = (tryoutBanks[pkg.id] || []).filter((t) =>
+                    isAvailable(t),
+                  );
                   const completedCount = pkgTryouts.filter((t) =>
                     bestScores.has(t.id),
                   ).length;
@@ -261,55 +263,58 @@ export default function TryoutPage() {
                           Tidak ada tryout aktif
                         </div>
                       ) : (
-                      <div className="flex flex-col gap-2">
-                        {pkgTryouts.map((t) => {
-                          const score = bestScores.get(t.id);
-                          const hasScore = score !== undefined;
-                          const inProgress = inProgressByTryout.get(t.id);
-                          const isSelected = t.id === selectedId;
+                        <div className="flex flex-col gap-2">
+                          {pkgTryouts.map((t) => {
+                            const score = bestScores.get(t.id);
+                            const hasScore = score !== undefined;
+                            const inProgress = inProgressByTryout.get(t.id);
+                            const isSelected = t.id === selectedId;
 
-                          return (
-                            <button
-                              key={t.id}
-                              type="button"
-                              onClick={() =>
-                                setSelectedTryouts((prev) => ({
-                                  ...prev,
-                                  [pkg.id]: t.id,
-                                }))
-                              }
-                              disabled={createOrResumeAttempt.isPending}
-                              className={`flex min-h-12 w-full items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 text-left transition-colors ${
-                                isSelected
-                                  ? "border-brand-secondary bg-[#DBEAFE] text-brand-secondary"
-                                  : "border-gray-200 bg-white text-gray-600 shadow-sm"
-                              } ${createOrResumeAttempt.isPending ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-brand-secondary/70"}`}
-                            >
-                              <div>
-                                <div className="font-extrabold text-sm">
-                                  {inProgress ? `Lanjutkan ${t.name}` : t.name}
-                                </div>
-                                {inProgress ? (
-                                  <div className="text-xs text-amber-700 font-semibold">
-                                    ⏳ {inProgress.answeredCount} soal dijawab — klik untuk melanjutkan
-                                  </div>
-                                ) : hasScore ? (
-                                  <div
-                                    className={`text-xs ${isSelected ? "text-blue-500" : "text-gray-400"}`}
-                                  >
-                                    {score} poin
-                                  </div>
-                                ) : null}
-                              </div>
-                              <span
-                                className={`text-lg leading-none ${isSelected ? "text-brand-secondary" : "text-gray-400"}`}
+                            return (
+                              <button
+                                key={t.id}
+                                type="button"
+                                onClick={() =>
+                                  setSelectedTryouts((prev) => ({
+                                    ...prev,
+                                    [pkg.id]: t.id,
+                                  }))
+                                }
+                                disabled={createOrResumeAttempt.isPending}
+                                className={`flex min-h-12 w-full items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 text-left transition-colors ${
+                                  isSelected
+                                    ? "border-brand-secondary bg-[#DBEAFE] text-brand-secondary"
+                                    : "border-gray-200 bg-white text-gray-600 shadow-sm"
+                                } ${createOrResumeAttempt.isPending ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-brand-secondary/70"}`}
                               >
-                                {isSelected ? "▶" : "○"}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
+                                <div>
+                                  <div className="font-extrabold text-sm">
+                                    {inProgress
+                                      ? `Lanjutkan ${t.name}`
+                                      : t.name}
+                                  </div>
+                                  {inProgress ? (
+                                    <div className="text-xs text-amber-700 font-semibold">
+                                      ⏳ {inProgress.answeredCount} soal
+                                      dijawab. Klik untuk melanjutkan
+                                    </div>
+                                  ) : hasScore ? (
+                                    <div
+                                      className={`text-xs ${isSelected ? "text-blue-500" : "text-gray-400"}`}
+                                    >
+                                      {score} poin
+                                    </div>
+                                  ) : null}
+                                </div>
+                                <span
+                                  className={`text-lg leading-none ${isSelected ? "text-brand-secondary" : "text-gray-400"}`}
+                                >
+                                  {isSelected ? "▶" : "○"}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
                       )}
                       {selectedTryout && pkgTryouts.length > 0 && (
                         <Button
@@ -379,7 +384,7 @@ export default function TryoutPage() {
               .sort(
                 (a, b) =>
                   new Date(b.finishedAt!).getTime() -
-                  new Date(a.finishedAt!).getTime()
+                  new Date(a.finishedAt!).getTime(),
               );
 
             return finishedAttempts.length > 0 ? (
@@ -391,7 +396,7 @@ export default function TryoutPage() {
                   {finishedAttempts.map((att) => {
                     const pkgInfo = tryoutToPackage.get(att.tryoutId);
                     const tryoutData = allTryouts.find(
-                      (t) => t.id === att.tryoutId
+                      (t) => t.id === att.tryoutId,
                     );
                     return (
                       <FinishedAttemptCard
@@ -418,8 +423,8 @@ export default function TryoutPage() {
                   Belum ada tryout yang selesai dikerjakan.
                 </p>
                 <p className="text-xs text-gray-400 mt-1">
-                  Setelah menyelesaikan tryout, kamu bisa melihat
-                  pembahasannya di sini.
+                  Setelah menyelesaikan tryout, kamu bisa melihat pembahasannya
+                  di sini.
                 </p>
               </div>
             );

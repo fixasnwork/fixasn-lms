@@ -30,7 +30,10 @@ const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 4;
 const ZOOM_STEP = 0.25;
 
-export default function PdfViewerModal({ video, onClose }: PdfViewerModalProps) {
+export default function PdfViewerModal({
+  video,
+  onClose,
+}: PdfViewerModalProps) {
   if (!video) return null;
   const total = video.pdfPageCount ?? 0;
   if (total <= 0) {
@@ -43,19 +46,20 @@ export default function PdfViewerModal({ video, onClose }: PdfViewerModalProps) 
     );
   }
   return (
-    <Modal
-      open
-      onClose={onClose}
-      title={`${video.title} — Modul`}
-      width={720}
-    >
+    <Modal open onClose={onClose} title={`Modul ${video.title}`} width={720}>
       {/* key=video.id forces remount → resets page + zoom + imgFailed */}
       <PdfViewerBody key={video.id} video={video} onClose={onClose} />
     </Modal>
   );
 }
 
-function PdfViewerBody({ video, onClose }: { video: Video; onClose: () => void }) {
+function PdfViewerBody({
+  video,
+  onClose,
+}: {
+  video: Video;
+  onClose: () => void;
+}) {
   const [page, setPage] = useState<number>(1);
   const [imgFailed, setImgFailed] = useState<boolean>(false);
   const [zoom, setZoom] = useState<number>(1);

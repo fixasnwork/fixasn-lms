@@ -2,11 +2,18 @@
 // ZUSTAND STORE - APP STATE
 // Backend-synced via Supabase API routes
 // ─────────────────────────────────────────────
-import { create } from 'zustand';
-import type { Package, BankAccount, Question, LogoConfig, Tryout, Payment } from '@/lib/types';
-import { inputsToQuestions } from '@/lib/questionTransform';
-import { DEFAULT_PACKAGES, DEFAULT_BANK_ACCOUNTS } from '@/data/packages';
-import { QUESTIONS, QUESTIONS_B } from '@/data/questions';
+import { create } from "zustand";
+import type {
+  Package,
+  BankAccount,
+  Question,
+  LogoConfig,
+  Tryout,
+  Payment,
+} from "@/lib/types";
+import { inputsToQuestions } from "@/lib/questionTransform";
+import { DEFAULT_PACKAGES, DEFAULT_BANK_ACCOUNTS } from "@/data/packages";
+import { QUESTIONS, QUESTIONS_B } from "@/data/questions";
 
 // Convert static defaults to full objects with synthetic numeric IDs
 // (real IDs come from DB after fetch)
@@ -15,10 +22,12 @@ const DEFAULT_PACKAGES_WITH_IDS: Package[] = DEFAULT_PACKAGES.map((p, i) => ({
   id: -(i + 1), // synthetic negative ID until DB sync
 }));
 
-const DEFAULT_BANKS_WITH_IDS: BankAccount[] = DEFAULT_BANK_ACCOUNTS.map((b, i) => ({
-  ...b,
-  id: -(i + 1), // synthetic negative ID until DB sync
-}));
+const DEFAULT_BANKS_WITH_IDS: BankAccount[] = DEFAULT_BANK_ACCOUNTS.map(
+  (b, i) => ({
+    ...b,
+    id: -(i + 1), // synthetic negative ID until DB sync
+  }),
+);
 
 interface AppState {
   // Data
@@ -80,15 +89,17 @@ const defaultLogoConfig: LogoConfig = {
   warnaKanan: "#1B3A6B",
   warnaInner: "#1B3A6B",
   customImg: null,
-  heroImg: "https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=700&q=85",
+  heroImg:
+    "https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=700&q=85",
   heroCaption: "Ribuan ASN sudah lulus",
   heroSubCaption: "Bergabung dan wujudkan impianmu jadi ASN!",
   heroTitle1: "Lolos CPNS",
   heroTitle2: "Bukan Sekadar",
   heroTitle3: "Impian!",
-  heroDesc: "Tryout SKD paling mirip ujian asli. 110 soal, timer 100 menit, sistem skoring TWK+TIU+TKP. Ribuan ASN sudah membuktikan.",
+  heroDesc:
+    "Tryout SKD paling mirip ujian asli. 110 soal, timer 100 menit, sistem skoring TWK+TIU+TKP. Ribuan ASN sudah membuktikan.",
   skdTitle: "Materi Tryout SKD",
-  skdSubtitle: "Persis seperti ujian CPNS aslinya — 110 soal, 100 menit",
+  skdSubtitle: "Persis seperti ujian CPNS aslinya. 110 soal, 100 menit",
   paketTitle: "Pilih Paket Belajarmu",
   paketSubtitle: "Harga terjangkau, kualitas setara bimbel premium",
   ctaTitle: "Siap Wujudkan Impianmu jadi ASN?",
@@ -104,13 +115,16 @@ const defaultLogoConfig: LogoConfig = {
   contactEmail: "info@fixasn.id",
   testimonial1Name: "Rizki A.",
   testimonial1Role: "Kemenkes RI",
-  testimonial1Text: "Soal-soal tryoutnya mirip banget sama ujian asli. Skor TWK saya naik dari 85 jadi 130 setelah rutin tryout di sini!",
+  testimonial1Text:
+    "Soal-soal tryoutnya mirip banget sama ujian asli. Skor TWK saya naik dari 85 jadi 130 setelah rutin tryout di sini!",
   testimonial2Name: "Maya S.",
   testimonial2Role: "Kemendikbud RI",
-  testimonial2Text: "Video materinya sangat terstruktur. Modul PDF-nya membantu banget untuk belajar offline. Worth it banget!",
+  testimonial2Text:
+    "Video materinya sangat terstruktur. Modul PDF-nya membantu banget untuk belajar offline. Worth it banget!",
   testimonial3Name: "Doni P.",
   testimonial3Role: "BPS Jawa Timur",
-  testimonial3Text: "Fitur ranking bikin saya terpacu. Tahu posisi nasional sendiri sangat memotivasi untuk terus berlatih!",
+  testimonial3Text:
+    "Fitur ranking bikin saya terpacu. Tahu posisi nasional sendiri sangat memotivasi untuk terus berlatih!",
   themePrimary: "#1B3A6B",
   themeSecondary: "#2563EB",
   themeDark: "#0C1E45",
@@ -118,15 +132,15 @@ const defaultLogoConfig: LogoConfig = {
 
 // Convert static QuestionInput data to Question[] for the store
 const DEFAULT_QUESTIONS = inputsToQuestions([...QUESTIONS, ...QUESTIONS_B]);
-const TRIAL_QUESTIONS = inputsToQuestions(
-  [...QUESTIONS.filter((q) => q.category === 'TWK').slice(0, 3),
-   ...QUESTIONS.filter((q) => q.category === 'TIU').slice(0, 4),
-   ...QUESTIONS.filter((q) => q.category === 'TKP').slice(0, 3)]
-);
+const TRIAL_QUESTIONS = inputsToQuestions([
+  ...QUESTIONS.filter((q) => q.category === "TWK").slice(0, 3),
+  ...QUESTIONS.filter((q) => q.category === "TIU").slice(0, 4),
+  ...QUESTIONS.filter((q) => q.category === "TKP").slice(0, 3),
+]);
 
 // Use epoch placeholder for default dates — avoids hydration mismatch.
 // Real dates come from DB on fetch.
-const EPOCH = '1970-01-01T00:00:00.000Z';
+const EPOCH = "1970-01-01T00:00:00.000Z";
 
 export const useAppStore = create<AppState>((set, get) => ({
   // Initial state
@@ -157,14 +171,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   setDurationMin: (duration) => set({ durationMin: duration }),
   setPackageBanks: (banks) => set({ packageBanks: banks }),
   setTrialSet: (val: Tryout | ((prev: Tryout) => Tryout)) => {
-    if (typeof val === 'function') {
+    if (typeof val === "function") {
       set((state) => ({ trialSet: val(state.trialSet) }));
     } else {
       set({ trialSet: val });
     }
   },
   setLogoConfig: (val: LogoConfig | ((prev: LogoConfig) => LogoConfig)) => {
-    if (typeof val === 'function') {
+    if (typeof val === "function") {
       set((state) => ({ logoConfig: val(state.logoConfig) }));
     } else {
       set({ logoConfig: val });
@@ -174,97 +188,111 @@ export const useAppStore = create<AppState>((set, get) => ({
   // ── Backend Fetch Actions ──────────────────────
   fetchPackages: async () => {
     try {
-      const res = await fetch('/api/packages');
+      const res = await fetch("/api/packages");
       const data = await res.json();
       if (data.packages) set({ packages: data.packages });
     } catch (e) {
-      console.warn('Failed to fetch packages from API, using local data:', e);
+      console.warn("Failed to fetch packages from API, using local data:", e);
     }
   },
 
   fetchBanks: async () => {
     try {
-      const res = await fetch('/api/banks');
+      const res = await fetch("/api/banks");
       const data = await res.json();
       if (data.banks) set({ banks: data.banks });
     } catch (e) {
-      console.warn('Failed to fetch banks from API, using local data:', e);
+      console.warn("Failed to fetch banks from API, using local data:", e);
     }
   },
 
   fetchQuestions: async (setFilter?: string) => {
     try {
-      const url = setFilter ? `/api/questions?set=${setFilter}` : '/api/questions';
+      const url = setFilter
+        ? `/api/questions?set=${setFilter}`
+        : "/api/questions";
       const res = await fetch(url);
       const data = await res.json();
       if (data.questions) set({ questions: data.questions });
     } catch (e) {
-      console.warn('Failed to fetch questions from API, using local data:', e);
+      console.warn("Failed to fetch questions from API, using local data:", e);
     }
   },
 
   fetchLogoConfig: async () => {
     try {
-      const res = await fetch('/api/logo-config');
+      const res = await fetch("/api/logo-config");
       const data = await res.json();
       if (data.config) {
         // Merge DB config over defaults so empty DB doesn't wipe hero text/images
         const merged = { ...defaultLogoConfig, ...data.config };
         set({ logoConfig: merged });
-        
+
         // Inject brand colors as CSS variables for runtime theming
         if (merged.themePrimary) {
-          document.documentElement.style.setProperty('--brand-primary', merged.themePrimary);
+          document.documentElement.style.setProperty(
+            "--brand-primary",
+            merged.themePrimary,
+          );
         }
         if (merged.themeSecondary) {
-          document.documentElement.style.setProperty('--brand-secondary', merged.themeSecondary);
+          document.documentElement.style.setProperty(
+            "--brand-secondary",
+            merged.themeSecondary,
+          );
         }
         if (merged.themeDark) {
-          document.documentElement.style.setProperty('--brand-dark', merged.themeDark);
+          document.documentElement.style.setProperty(
+            "--brand-dark",
+            merged.themeDark,
+          );
         }
       }
     } catch (e) {
-      console.warn('Failed to fetch logo config from API, using local data:', e);
+      console.warn(
+        "Failed to fetch logo config from API, using local data:",
+        e,
+      );
     }
   },
 
   // ── Backend Sync Actions ───────────────────────
   syncPackages: async () => {
     try {
-      const res = await fetch('/api/packages', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/packages", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ packages: get().packages }),
       });
       const data = await res.json();
       return data.success === true;
     } catch (e) {
-      console.error('Failed to sync packages:', e);
+      console.error("Failed to sync packages:", e);
       return false;
     }
   },
 
   syncBanks: async () => {
     try {
-      const res = await fetch('/api/banks', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/banks", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ banks: get().banks }),
       });
       const data = await res.json();
       return data.success === true;
     } catch (e) {
-      console.error('Failed to sync banks:', e);
+      console.error("Failed to sync banks:", e);
       return false;
     }
   },
 
   saveQuestion: async (q: Partial<Question>) => {
     try {
-      const method = q.id ? 'PUT' : 'POST';
-      const res = await fetch('/api/questions', {
+      const method = q.id ? "PUT" : "POST";
+      const res = await fetch("/api/questions", {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(q),
       });
       const data = await res.json();
@@ -272,7 +300,11 @@ export const useAppStore = create<AppState>((set, get) => ({
         // Update local state
         const questions = get().questions;
         if (q.id) {
-          set({ questions: questions.map((x) => (x.id === q.id ? data.question : x)) });
+          set({
+            questions: questions.map((x) =>
+              x.id === q.id ? data.question : x,
+            ),
+          });
         } else {
           set({ questions: [...questions, data.question] });
         }
@@ -280,33 +312,37 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
       return null;
     } catch (e) {
-      console.error('Failed to save question:', e);
+      console.error("Failed to save question:", e);
       return null;
     }
   },
 
   syncQuestion: async (question: Question) => {
     try {
-      const res = await fetch('/api/questions', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/questions", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(question),
       });
       const data = await res.json();
       if (data.success && data.question) {
-        set({ questions: get().questions.map((x) => (x.id === question.id ? data.question : x)) });
+        set({
+          questions: get().questions.map((x) =>
+            x.id === question.id ? data.question : x,
+          ),
+        });
         return data.question;
       }
       return null;
     } catch (e) {
-      console.error('Failed to sync question:', e);
+      console.error("Failed to sync question:", e);
       return null;
     }
   },
 
   deleteQuestion: async (id: number) => {
     try {
-      const res = await fetch(`/api/questions?id=${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/questions?id=${id}`, { method: "DELETE" });
       const data = await res.json();
       if (data.success) {
         set({ questions: get().questions.filter((q) => q.id !== id) });
@@ -314,22 +350,22 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
       return false;
     } catch (e) {
-      console.error('Failed to delete question:', e);
+      console.error("Failed to delete question:", e);
       return false;
     }
   },
 
   syncLogoConfig: async () => {
     try {
-      const res = await fetch('/api/logo-config', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/logo-config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(get().logoConfig),
       });
       const data = await res.json();
       return data.success === true;
     } catch (e) {
-      console.error('Failed to sync logo config:', e);
+      console.error("Failed to sync logo config:", e);
       return false;
     }
   },
@@ -337,11 +373,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   // ── Tryout & Attempt Actions ──────────────────
   fetchTryouts: async () => {
     try {
-      const res = await fetch('/api/tryouts');
+      const res = await fetch("/api/tryouts");
       const data = await res.json();
       if (data.tryouts) set({ packageBanks: data.tryouts });
     } catch (e) {
-      console.warn('Failed to fetch tryouts from API, using local data:', e);
+      console.warn("Failed to fetch tryouts from API, using local data:", e);
     }
   },
 
@@ -351,15 +387,15 @@ export const useAppStore = create<AppState>((set, get) => ({
       const data = await res.json();
       if (data.attempts) set({ attemptHistory: data.attempts });
     } catch (e) {
-      console.warn('Failed to fetch attempt history from API:', e);
+      console.warn("Failed to fetch attempt history from API:", e);
     }
   },
 
   saveAttempt: async (payload) => {
     try {
-      const res = await fetch('/api/tryout-attempts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/tryout-attempts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       const data = await res.json();
@@ -369,7 +405,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
       return false;
     } catch (e) {
-      console.warn('Failed to save attempt:', e);
+      console.warn("Failed to save attempt:", e);
       return false;
     }
   },

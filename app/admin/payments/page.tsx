@@ -1,99 +1,121 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Image from 'next/image';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Payment } from '@/lib/types';
-import { Button, Badge, Card, Modal, StatCard } from '@/components/ui';
-import { useAdminPayments } from '@/hooks/useTryoutQueries';
+import { useState } from "react";
+import Image from "next/image";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type { Payment } from "@/lib/types";
+import { Button, Badge, Card, Modal, StatCard } from "@/components/ui";
+import { useAdminPayments } from "@/hooks/useTryoutQueries";
 
-type FilterKey = 'all' | 'pending' | 'verified' | 'blocked';
+type FilterKey = "all" | "pending" | "verified" | "blocked";
 
 export default function PaymentsPage() {
   const { data: payments = [] } = useAdminPayments();
   const queryClient = useQueryClient();
-  const [filterPay, setFilterPay] = useState<FilterKey>('all');
+  const [filterPay, setFilterPay] = useState<FilterKey>("all");
   const [proofModal, setProofModal] = useState<Payment | null>(null);
   const [blockModal, setBlockModal] = useState<Payment | null>(null);
-  const [blockReason, setBlockReason] = useState('');
+  const [blockReason, setBlockReason] = useState("");
   const [banModal, setBanModal] = useState<Payment | null>(null);
-  const [banReason, setBanReason] = useState('');
+  const [banReason, setBanReason] = useState("");
 
   const filtered =
-    filterPay === 'all'
+    filterPay === "all"
       ? payments
       : payments.filter((p) => p.status === filterPay);
 
-  const pendingCount = payments.filter((p) => p.status === 'pending').length;
-  const verifiedCount = payments.filter((p) => p.status === 'verified').length;
-  const blockedCount = payments.filter((p) => p.status === 'blocked').length;
+  const pendingCount = payments.filter((p) => p.status === "pending").length;
+  const verifiedCount = payments.filter((p) => p.status === "verified").length;
+  const blockedCount = payments.filter((p) => p.status === "blocked").length;
 
   // Mutation for updating payment status
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status, blockReason: reason }: { id: string; status: string; blockReason?: string }) => {
-      const res = await fetch('/api/payments', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, status, ...(reason !== undefined ? { blockReason: reason } : {}) }),
+    mutationFn: async ({
+      id,
+      status,
+      blockReason: reason,
+    }: {
+      id: string;
+      status: string;
+      blockReason?: string;
+    }) => {
+      const res = await fetch("/api/payments", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id,
+          status,
+          ...(reason !== undefined ? { blockReason: reason } : {}),
+        }),
       });
-      if (!res.ok) throw new Error('Gagal update status');
+      if (!res.ok) throw new Error("Gagal update status");
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-payments'] });
+      queryClient.invalidateQueries({ queryKey: ["admin-payments"] });
     },
   });
 
   const verify = (id: string) => {
-    updateStatus.mutate({ id, status: 'verified', blockReason: '' });
+    updateStatus.mutate({ id, status: "verified", blockReason: "" });
   };
 
   const blockUser = (pay: Payment) => {
-    updateStatus.mutate({ id: pay.id, status: 'blocked', blockReason: blockReason.trim() });
+    updateStatus.mutate({
+      id: pay.id,
+      status: "blocked",
+      blockReason: blockReason.trim(),
+    });
     setBlockModal(null);
-    setBlockReason('');
+    setBlockReason("");
   };
 
   const unblock = (id: string) => {
-    updateStatus.mutate({ id, status: 'pending', blockReason: '' });
+    updateStatus.mutate({ id, status: "pending", blockReason: "" });
   };
 
   // Mutation for banning a user
   const banUser = useMutation({
-    mutationFn: async ({ email, reason }: { email: string; reason: string }) => {
-      const res = await fetch('/api/users/ban', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+    mutationFn: async ({
+      email,
+      reason,
+    }: {
+      email: string;
+      reason: string;
+    }) => {
+      const res = await fetch("/api/users/ban", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, reason }),
       });
-      if (!res.ok) throw new Error('Gagal memblokir user');
+      if (!res.ok) throw new Error("Gagal memblokir user");
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-payments'] });
+      queryClient.invalidateQueries({ queryKey: ["admin-payments"] });
     },
   });
 
   // Mutation for unbanning a user
   const unbanUser = useMutation({
     mutationFn: async ({ email }: { email: string }) => {
-      const res = await fetch('/api/users/unban', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/users/unban", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      if (!res.ok) throw new Error('Gagal membuka blokir user');
+      if (!res.ok) throw new Error("Gagal membuka blokir user");
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-payments'] });
+      queryClient.invalidateQueries({ queryKey: ["admin-payments"] });
     },
   });
 
   const handleBanUser = (pay: Payment) => {
     banUser.mutate({ email: pay.userId, reason: banReason.trim() });
     setBanModal(null);
-    setBanReason('');
+    setBanReason("");
   };
 
   const handleUnbanUser = (pay: Payment) => {
@@ -101,10 +123,10 @@ export default function PaymentsPage() {
   };
 
   const filters: { key: FilterKey; label: string }[] = [
-    { key: 'all', label: 'Semua' },
-    { key: 'pending', label: '⏳ Pending' },
-    { key: 'verified', label: '✅ Verified' },
-    { key: 'blocked', label: '🚫 Diblokir' },
+    { key: "all", label: "Semua" },
+    { key: "pending", label: "⏳ Pending" },
+    { key: "verified", label: "✅ Verified" },
+    { key: "blocked", label: "🚫 Diblokir" },
   ];
 
   return (
@@ -115,9 +137,24 @@ export default function PaymentsPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-5">
-        <StatCard icon="⏳" label="Pending" value={pendingCount} color="#D97706" />
-        <StatCard icon="✅" label="Verified" value={verifiedCount} color="#16A34A" />
-        <StatCard icon="🚫" label="Diblokir" value={blockedCount} color="#DC2626" />
+        <StatCard
+          icon="⏳"
+          label="Pending"
+          value={pendingCount}
+          color="#D97706"
+        />
+        <StatCard
+          icon="✅"
+          label="Verified"
+          value={verifiedCount}
+          color="#16A34A"
+        />
+        <StatCard
+          icon="🚫"
+          label="Diblokir"
+          value={blockedCount}
+          color="#DC2626"
+        />
         <StatCard
           icon="📦"
           label="Total"
@@ -134,12 +171,15 @@ export default function PaymentsPage() {
             onClick={() => setFilterPay(key)}
             className={`px-3 sm:px-4 py-1.5 rounded-full font-bold text-xs cursor-pointer border-2 transition-all ${
               filterPay === key
-                ? 'border-blue-600 bg-blue-600 text-white'
-                : 'border-gray-200 bg-white text-gray-500 hover:border-blue-400'
+                ? "border-blue-600 bg-blue-600 text-white"
+                : "border-gray-200 bg-white text-gray-500 hover:border-blue-400"
             }`}
           >
             {label} (
-            {key === 'all' ? payments.length : payments.filter((p) => p.status === key).length})
+            {key === "all"
+              ? payments.length
+              : payments.filter((p) => p.status === key).length}
+            )
           </button>
         ))}
       </div>
@@ -148,27 +188,31 @@ export default function PaymentsPage() {
       <div className="flex flex-col gap-3.5">
         {filtered.map((p) => {
           const statusColor =
-            p.status === 'verified'
-              ? '#16A34A'
-              : p.status === 'blocked'
-                ? '#DC2626'
-                : '#F59E0B';
+            p.status === "verified"
+              ? "#16A34A"
+              : p.status === "blocked"
+                ? "#DC2626"
+                : "#F59E0B";
           return (
-            <Card key={p.id} className="border-l-4" style={{ borderLeftColor: statusColor }}>
+            <Card
+              key={p.id}
+              className="border-l-4"
+              style={{ borderLeftColor: statusColor }}
+            >
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex gap-3 items-start sm:items-center flex-1 min-w-0">
                   <div
                     className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-lg flex-shrink-0 text-white"
                     style={{
                       background:
-                        p.status === 'blocked'
-                          ? '#FEE2E2'
-                          : 'linear-gradient(135deg,#1B3A6B,#2563EB)',
-                      color: p.status === 'blocked' ? '#DC2626' : '#fff',
-                      fontSize: p.status === 'blocked' ? '20px' : '17px',
+                        p.status === "blocked"
+                          ? "#FEE2E2"
+                          : "linear-gradient(135deg,#1B3A6B,#2563EB)",
+                      color: p.status === "blocked" ? "#DC2626" : "#fff",
+                      fontSize: p.status === "blocked" ? "20px" : "17px",
                     }}
                   >
-                    {p.status === 'blocked' ? '🚫' : p.userId[0].toUpperCase()}
+                    {p.status === "blocked" ? "🚫" : p.userId[0].toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5 flex-wrap">
@@ -180,28 +224,43 @@ export default function PaymentsPage() {
                       )}
                       <Badge
                         color={
-                          p.status === 'verified'
-                            ? 'green'
-                            : p.status === 'blocked'
-                              ? 'red'
-                              : 'yellow'
+                          p.status === "verified"
+                            ? "green"
+                            : p.status === "blocked"
+                              ? "red"
+                              : "yellow"
                         }
                       >
-                        {p.status === 'verified'
-                          ? '✓ Verified'
-                          : p.status === 'blocked'
-                            ? '🚫 Diblokir'
-                            : '⏳ Pending'}
+                        {p.status === "verified"
+                          ? "✓ Verified"
+                          : p.status === "blocked"
+                            ? "🚫 Diblokir"
+                            : "⏳ Pending"}
                       </Badge>
                     </div>
-                    <div className="text-sm text-gray-500 break-all">{p.packageId}</div>
+                    <div className="text-sm text-gray-500 break-all">
+                      {p.packageId}
+                    </div>
                     <div className="text-xs text-gray-400 break-words">
-                      {new Date(p.createdAt).toLocaleDateString('id-ID')} · {p.id}
-                      {p.status === 'blocked' && p.blockReason && (
-                        <> · <span className="text-red-500 font-semibold">Alasan: {p.blockReason}</span></>
+                      {new Date(p.createdAt).toLocaleDateString("id-ID")} ·{" "}
+                      {p.id}
+                      {p.status === "blocked" && p.blockReason && (
+                        <>
+                          {" "}
+                          ·{" "}
+                          <span className="text-red-500 font-semibold">
+                            Alasan: {p.blockReason}
+                          </span>
+                        </>
                       )}
                       {p.userIsBlocked && p.userBlockedReason && (
-                        <> · <span className="text-red-500 font-semibold">Akun diblokir: {p.userBlockedReason}</span></>
+                        <>
+                          {" "}
+                          ·{" "}
+                          <span className="text-red-500 font-semibold">
+                            Akun diblokir: {p.userBlockedReason}
+                          </span>
+                        </>
                       )}
                     </div>
                   </div>
@@ -220,18 +279,22 @@ export default function PaymentsPage() {
                       size="sm"
                       onClick={() => {
                         setBanModal(p);
-                        setBanReason('');
+                        setBanReason("");
                       }}
                     >
                       🚫 Ban User
                     </Button>
                   )}
                   {p.userIsBlocked && (
-                    <Button variant="success" size="sm" onClick={() => handleUnbanUser(p)}>
+                    <Button
+                      variant="success"
+                      size="sm"
+                      onClick={() => handleUnbanUser(p)}
+                    >
                       ↩ Unban User
                     </Button>
                   )}
-                  {p.status === 'pending' && (
+                  {p.status === "pending" && (
                     <>
                       <Button
                         variant="success"
@@ -245,27 +308,31 @@ export default function PaymentsPage() {
                         size="sm"
                         onClick={() => {
                           setBlockModal(p);
-                          setBlockReason('');
+                          setBlockReason("");
                         }}
                       >
                         🚫 Blokir
                       </Button>
                     </>
                   )}
-                  {p.status === 'verified' && (
+                  {p.status === "verified" && (
                     <Button
                       variant="danger"
                       size="sm"
                       onClick={() => {
                         setBlockModal(p);
-                        setBlockReason('');
+                        setBlockReason("");
                       }}
                     >
                       🚫 Blokir
                     </Button>
                   )}
-                  {p.status === 'blocked' && (
-                    <Button variant="success" size="sm" onClick={() => unblock(p.id)}>
+                  {p.status === "blocked" && (
+                    <Button
+                      variant="success"
+                      size="sm"
+                      onClick={() => unblock(p.id)}
+                    >
                       ↩ Buka Blokir
                     </Button>
                   )}
@@ -286,19 +353,24 @@ export default function PaymentsPage() {
       {proofModal && (
         <Modal
           open
-          title={`Bukti Transfer — ${proofModal.userId}`}
+          title={`Bukti Transfer ${proofModal.userId}`}
           onClose={() => setProofModal(null)}
           width={480}
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-4">
             {[
-              ['User ID', proofModal.userId],
-              ['Paket', proofModal.packageId],
-              ['Status', proofModal.status],
-              ['Tanggal', new Date(proofModal.createdAt).toLocaleDateString('id-ID')],
+              ["User ID", proofModal.userId],
+              ["Paket", proofModal.packageId],
+              ["Status", proofModal.status],
+              [
+                "Tanggal",
+                new Date(proofModal.createdAt).toLocaleDateString("id-ID"),
+              ],
             ].map(([label, val]) => (
               <div key={label} className="bg-blue-50 rounded-lg p-2.5">
-                <div className="text-xs text-gray-400 font-bold mb-0.5">{label}</div>
+                <div className="text-xs text-gray-400 font-bold mb-0.5">
+                  {label}
+                </div>
                 <div className="text-sm font-extrabold text-brand">{val}</div>
               </div>
             ))}
@@ -319,9 +391,11 @@ export default function PaymentsPage() {
               </div>
             </div>
           ) : (
-            <p className="text-center text-gray-400 py-4">Tidak ada bukti transfer</p>
+            <p className="text-center text-gray-400 py-4">
+              Tidak ada bukti transfer
+            </p>
           )}
-          {proofModal.status === 'pending' && (
+          {proofModal.status === "pending" && (
             <div className="flex flex-col sm:flex-row gap-2.5">
               <Button
                 variant="success"
@@ -339,19 +413,19 @@ export default function PaymentsPage() {
                 onClick={() => {
                   setProofModal(null);
                   setBlockModal(proofModal);
-                  setBlockReason('');
+                  setBlockReason("");
                 }}
               >
                 🚫 Tidak Valid → Blokir
               </Button>
             </div>
           )}
-          {proofModal.status === 'verified' && (
+          {proofModal.status === "verified" && (
             <div className="text-center">
               <Badge color="green">✓ Sudah diverifikasi</Badge>
             </div>
           )}
-          {proofModal.status === 'blocked' && (
+          {proofModal.status === "blocked" && (
             <div className="text-center">
               <Badge color="red">🚫 User diblokir</Badge>
             </div>
@@ -366,14 +440,20 @@ export default function PaymentsPage() {
           title="🚫 Konfirmasi Ban User"
           onClose={() => {
             setBanModal(null);
-            setBanReason('');
+            setBanReason("");
           }}
           width={420}
         >
           <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 mb-4">
-            <p className="font-bold text-red-600 text-sm mb-1">⚠️ Kamu akan memblokir akses user:</p>
-            <p className="font-black text-lg text-gray-800 mb-0.5">{banModal.userId}</p>
-            <p className="text-sm text-gray-500 m-0">Paket: {banModal.packageId}</p>
+            <p className="font-bold text-red-600 text-sm mb-1">
+              ⚠️ Kamu akan memblokir akses user:
+            </p>
+            <p className="font-black text-lg text-gray-800 mb-0.5">
+              {banModal.userId}
+            </p>
+            <p className="text-sm text-gray-500 m-0">
+              Paket: {banModal.packageId}
+            </p>
           </div>
           <label className="text-sm font-bold text-gray-700 block mb-2">
             Alasan Ban <span className="text-red-500">*</span>
@@ -391,7 +471,7 @@ export default function PaymentsPage() {
               className="flex-1"
               onClick={() => {
                 setBanModal(null);
-                setBanReason('');
+                setBanReason("");
               }}
             >
               Batal
@@ -415,13 +495,17 @@ export default function PaymentsPage() {
           title="⚠️ Konfirmasi Blokir"
           onClose={() => {
             setBlockModal(null);
-            setBlockReason('');
+            setBlockReason("");
           }}
           width={420}
         >
           <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 mb-4">
-            <p className="font-bold text-red-600 text-sm mb-1">⚠️ Kamu akan memblokir pembayaran:</p>
-            <p className="font-black text-lg text-gray-800 mb-0.5">{blockModal.userId}</p>
+            <p className="font-bold text-red-600 text-sm mb-1">
+              ⚠️ Kamu akan memblokir pembayaran:
+            </p>
+            <p className="font-black text-lg text-gray-800 mb-0.5">
+              {blockModal.userId}
+            </p>
             <p className="text-sm text-gray-500 m-0">{blockModal.packageId}</p>
           </div>
           <label className="text-sm font-bold text-gray-700 block mb-2">
@@ -440,7 +524,7 @@ export default function PaymentsPage() {
               className="flex-1"
               onClick={() => {
                 setBlockModal(null);
-                setBlockReason('');
+                setBlockReason("");
               }}
             >
               Batal
