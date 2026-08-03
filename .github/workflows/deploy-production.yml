@@ -1,0 +1,201 @@
+name: Deploy production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_REPOSITORY: ghcr.io/${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-26.04
+    environment: production
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push production image
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          tags: ${{ env.IMAGE_REPOSITORY }}:${{ github.sha }}
+          build-args: |
+            NEXT_PUBLIC_SUPABASE_URL=${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+            NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+            NEXT_PUBLIC_APP_URL=${{ vars.NEXT_PUBLIC_APP_URL }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Validate production configuration
+        env:
+          GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          AUTH_GOOGLE_ID: ${{ secrets.AUTH_GOOGLE_ID }}
+          AUTH_GOOGLE_SECRET: ${{ secrets.AUTH_GOOGLE_SECRET }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
+          AUTH_URL: ${{ vars.AUTH_URL }}
+          APP_DOMAIN: ${{ vars.APP_DOMAIN }}
+        run: |
+          set -eu
+          for name in \
+            GHCR_READ_TOKEN DATABASE_URL SUPABASE_SECRET_KEY AUTH_SECRET \
+            AUTH_GOOGLE_ID AUTH_GOOGLE_SECRET NEXT_PUBLIC_SUPABASE_URL \
+            NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY NEXT_PUBLIC_APP_URL \
+            AUTH_URL APP_DOMAIN
+          do
+            eval "value=\${$name:-}"
+            test -n "$value" || { echo "Missing production value: $name"; exit 1; }
+          done
+
+      - name: Deploy with Docker over SSH
+        uses: appleboy/ssh-action@2ead5e36573f08b82fbfce1504f1a4b05a647c6f # v1.2.2
+        env:
+          IMAGE_REPOSITORY: ${{ env.IMAGE_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }}
+          GHCR_USERNAME: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          AUTH_GOOGLE_ID: ${{ secrets.AUTH_GOOGLE_ID }}
+          AUTH_GOOGLE_SECRET: ${{ secrets.AUTH_GOOGLE_SECRET }}
+          NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
+          AUTH_URL: ${{ vars.AUTH_URL }}
+          AUTH_TRUST_HOST: ${{ vars.AUTH_TRUST_HOST }}
+          APP_DOMAIN: ${{ vars.APP_DOMAIN }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          envs: IMAGE_REPOSITORY,IMAGE_TAG,GHCR_USERNAME,GHCR_TOKEN,DATABASE_URL,NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,SUPABASE_SECRET_KEY,AUTH_SECRET,AUTH_GOOGLE_ID,AUTH_GOOGLE_SECRET,NEXT_PUBLIC_APP_URL,AUTH_URL,AUTH_TRUST_HOST,APP_DOMAIN
+          script: |
+            set -euo pipefail
+
+            DEPLOY_DIR=/opt/fixasn-lms
+            NETWORK=fixasn-net
+            APP_NAME=fixasn-app
+            CADDY_NAME=caddy
+            IMAGE="$IMAGE_REPOSITORY:$IMAGE_TAG"
+
+            mkdir -p "$DEPLOY_DIR"
+            cd "$DEPLOY_DIR"
+
+            docker network inspect "$NETWORK" >/dev/null 2>&1 || docker network create "$NETWORK"
+
+            # Caddy is created once. Its certificate state persists in named volumes.
+            printf '%s\n' \
+              "$APP_DOMAIN {" \
+              "    encode zstd gzip" \
+              "    reverse_proxy $APP_NAME:3000" \
+              "}" > "$DEPLOY_DIR/Caddyfile"
+
+            if ! docker inspect "$CADDY_NAME" >/dev/null 2>&1; then
+              docker volume create caddy_data >/dev/null
+              docker volume create caddy_config >/dev/null
+              docker run -d \
+                --name "$CADDY_NAME" \
+                --network "$NETWORK" \
+                --restart unless-stopped \
+                -p 80:80 \
+                -p 443:443 \
+                -v "$DEPLOY_DIR/Caddyfile:/etc/caddy/Caddyfile:ro" \
+                -v caddy_data:/data \
+                -v caddy_config:/config \
+                caddy:2.11.4-alpine
+            else
+              docker start "$CADDY_NAME" >/dev/null 2>&1 || true
+              docker network connect "$NETWORK" "$CADDY_NAME" 2>/dev/null || true
+              docker exec "$CADDY_NAME" caddy reload \
+                --config /etc/caddy/Caddyfile --adapter caddyfile
+            fi
+
+            printf '%s' "$GHCR_TOKEN" | docker login ghcr.io \
+              --username "$GHCR_USERNAME" --password-stdin
+            docker pull "$IMAGE"
+
+            # Apply committed migrations before replacing the running app.
+            docker run --rm \
+              --network "$NETWORK" \
+              --env DATABASE_URL="$DATABASE_URL" \
+              "$IMAGE" npx prisma migrate deploy
+
+            CANDIDATE_NAME="${APP_NAME}-candidate"
+            docker rm -f "$CANDIDATE_NAME" >/dev/null 2>&1 || true
+            docker run -d \
+              --name "$CANDIDATE_NAME" \
+              --network "$NETWORK" \
+              --network-alias "${APP_NAME}-candidate" \
+              --restart unless-stopped \
+              --expose 3000 \
+              --env NODE_ENV=production \
+              --env DATABASE_URL="$DATABASE_URL" \
+              --env NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
+              --env NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY" \
+              --env SUPABASE_SECRET_KEY="$SUPABASE_SECRET_KEY" \
+              --env AUTH_SECRET="$AUTH_SECRET" \
+              --env AUTH_GOOGLE_ID="$AUTH_GOOGLE_ID" \
+              --env AUTH_GOOGLE_SECRET="$AUTH_GOOGLE_SECRET" \
+              --env NEXT_PUBLIC_APP_URL="$NEXT_PUBLIC_APP_URL" \
+              --env AUTH_URL="$AUTH_URL" \
+              --env AUTH_TRUST_HOST="${AUTH_TRUST_HOST:-true}" \
+              "$IMAGE"
+
+            healthy=false
+            for attempt in $(seq 1 30); do
+              if docker exec "$CANDIDATE_NAME" wget -qO- \
+                http://127.0.0.1:3000/ >/dev/null 2>&1; then
+                healthy=true
+                break
+              fi
+              sleep 2
+            done
+
+            if [ "$healthy" != true ]; then
+              docker logs "$CANDIDATE_NAME" || true
+              docker rm -f "$CANDIDATE_NAME" >/dev/null 2>&1 || true
+              exit 1
+            fi
+
+            # Swap only after candidate responds successfully.
+            docker rm -f "$APP_NAME" >/dev/null 2>&1 || true
+            docker network disconnect "$NETWORK" "$CANDIDATE_NAME" >/dev/null 2>&1 || true
+            docker rename "$CANDIDATE_NAME" "$APP_NAME"
+            docker network connect --alias "$APP_NAME" "$NETWORK" "$APP_NAME" >/dev/null 2>&1 || true
+            docker exec "$CADDY_NAME" caddy reload \
+              --config /etc/caddy/Caddyfile --adapter caddyfile
+
+            docker image prune -af --filter "until=168h"
+            docker logout ghcr.io >/dev/null 2>&1 || true

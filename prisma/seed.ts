@@ -7,12 +7,13 @@ import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
+import { getPostgresConnectionOptions } from "../lib/postgresConnection";
 
 async function main() {
   const { DEFAULT_PACKAGES, DEFAULT_BANK_ACCOUNTS } = await import("../data/packages");
   const { DEFAULT_PACKAGE_BANKS } = await import("../data/questions");
 
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL!, max: 10 });
+  const pool = new Pool({ ...getPostgresConnectionOptions(), max: 10 });
   const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
   // ── 1. Permissions ────────────────────────────────────────────────────
@@ -192,26 +193,28 @@ async function main() {
   }
   console.log(`   ✓ bankAccounts: ${await prisma.bankAccount.count()}`);
 
-  // ── 7. Sample Videos (dev-only; find-or-create by title+category) ──────
-  // The youtubeIds here are placeholder demos; replace with real FIX ASN
-  // content before any non-dev deploy. Three distinct, well-known public-
-  // domain Blender Foundation open-movie IDs so reviewers can visually
-  // confirm each category resolves to a different video.
-  console.log("[7/7] Seeding sample videos...");
-  const sampleVideos = [
-    { title: "Pengantar TWK", youtubeId: "eRsGyueVLvQ", category: "TWK", sortOrder: 1, isPublished: true, durationSec: 888 },
-    { title: "Pengantar TIU", youtubeId: "aqz-KE-bpKQ", category: "TIU", sortOrder: 1, isPublished: true, durationSec: 596 },
-    { title: "Pengantar TKP", youtubeId: "TWzdRCc8Vic", category: "TKP", sortOrder: 1, isPublished: true, durationSec: 734 },
-  ];
-  for (const v of sampleVideos) {
-    const existing = await prisma.video.findFirst({
-      where: { title: v.title, category: v.category, deletedAt: null },
-    });
-    if (!existing) {
-      await prisma.video.create({ data: v });
+  // ── 7. Sample Videos (opt-in for local development only) ──────────────
+  // These IDs are placeholder demos and must never be published in production.
+  // Set SEED_SAMPLE_VIDEOS=true explicitly when seeding a local database.
+  if (process.env.SEED_SAMPLE_VIDEOS === "true") {
+    console.log("[7/7] Seeding sample videos...");
+    const sampleVideos = [
+      { title: "Pengantar TWK", youtubeId: "eRsGyueVLvQ", category: "TWK", sortOrder: 1, isPublished: true, durationSec: 888 },
+      { title: "Pengantar TIU", youtubeId: "aqz-KE-bpKQ", category: "TIU", sortOrder: 1, isPublished: true, durationSec: 596 },
+      { title: "Pengantar TKP", youtubeId: "TWzdRCc8Vic", category: "TKP", sortOrder: 1, isPublished: true, durationSec: 734 },
+    ];
+    for (const v of sampleVideos) {
+      const existing = await prisma.video.findFirst({
+        where: { title: v.title, category: v.category, deletedAt: null },
+      });
+      if (!existing) {
+        await prisma.video.create({ data: v });
+      }
     }
+    console.log(`   ✓ videos: ${await prisma.video.count()}`);
+  } else {
+    console.log("[7/7] Skipping sample videos (set SEED_SAMPLE_VIDEOS=true for local development)");
   }
-  console.log(`   ✓ videos: ${await prisma.video.count()}`);
 
   // ── Reset autoincrement sequences ─────────────────────────────────────
   await prisma.$executeRawUnsafe(`SELECT setval('questions_id_seq', (SELECT COALESCE(MAX(id), 1) FROM questions))`);

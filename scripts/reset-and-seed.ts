@@ -14,6 +14,7 @@ import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
+import { getPostgresConnectionOptions } from "../lib/postgresConnection";
 
 // ── Data imports ──────────────────────────────────────────────────────────
 import { DEFAULT_PACKAGES, DEFAULT_BANK_ACCOUNTS } from "../data/packages";
@@ -44,10 +45,7 @@ const USER_ROLE_PERMISSIONS = [
 ];
 
 // ── Prisma Client ─────────────────────────────────────────────────────────
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) throw new Error("DATABASE_URL is not set");
-
-const pool = new Pool({ connectionString, max: 10 });
+const pool = new Pool({ ...getPostgresConnectionOptions(), max: 10 });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
