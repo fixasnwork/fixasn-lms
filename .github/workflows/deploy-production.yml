@@ -64,13 +64,14 @@ jobs:
           NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
           AUTH_URL: ${{ vars.AUTH_URL }}
           APP_DOMAIN: ${{ vars.APP_DOMAIN }}
+          CADDY_COMPOSE_PATH: ${{ secrets.CADDY_COMPOSE_PATH }}
         run: |
           set -eu
           for name in \
             DATABASE_URL SUPABASE_SECRET_KEY AUTH_SECRET \
             AUTH_GOOGLE_ID AUTH_GOOGLE_SECRET NEXT_PUBLIC_SUPABASE_URL \
             NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY NEXT_PUBLIC_APP_URL \
-            AUTH_URL APP_DOMAIN
+            AUTH_URL APP_DOMAIN CADDY_COMPOSE_PATH
           do
             eval "value=\${$name:-}"
             test -n "$value" || { echo "Missing production value: $name"; exit 1; }
@@ -94,12 +95,13 @@ jobs:
           AUTH_URL: ${{ vars.AUTH_URL }}
           AUTH_TRUST_HOST: ${{ vars.AUTH_TRUST_HOST }}
           APP_DOMAIN: ${{ vars.APP_DOMAIN }}
+          CADDY_COMPOSE_PATH: ${{ secrets.CADDY_COMPOSE_PATH }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
-          envs: IMAGE_REPOSITORY,IMAGE_TAG,GHCR_USERNAME,GHCR_TOKEN,DATABASE_URL,NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,SUPABASE_SECRET_KEY,AUTH_SECRET,AUTH_GOOGLE_ID,AUTH_GOOGLE_SECRET,NEXT_PUBLIC_APP_URL,AUTH_URL,AUTH_TRUST_HOST,APP_DOMAIN
+          envs: IMAGE_REPOSITORY,IMAGE_TAG,GHCR_USERNAME,GHCR_TOKEN,DATABASE_URL,NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,SUPABASE_SECRET_KEY,AUTH_SECRET,AUTH_GOOGLE_ID,AUTH_GOOGLE_SECRET,NEXT_PUBLIC_APP_URL,AUTH_URL,AUTH_TRUST_HOST,APP_DOMAIN,CADDY_COMPOSE_PATH
           script: |
             set -euo pipefail
 
@@ -112,41 +114,27 @@ jobs:
             mkdir -p "$DEPLOY_DIR"
             cd "$DEPLOY_DIR"
 
+            # Shared network for Caddy (compose) + app (docker run).
             docker network inspect "$NETWORK" >/dev/null 2>&1 || docker network create "$NETWORK"
 
-            # Caddy is created once. Its certificate state persists in named volumes.
+            # Write Caddyfile into the compose file's directory so the
+            # bind-mount ./Caddyfile in the compose file resolves correctly.
+            COMPOSE_DIR=$(dirname "$CADDY_COMPOSE_PATH")
             printf '%s\n' \
               "$APP_DOMAIN {" \
               "    encode zstd gzip" \
               "    reverse_proxy $APP_NAME:3000" \
-              "}" > "$DEPLOY_DIR/Caddyfile"
+              "}" > "$COMPOSE_DIR/Caddyfile"
 
-            if ! docker inspect "$CADDY_NAME" >/dev/null 2>&1; then
-              docker volume create caddy_data >/dev/null
-              docker volume create caddy_config >/dev/null
-              docker run -d \
-                --name "$CADDY_NAME" \
-                --network "$NETWORK" \
-                --restart unless-stopped \
-                -p 80:80 \
-                -p 443:443 \
-                -v "$DEPLOY_DIR/Caddyfile:/etc/caddy/Caddyfile:ro" \
-                -v caddy_data:/data \
-                -v caddy_config:/config \
-                caddy:2.11.4-alpine
-            else
-              docker start "$CADDY_NAME" >/dev/null 2>&1 || true
-              docker network connect "$NETWORK" "$CADDY_NAME" 2>/dev/null || true
-              docker exec "$CADDY_NAME" caddy reload \
-                --config /etc/caddy/Caddyfile --adapter caddyfile
-            fi
+            # Start (or ensure) Caddy via the compose file placed on the VPS.
+            docker compose -f "$CADDY_COMPOSE_PATH" up -d
 
             printf '%s' "$GHCR_TOKEN" | docker login ghcr.io \
               --username "$GHCR_USERNAME" --password-stdin
             docker pull "$IMAGE"
 
             # Apply committed migrations before replacing the running app.
-            # Runs as root: the prisma CLI downloads engine binaries into
+            # Runs as root: the prisma CLI writes engine binaries into
             # /app/node_modules/@prisma/engines (root-owned in the image);
             # the runtime app container still runs as the nextjs user.
             docker run --rm \
@@ -155,12 +143,12 @@ jobs:
               --env DATABASE_URL="$DATABASE_URL" \
               "$IMAGE" npx prisma migrate deploy
 
-            CANDIDATE_NAME="${APP_NAME}-candidate"
-            docker rm -f "$CANDIDATE_NAME" >/dev/null 2>&1 || true
+            # Replace the app container directly (brief downtime during restart).
+            docker rm -f "$APP_NAME" >/dev/null 2>&1 || true
             docker run -d \
-              --name "$CANDIDATE_NAME" \
+              --name "$APP_NAME" \
               --network "$NETWORK" \
-              --network-alias "${APP_NAME}-candidate" \
+              --network-alias "$APP_NAME" \
               --restart unless-stopped \
               --expose 3000 \
               --env NODE_ENV=production \
@@ -176,27 +164,9 @@ jobs:
               --env AUTH_TRUST_HOST="${AUTH_TRUST_HOST:-true}" \
               "$IMAGE"
 
-            healthy=false
-            for attempt in $(seq 1 30); do
-              if docker exec "$CANDIDATE_NAME" wget -qO- \
-                http://127.0.0.1:3000/ >/dev/null 2>&1; then
-                healthy=true
-                break
-              fi
-              sleep 2
-            done
-
-            if [ "$healthy" != true ]; then
-              docker logs "$CANDIDATE_NAME" || true
-              docker rm -f "$CANDIDATE_NAME" >/dev/null 2>&1 || true
-              exit 1
-            fi
-
-            # Swap only after candidate responds successfully.
-            docker rm -f "$APP_NAME" >/dev/null 2>&1 || true
-            docker network disconnect "$NETWORK" "$CANDIDATE_NAME" >/dev/null 2>&1 || true
-            docker rename "$CANDIDATE_NAME" "$APP_NAME"
-            docker network connect --alias "$APP_NAME" "$NETWORK" "$APP_NAME" >/dev/null 2>&1 || true
+            # Give the server a moment to start listening, then reload Caddy
+            # so it proxies the freshly recreated app container.
+            sleep 3
             docker exec "$CADDY_NAME" caddy reload \
               --config /etc/caddy/Caddyfile --adapter caddyfile
 

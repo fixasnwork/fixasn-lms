@@ -1,0 +1,29 @@
+# Production Caddy only. The app container (fixasn-app) is deployed by CI
+# via `docker run` on the shared external fixasn-net network — no codebase
+# checkout is needed on the VPS. CI writes this file and the Caddyfile to
+# ~/fixasn-lms/ on every deploy, then starts/reloads Caddy.
+#
+#   docker network create fixasn-net   # once, before first deploy
+#   docker compose -f docker-compose.caddy.yml up -d
+services:
+  caddy:
+    image: caddy:2.11.4-alpine
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - fixasn-net
+
+networks:
+  fixasn-net:
+    external: true
+
+volumes:
+  caddy_data:
+  caddy_config:
