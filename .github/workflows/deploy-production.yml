@@ -103,7 +103,7 @@ jobs:
           script: |
             set -euo pipefail
 
-            DEPLOY_DIR=/opt/fixasn-lms
+            DEPLOY_DIR="$HOME/fixasn-lms"
             NETWORK=fixasn-net
             APP_NAME=fixasn-app
             CADDY_NAME=caddy
