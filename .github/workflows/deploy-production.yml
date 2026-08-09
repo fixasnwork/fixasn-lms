@@ -54,7 +54,6 @@ jobs:
     steps:
       - name: Validate production configuration
         env:
-          GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
           AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
@@ -68,7 +67,7 @@ jobs:
         run: |
           set -eu
           for name in \
-            GHCR_READ_TOKEN DATABASE_URL SUPABASE_SECRET_KEY AUTH_SECRET \
+            DATABASE_URL SUPABASE_SECRET_KEY AUTH_SECRET \
             AUTH_GOOGLE_ID AUTH_GOOGLE_SECRET NEXT_PUBLIC_SUPABASE_URL \
             NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY NEXT_PUBLIC_APP_URL \
             AUTH_URL APP_DOMAIN
@@ -83,7 +82,7 @@ jobs:
           IMAGE_REPOSITORY: ${{ env.IMAGE_REPOSITORY }}
           IMAGE_TAG: ${{ github.sha }}
           GHCR_USERNAME: ${{ github.actor }}
-          GHCR_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
