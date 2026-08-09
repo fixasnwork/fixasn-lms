@@ -146,7 +146,11 @@ jobs:
             docker pull "$IMAGE"
 
             # Apply committed migrations before replacing the running app.
+            # Runs as root: the prisma CLI downloads engine binaries into
+            # /app/node_modules/@prisma/engines (root-owned in the image);
+            # the runtime app container still runs as the nextjs user.
             docker run --rm \
+              --user root \
               --network "$NETWORK" \
               --env DATABASE_URL="$DATABASE_URL" \
               "$IMAGE" npx prisma migrate deploy
