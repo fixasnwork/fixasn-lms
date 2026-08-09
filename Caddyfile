@@ -1,4 +1,4 @@
-fixasn-prod.rafidev.com {
+fixasn.com {
     encode zstd gzip
     reverse_proxy fixasn-app:3000
 }
