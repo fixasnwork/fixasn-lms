@@ -2,6 +2,8 @@ import prisma from "@/lib/prisma";
 import AdminDashboardClient from "@/components/admin/AdminDashboardClient";
 import { getPackagePopularity } from "@/lib/packagePopularity";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminDashboard() {
   const [payments, packages, popularity] = await Promise.all([
     prisma.payment.findMany({ orderBy: { createdAt: "desc" } }),

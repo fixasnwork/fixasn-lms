@@ -6,6 +6,8 @@ import prisma from '@/lib/prisma';
 import { makeQueryClient } from '@/lib/queryClient';
 import AdminSidebar from '@/components/layouts/AdminSidebar';
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminLayout({
   children,
 }: {
