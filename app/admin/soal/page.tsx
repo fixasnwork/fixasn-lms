@@ -515,6 +515,7 @@ export default function SoalPage() {
             setEditSoal(null);
           }}
           width={620}
+          closeOnOverlayClick={false}
         >
           <div className="flex flex-col gap-4">
             <div>

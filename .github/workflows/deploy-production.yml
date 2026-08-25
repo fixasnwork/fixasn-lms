@@ -119,12 +119,19 @@ jobs:
 
             # Write Caddyfile into the compose file's directory so the
             # bind-mount ./Caddyfile in the compose file resolves correctly.
+            # Includes a www → apex permanent redirect.
             COMPOSE_DIR=$(dirname "$CADDY_COMPOSE_PATH")
-            printf '%s\n' \
-              "$APP_DOMAIN {" \
-              "    encode zstd gzip" \
-              "    reverse_proxy $APP_NAME:3000" \
-              "}" > "$COMPOSE_DIR/Caddyfile"
+            {
+              printf '%s\n' \
+                "$APP_DOMAIN {" \
+                "    encode zstd gzip" \
+                "    reverse_proxy $APP_NAME:3000" \
+                "}"
+              printf '\n'
+              printf 'www.%s {\n' "$APP_DOMAIN"
+              printf '    redir https://%s{uri} 301\n' "$APP_DOMAIN"
+              printf '}\n'
+            } > "$COMPOSE_DIR/Caddyfile"
 
             # Start (or ensure) Caddy via the compose file placed on the VPS.
             docker compose -f "$CADDY_COMPOSE_PATH" up -d
