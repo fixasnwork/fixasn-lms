@@ -15,7 +15,7 @@ export default function Modal({
   title,
   children,
   width = 500,
-  closeOnOverlayClick = true,
+  closeOnOverlayClick = false,
 }: ModalProps) {
   if (!open) return null;
 
