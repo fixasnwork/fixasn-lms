@@ -6,6 +6,8 @@ import prisma from '@/lib/prisma';
 import { makeQueryClient } from '@/lib/queryClient';
 import UserSidebar from '@/components/layouts/UserSidebar';
 
+export const dynamic = "force-dynamic";
+
 export default async function DashboardLayout({
   children,
 }: {

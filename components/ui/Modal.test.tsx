@@ -1,44 +1,49 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import Modal from './Modal';
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import Modal from "./Modal";
 
-describe('Modal', () => {
-  it('renders nothing when open is false', () => {
+describe("Modal", () => {
+  it("renders nothing when open is false", () => {
     const { container } = render(
       <Modal open={false} onClose={vi.fn()} title="Test Title">
         <p>Content</p>
-      </Modal>
+      </Modal>,
     );
     expect(container.firstChild).toBeNull();
   });
 
-  it('renders title and children when open is true', () => {
+  it("renders title and children when open is true", () => {
     render(
       <Modal open={true} onClose={vi.fn()} title="Test Title">
         <p>Modal Content</p>
-      </Modal>
+      </Modal>,
     );
-    expect(screen.getByText('Test Title')).toBeInTheDocument();
-    expect(screen.getByText('Modal Content')).toBeInTheDocument();
+    expect(screen.getByText("Test Title")).toBeInTheDocument();
+    expect(screen.getByText("Modal Content")).toBeInTheDocument();
   });
 
-  it('calls onClose when close button is clicked', () => {
+  it("calls onClose when close button is clicked", () => {
     const handleClose = vi.fn();
     render(
       <Modal open={true} onClose={handleClose} title="Test Title">
         <p>Content</p>
-      </Modal>
+      </Modal>,
     );
-    fireEvent.click(screen.getByRole('button', { name: /×/i }));
+    fireEvent.click(screen.getByRole("button", { name: /×/i }));
     expect(handleClose).toHaveBeenCalledOnce();
   });
 
-  it('calls onClose when overlay background is clicked', () => {
+  it("calls onClose when overlay background is clicked and closeOnOverlayClick is true", () => {
     const handleClose = vi.fn();
     const { container } = render(
-      <Modal open={true} onClose={handleClose} title="Test Title">
+      <Modal
+        open={true}
+        onClose={handleClose}
+        title="Test Title"
+        closeOnOverlayClick
+      >
         <p>Content</p>
-      </Modal>
+      </Modal>,
     );
     // The overlay is the first child div of the container (fixed inset-0)
     const overlay = container.firstChild as HTMLElement;
@@ -48,34 +53,48 @@ describe('Modal', () => {
     }
   });
 
-  it('does not call onClose when modal content is clicked', () => {
+  it("does not call onClose when overlay clicked and closeOnOverlayClick is false (default)", () => {
+    const handleClose = vi.fn();
+    const { container } = render(
+      <Modal open={true} onClose={handleClose} title="Test Title">
+        <p>Content</p>
+      </Modal>,
+    );
+    const overlay = container.firstChild as HTMLElement;
+    if (overlay) {
+      fireEvent.click(overlay);
+      expect(handleClose).not.toHaveBeenCalled();
+    }
+  });
+
+  it("does not call onClose when modal content is clicked", () => {
     const handleClose = vi.fn();
     render(
       <Modal open={true} onClose={handleClose} title="Test Title">
         <p>Click me not</p>
-      </Modal>
+      </Modal>,
     );
-    fireEvent.click(screen.getByText('Click me not'));
+    fireEvent.click(screen.getByText("Click me not"));
     expect(handleClose).not.toHaveBeenCalled();
   });
 
-  it('respects custom width prop', () => {
+  it("respects custom width prop", () => {
     const { container } = render(
       <Modal open={true} onClose={vi.fn()} title="Test" width={700}>
         <p>Content</p>
-      </Modal>
+      </Modal>,
     );
-    const modalDiv = container.querySelector('div.max-h-\\[92vh\\]');
+    const modalDiv = container.querySelector("div.max-h-\\[92vh\\]");
     expect(modalDiv).toBeInTheDocument();
   });
 
-  it('renders with string width', () => {
+  it("renders with string width", () => {
     const { container } = render(
       <Modal open={true} onClose={vi.fn()} title="Test" width="90%">
         <p>Content</p>
-      </Modal>
+      </Modal>,
     );
-    const modalDiv = container.querySelector('div.max-h-\\[92vh\\]');
+    const modalDiv = container.querySelector("div.max-h-\\[92vh\\]");
     expect(modalDiv).toBeInTheDocument();
   });
 });

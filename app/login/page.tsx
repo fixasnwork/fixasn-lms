@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
 import { Logo, Card } from "@/components/ui";
 import { useAppStore } from "@/store/useAppStore";
+import { useLogoConfig } from "@/hooks/useTryoutQueries";
+import { waMeLink } from "@/lib/utils";
 
 function useRedirectIfAuthenticated() {
   const router = useRouter();
@@ -21,10 +23,10 @@ function useRedirectIfAuthenticated() {
       !(session as { isSessionStale?: boolean }).isSessionStale
     ) {
       const role = (session.user as { role?: string }).role;
-      if (role === 'admin') {
-        router.push('/admin/dashboard');
+      if (role === "admin") {
+        router.push("/admin/dashboard");
       } else {
-        router.push('/dashboard');
+        router.push("/dashboard");
       }
     }
   }, [status, session, router, reason]);
@@ -32,6 +34,8 @@ function useRedirectIfAuthenticated() {
 
 function LoginForm() {
   const logoConfig = useAppStore((state) => state.logoConfig);
+  const { data: fetchedLogoConfig } = useLogoConfig();
+  const waLink = waMeLink(fetchedLogoConfig?.contactWA);
   const searchParams = useSearchParams();
   const reason = searchParams.get("reason");
   const message = searchParams.get("message");
@@ -93,14 +97,15 @@ function LoginForm() {
           <p className="font-['Montserrat',sans-serif] text-xs text-gray-400 text-center mt-4.5 leading-relaxed">
             Dengan masuk, kamu menyetujui <strong>Syarat & Ketentuan</strong>{" "}
             FIX ASN.
-            <br />
-            Butuh bantuan?{" "}
-            <a
-              href="https://wa.me/628987608379"
-              className="text-brand font-bold"
-            >
-              Chat WhatsApp
-            </a>
+            {waLink && (
+              <>
+                <br />
+                Butuh bantuan?{" "}
+                <a href={waLink} className="text-brand font-bold">
+                  Chat WhatsApp
+                </a>
+              </>
+            )}
           </p>
         </div>
       </Card>

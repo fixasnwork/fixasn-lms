@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { getPostgresConnectionOptions } from "@/lib/postgresConnection";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -7,15 +8,14 @@ const globalForPrisma = globalThis as unknown as {
 let prismaInstance: PrismaClient | undefined;
 
 function createPrismaClient(): PrismaClient {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) throw new Error("DATABASE_URL is not set");
+  const postgresOptions = getPostgresConnectionOptions();
 
   // Lazy-load pg adapter only when actually needed (avoids build-time crash)
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { PrismaPg } = require("@prisma/adapter-pg");
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { Pool } = require("pg");
-  const pool = new Pool({ connectionString, max: 10 });
+  const pool = new Pool({ ...postgresOptions, max: 10 });
   const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter });
 }

@@ -4,6 +4,7 @@
  */
 import "dotenv/config";
 import { Pool } from "pg";
+import { getPostgresConnectionOptions } from "../lib/postgresConnection";
 
 const UUID_V7_SQL = `
 CREATE OR REPLACE FUNCTION uuid_generate_v7()
@@ -37,11 +38,13 @@ $$;
 `;
 
 async function main() {
-  // Use direct connection (not pgbouncer) for DDL
-  const directUrl = process.env.DATABASE_URL!.replace(":6543/", ":5432/").replace("?pgbouncer=true", "");
-  const pool = new Pool({ connectionString: directUrl, max: 1 });
+  const postgresOptions = getPostgresConnectionOptions(undefined, {
+    forceSessionPort: true,
+  });
+  const pool = new Pool({ ...postgresOptions, max: 1 });
 
   try {
+    await pool.query('CREATE EXTENSION IF NOT EXISTS "pgcrypto"');
     await pool.query(UUID_V7_SQL);
     console.log("✅ uuid_generate_v7() function created successfully");
 

@@ -2,8 +2,6 @@
 // CONSTANTS & CONFIG
 // ─────────────────────────────────────────────
 
-export const WA_NUMBER = "628987608379";
-export const WA_LINK = `https://wa.me/${WA_NUMBER}`;
 export const TRIAL_SOAL_COUNT = 10;
 export const ADMIN_EMAIL = "admin@fixasn.id";
 

@@ -6,8 +6,6 @@ services:
         - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
         - NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
         - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
-        - DATABASE_URL=${DATABASE_URL}
-        - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY}
     ports:
       - "3000:3000"
     environment:
@@ -19,9 +17,14 @@ services:
       - AUTH_SECRET=${AUTH_SECRET}
       - AUTH_GOOGLE_ID=${AUTH_GOOGLE_ID}
       - AUTH_GOOGLE_SECRET=${AUTH_GOOGLE_SECRET}
-      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
       - AUTH_URL=${AUTH_URL}
+      - AUTH_TRUST_HOST=${AUTH_TRUST_HOST:-true}
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
     restart: unless-stopped
+    networks:
+      default:
+        aliases:
+          - fixasn-app
 
   caddy:
     image: caddy:2-alpine

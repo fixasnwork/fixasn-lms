@@ -3,7 +3,7 @@
 import { Button, Card, Badge } from "@/components/ui";
 import { isPackageAvailable } from "@/lib/availability";
 import type { Package, LogoConfig } from "@/lib/types";
-import { WA_LINK } from "@/data/constants";
+import { waMeLink } from "@/lib/utils";
 
 interface PackagesSectionProps {
   packages: Package[];
@@ -16,7 +16,10 @@ export function PackagesSection({
   logoConfig,
   onRegister,
 }: PackagesSectionProps) {
-  const tryoutPkgs = packages.filter((p) => isPackageAvailable(p) && !p.isTrial);
+  const waLink = waMeLink(logoConfig.contactWA);
+  const tryoutPkgs = packages.filter(
+    (p) => isPackageAvailable(p) && !p.isTrial,
+  );
   const shown = tryoutPkgs;
 
   return (
@@ -82,19 +85,21 @@ export function PackagesSection({
           ))}
         </div>
 
-        <div className="text-center mt-7">
-          <p className="text-gray-600 text-sm">
-            💬 Butuh bantuan memilih paket?{" "}
-            <a
-              href={WA_LINK}
-              target="_blank"
-              rel="noreferrer"
-              className="text-brand font-bold no-underline"
-            >
-              Chat WhatsApp kami →
-            </a>
-          </p>
-        </div>
+        {waLink && (
+          <div className="text-center mt-7">
+            <p className="text-gray-600 text-sm">
+              💬 Butuh bantuan memilih paket?{" "}
+              <a
+                href={waLink}
+                target="_blank"
+                rel="noreferrer"
+                className="text-brand font-bold no-underline"
+              >
+                Chat WhatsApp kami →
+              </a>
+            </p>
+          </div>
+        )}
       </div>
     </section>
   );

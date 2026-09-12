@@ -111,8 +111,8 @@ const defaultLogoConfig: LogoConfig = {
   stat3Val: "110",
   stat3Label: "Soal per Tryout",
   promoBannerText: "Platform Tryout CPNS Terpercaya #1",
-  contactWA: "+62 898-7608-379",
-  contactEmail: "info@fixasn.id",
+  contactWA: "",
+  contactEmail: "",
   testimonial1Name: "Rizki A.",
   testimonial1Role: "Kemenkes RI",
   testimonial1Text:
