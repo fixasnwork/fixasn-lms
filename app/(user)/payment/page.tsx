@@ -6,8 +6,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Card, Modal } from "@/components/ui";
 import { isPackageAvailable } from "@/lib/availability";
 import { useAuthStore } from "@/store/useAuthStore";
-import { WA_LINK, WA_NUMBER } from "@/data/constants";
-import { useBanks, useCreatePayment, usePackages } from "@/hooks/useTryoutQueries";
+import { waMeLink } from "@/lib/utils";
+import {
+  useBanks,
+  useCreatePayment,
+  useLogoConfig,
+  usePackages,
+} from "@/hooks/useTryoutQueries";
 
 function PaymentContent() {
   const router = useRouter();
@@ -18,6 +23,10 @@ function PaymentContent() {
   const { data: packages = [] } = usePackages();
   const { data: banks = [] } = useBanks();
   const createPayment = useCreatePayment();
+  const { data: logoConfig } = useLogoConfig();
+
+  // Admin-configured number is the only source of truth; no config → hide WA affordances
+  const waLink = waMeLink(logoConfig?.contactWA);
 
   const [selectedPkgId, setSelectedPkgId] = useState<number | null>(
     pkgIdParam ? parseInt(pkgIdParam, 10) : null,
@@ -28,7 +37,9 @@ function PaymentContent() {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [showWAWarning, setShowWAWarning] = useState(false);
 
-  const selectedPkg = packages.find((p) => p.id === selectedPkgId && isPackageAvailable(p));
+  const selectedPkg = packages.find(
+    (p) => p.id === selectedPkgId && isPackageAvailable(p),
+  );
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -72,7 +83,8 @@ function PaymentContent() {
         `Bukti transfer sudah saya upload di sistem.\n\n` +
         `Nama: ${user?.name}\nEmail: ${user?.email}`,
     );
-    window.open(`https://wa.me/${WA_NUMBER}?text=${msg}`, "_blank");
+    // waLink comes from waMeLink(): digits-only path on hardcoded https://wa.me host — not injectable
+    window.open(`${waLink}?text=${msg}`, "_blank");
     setShowWAWarning(false);
     // Persist WA-confirmed payment via API
     if (selectedPkg && user) {
@@ -197,35 +209,39 @@ function PaymentContent() {
 
           {/* Transfer instructions */}
           <Card className="mb-4">
-            <h3 className="font-extrabold text-base text-brand mb-3">
-              📋 Transfer ke Rekening Berikut
-            </h3>
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 mb-4">
-              <p className="text-xs text-amber-700 font-bold mb-3">
-                ⚠️ Gunakan nominal transfer yang PERSIS sama untuk mempercepat
-                konfirmasi
-              </p>
-              <div className="flex flex-col gap-2">
-                {banks.map((b) => (
-                  <div
-                    key={b.id}
-                    className="flex justify-between items-center px-3 py-2.5 bg-white rounded-lg border border-amber-200"
-                  >
-                    <div>
-                      <span className="font-bold text-sm text-gray-800">
-                        Bank {b.bankName}
-                      </span>
-                      <div className="text-xs text-gray-400">
-                        {b.accountHolder}
+            {banks.length > 0 && (
+              <>
+                <h3 className="font-extrabold text-base text-brand mb-3">
+                  📋 Transfer ke Rekening Berikut
+                </h3>
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 mb-4">
+                  <p className="text-xs text-amber-700 font-bold mb-3">
+                    ⚠️ Gunakan nominal transfer yang PERSIS sama untuk
+                    mempercepat konfirmasi
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    {banks.map((b) => (
+                      <div
+                        key={b.id}
+                        className="flex justify-between items-center px-3 py-2.5 bg-white rounded-lg border border-amber-200"
+                      >
+                        <div>
+                          <span className="font-bold text-sm text-gray-800">
+                            Bank {b.bankName}
+                          </span>
+                          <div className="text-xs text-gray-400">
+                            {b.accountHolder}
+                          </div>
+                        </div>
+                        <span className="font-mono font-black text-base text-brand tracking-wider">
+                          {b.accountNumber}
+                        </span>
                       </div>
-                    </div>
-                    <span className="font-mono font-black text-base text-brand tracking-wider">
-                      {b.accountNumber}
-                    </span>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
+              </>
+            )}
 
             {/* Nominal to transfer */}
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4">
@@ -249,16 +265,18 @@ function PaymentContent() {
               >
                 📸 Upload Bukti TF
               </button>
-              <button
-                onClick={() => setProofMethod("wa")}
-                className={`flex-1 py-2.5 rounded-lg font-bold text-sm border-2 cursor-pointer transition-all ${
-                  proofMethod === "wa"
-                    ? "border-green-500 bg-green-50 text-green-600"
-                    : "border-gray-200 bg-white text-gray-500"
-                }`}
-              >
-                💬 Konfirmasi via WA
-              </button>
+              {waLink && (
+                <button
+                  onClick={() => setProofMethod("wa")}
+                  className={`flex-1 py-2.5 rounded-lg font-bold text-sm border-2 cursor-pointer transition-all ${
+                    proofMethod === "wa"
+                      ? "border-green-500 bg-green-50 text-green-600"
+                      : "border-gray-200 bg-white text-gray-500"
+                  }`}
+                >
+                  💬 Konfirmasi via WA
+                </button>
+              )}
             </div>
 
             {/* Upload proof */}
@@ -394,14 +412,16 @@ function PaymentContent() {
 
           <div className="mt-6 pt-4 border-t border-gray-100">
             <p className="text-xs text-gray-400 mb-1">Butuh bantuan?</p>
-            <a
-              href={WA_LINK}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 text-green-600 text-sm font-bold no-underline"
-            >
-              💬 Chat WhatsApp +62 898-7608-379 →
-            </a>
+            {waLink && (
+              <a
+                href={waLink}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 text-green-600 text-sm font-bold no-underline"
+              >
+                💬 Chat WhatsApp {logoConfig?.contactWA} →
+              </a>
+            )}
           </div>
         </Card>
       )}
@@ -467,4 +487,3 @@ export default function PaymentPage() {
     </Suspense>
   );
 }
-
