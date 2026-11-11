@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { SUPABASE_CA_CERTIFICATE } from "./supabaseCaCertificate";
 
 const SSL_QUERY_PARAMS = [
 	"sslmode",
@@ -33,18 +34,18 @@ export function getPostgresConnectionOptions(
 		url.searchParams.delete(param);
 	}
 
-	const certificatePath = path.resolve(
-		process.env.SUPABASE_CA_CERT_PATH ||
-			path.join(process.cwd(), "prod-ca-2021.crt"),
-	);
-	let ca: string;
-	try {
-		ca = fs.readFileSync(certificatePath, "utf8");
-	} catch {
-		throw new Error(
-			`Supabase CA certificate not found at ${certificatePath}. ` +
-				"Set SUPABASE_CA_CERT_PATH or add prod-ca-2021.crt.",
-		);
+	// Bundle the default CA: Workers do not expose the repository filesystem.
+	let ca = SUPABASE_CA_CERTIFICATE;
+	if (process.env.SUPABASE_CA_CERT_PATH) {
+		const certificatePath = path.resolve(process.env.SUPABASE_CA_CERT_PATH);
+		try {
+			ca = fs.readFileSync(certificatePath, "utf8");
+		} catch {
+			throw new Error(
+				`Supabase CA certificate not found at ${certificatePath}. ` +
+					"Check SUPABASE_CA_CERT_PATH or unset it to use the bundled CA.",
+			);
+		}
 	}
 
 	return {
