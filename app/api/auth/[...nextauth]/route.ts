@@ -14,11 +14,9 @@ function extractIP(req: NextRequest): string | null {
 }
 
 export const GET = (req: NextRequest) => {
-  authContext.enterWith({ ip: extractIP(req) });
-  return handlers.GET(req);
+  return authContext.run({ ip: extractIP(req) }, () => handlers.GET(req));
 };
 
 export const POST = (req: NextRequest) => {
-  authContext.enterWith({ ip: extractIP(req) });
-  return handlers.POST(req);
+  return authContext.run({ ip: extractIP(req) }, () => handlers.POST(req));
 };
