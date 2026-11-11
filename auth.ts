@@ -6,6 +6,8 @@ import prisma from "@/lib/prisma";
 import { isAdminRole } from "@/lib/deviceSession";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  // Cloudflare proxies requests; explicitly trust its forwarded host headers.
+  trustHost: true,
   providers: [
     Google({
       clientId: process.env.AUTH_GOOGLE_ID,
