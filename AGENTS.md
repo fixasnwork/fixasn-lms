@@ -37,6 +37,13 @@ Single-package Next.js 16 App Router + React 19 + TypeScript app for FIX ASN, an
 
 ## Key Commands
 
+### Execution restrictions
+
+- Do not run tests, build commands, development servers, or database migrations unless the user explicitly asks for that action.
+- This includes `npm run test` / Vitest / Playwright, `npm run build` / `next build`, `npm run dev` / `next dev`, and Prisma migrations or schema application commands such as `prisma migrate` and `prisma db push`.
+- General requests to implement, fix, or verify a change do not authorize these commands. Use code inspection and report which checks were not run.
+- This restriction takes precedence over testing and command guidance elsewhere in this file.
+
 ```bash
 npm run dev           # dev server on :3000
 npm run build         # production build

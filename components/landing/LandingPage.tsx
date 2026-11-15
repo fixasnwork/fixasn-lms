@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Logo, Button, Card } from "@/components/ui";
 import { useAppStore } from "@/store/useAppStore";
+import { usePackages } from "@/hooks/useTryoutQueries";
 import { waMeLink } from "@/lib/utils";
 import { PackagesSection } from "./PackagesSection";
 import { TestimonialsSection } from "./TestimonialsSection";
@@ -12,7 +13,8 @@ import { CTASection, Footer } from "./CTASection";
 
 export function LandingPage() {
   const router = useRouter();
-  const { packages, logoConfig, fetchLogoConfig } = useAppStore();
+  const { logoConfig, fetchLogoConfig } = useAppStore();
+  const { data: packages = [], isPending, isError } = usePackages();
   const waLink = waMeLink(logoConfig.contactWA);
 
   // Load DB-stored config on mount so hero image, text, etc. reflect admin changes
@@ -249,6 +251,8 @@ export function LandingPage() {
       {/* PACKAGES */}
       <PackagesSection
         packages={packages}
+        isLoading={isPending}
+        isError={isError}
         logoConfig={logoConfig}
         onRegister={handleRegister}
       />

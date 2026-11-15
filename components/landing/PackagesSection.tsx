@@ -7,12 +7,16 @@ import { waMeLink } from "@/lib/utils";
 
 interface PackagesSectionProps {
   packages: Package[];
+  isLoading?: boolean;
+  isError?: boolean;
   logoConfig: LogoConfig;
   onRegister: () => void;
 }
 
 export function PackagesSection({
   packages,
+  isLoading = false,
+  isError = false,
   logoConfig,
   onRegister,
 }: PackagesSectionProps) {
@@ -40,6 +44,13 @@ export function PackagesSection({
         </div>
 
         {/* Package Cards */}
+        {isLoading ? (
+          <p role="status" className="text-center text-gray-500">Memuat paket...</p>
+        ) : isError ? (
+          <p role="alert" className="text-center text-gray-500">Gagal memuat paket. Silakan muat ulang halaman.</p>
+        ) : shown.length === 0 ? (
+          <p className="text-center text-gray-500">Belum ada paket yang tersedia.</p>
+        ) : (
         <div
           className="grid gap-5.5"
           style={{
@@ -84,6 +95,7 @@ export function PackagesSection({
             </Card>
           ))}
         </div>
+        )}
 
         {waLink && (
           <div className="text-center mt-7">

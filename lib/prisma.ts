@@ -6,8 +6,6 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-let prismaInstance: PrismaClient | undefined;
-
 function isCloudflareWorker(): boolean {
   return typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers";
 }
@@ -22,7 +20,8 @@ function createPrismaClient(): PrismaClient {
   const { Pool } = require("pg");
   const pool = new Pool({
     ...postgresOptions,
-    max: 10,
+    // Vercel creates a pool per instance. Limit each instance's connections.
+    max: process.env.VERCEL === "1" ? 1 : 10,
     // Workers cannot reuse sockets owned by another request. Retire each
     // connection when released; keep normal pooling for the Node.js server.
     ...(isCloudflareWorker() ? { maxUses: 1 } : {}),
@@ -38,12 +37,8 @@ const getWorkerPrisma = cache(createPrismaClient);
 function getPrisma(): PrismaClient {
   if (isCloudflareWorker()) return getWorkerPrisma();
   if (globalForPrisma.prisma) return globalForPrisma.prisma;
-  if (prismaInstance) return prismaInstance;
-  prismaInstance = createPrismaClient();
-  if (process.env.NODE_ENV !== "production") {
-    globalForPrisma.prisma = prismaInstance;
-  }
-  return prismaInstance;
+  globalForPrisma.prisma = createPrismaClient();
+  return globalForPrisma.prisma;
 }
 
 // Lazy-access proxy: defers PrismaClient creation until first DB call.

@@ -56,7 +56,10 @@ export default async function DashboardLayout({
     queryClient.prefetchQuery({
       queryKey: ['banks'],
       queryFn: async () => {
-        const data = await prisma.bankAccount.findMany({ where: { isActive: true }, orderBy: { id: 'asc' } });
+        const data = await prisma.bankAccount.findMany({
+          where: { isActive: true, deletedAt: null },
+          orderBy: { id: 'asc' },
+        });
         return data.map((b) => ({ ...b, createdAt: b.createdAt.toISOString(), updatedAt: b.updatedAt.toISOString() }));
       },
     }),
