@@ -1,4 +1,5 @@
 'use client';
+import { hasPaymentAccess } from '@/lib/packageAccess';
 
 import { useState, useRef, useMemo, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
@@ -6,7 +7,7 @@ import Image from 'next/image';
 import { signOut, useSession } from 'next-auth/react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Button } from '@/components/ui';
-import { isPackageAvailable } from '@/lib/availability';
+
 import {
   usePackages,
   useTryouts,
@@ -36,16 +37,8 @@ export default function ProfilePage() {
 
   const isLoadingActivePackages = isFetchingPackages || isFetchingPayments;
 
-  // Owned package IDs (pending | verified)
-  const ownedPkgIds = useMemo(
-    () =>
-      new Set(
-        userPayments
-          .filter((p) => p.status === 'pending' || p.status === 'verified')
-          .map((p) => p.packageId),
-      ),
-    [userPayments],
-  );
+  // Recalculate on refresh so crossing the expiry instant updates ownership.
+  const ownedPkgIds = new Set(userPayments.filter((payment) => hasPaymentAccess(payment)).map((payment) => payment.packageId));
 
   // Best totalScore per tryoutId (across all of user's attempts)
   const bestScoresByTryout = useMemo(() => {
@@ -79,11 +72,7 @@ export default function ProfilePage() {
     return map;
   }, [attemptHistory, tryoutBanks]);
 
-  // Active packages = owned AND date-available
-  const activePackages = useMemo(
-    () => packages.filter((p) => isPackageAvailable(p) && ownedPkgIds.has(p.id)),
-    [packages, ownedPkgIds],
-  );
+  const activePackages = packages.filter((pkg) => ownedPkgIds.has(pkg.id));
 
   const hasAvatarUrl = !!(user?.avatar && user.avatar.startsWith('http'));
   const userInitial = user?.name?.[0]?.toUpperCase() || 'U';

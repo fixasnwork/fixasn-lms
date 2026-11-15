@@ -1,4 +1,5 @@
 "use client";
+import { accessDurationLabel } from '@/lib/packageAccess';
 
 import { Button, Card, Badge } from "@/components/ui";
 import { isPackageAvailable } from "@/lib/availability";
@@ -76,6 +77,7 @@ export function PackagesSection({
                 <p className="text-gray-600 text-sm m-0">{pkg.description}</p>
               </div>
 
+              <p className="text-sm text-gray-500 mb-4">Akses {accessDurationLabel(pkg.accessDurationMonths)} sejak verifikasi</p>
               <div className="flex gap-2 flex-wrap mb-4">
                 <Badge color="blue">📝 Tryout SKD</Badge>
                 <Badge color="yellow">⏱ 100 menit/sesi</Badge>

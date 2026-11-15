@@ -104,6 +104,7 @@ model Package {
   // grants the user access to the /video catalog. Default false preserves existing
   // package behavior; admin can flip per package from the settings UI.
   includesVideoPembelajaran Boolean @default(false)
+  accessDurationMonths Int @default(1)
   startDate   DateTime? @db.Timestamptz(6)
   endDate     DateTime? @db.Timestamptz(6)
 
@@ -247,6 +248,10 @@ model Payment {
   status      String   @default("pending") @db.Text
   proofUrl    String?  @db.Text
   blockReason String?  @db.Text
+  // Snapshot at checkout; null denotes purchases made before duration tracking.
+  accessDurationMonths Int?
+  verifiedAt DateTime? @db.Timestamptz(6)
+  accessExpiresAt DateTime? @db.Timestamptz(6)
 
   createdAt   DateTime  @default(now()) @db.Timestamptz(6)
   createdBy   String?   @db.Text
@@ -261,6 +266,7 @@ model Payment {
 
   purchases UserPurchase[]
 
+  @@index([userId, status, accessExpiresAt])
   @@map("payments")
 }
 

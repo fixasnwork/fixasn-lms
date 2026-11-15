@@ -60,6 +60,7 @@ async function main() {
         price: p.price,
         isTrial: p.isTrial,
         includesVideoPembelajaran: p.includesVideoPembelajaran ?? false,
+        accessDurationMonths: p.accessDurationMonths ?? 1,
         startDate: p.startDate ? new Date(p.startDate) : null,
         endDate: p.endDate ? new Date(p.endDate) : null,
       },

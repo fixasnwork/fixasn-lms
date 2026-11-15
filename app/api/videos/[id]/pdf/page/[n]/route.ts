@@ -5,6 +5,7 @@
 // original PDF binary is never served from this route.
 // ─────────────────────────────────────────────
 import { NextRequest, NextResponse } from "next/server";
+import { hasVideoPackageAccess } from '@/lib/packageAccessServer';
 import prisma from "@/lib/prisma";
 import { requireActiveSession } from "@/lib/routeAuth";
 import { isAdminRole } from "@/lib/deviceSession";
@@ -17,27 +18,6 @@ export const revalidate = 0;
 function parsePositiveInt(value: string): number | null {
   const n = Number(value);
   return Number.isInteger(n) && n > 0 ? n : null;
-}
-
-async function userHasVideoPackageAccess(email: string): Promise<boolean> {
-  // Mirrors the access logic in /api/videos/route.ts so the same
-  // gate is enforced here. (We intentionally do not import that
-  // function: it's small and inlined to avoid cross-route coupling.)
-  const qualifying = await prisma.userPurchase.findFirst({
-    where: {
-      userId: email,
-      deletedAt: null,
-      package: {
-        is: { includesVideoPembelajaran: true, deletedAt: null },
-      },
-      OR: [
-        { paymentId: null },
-        { payment: { is: { status: { notIn: ["rejected", "expired", "blocked"] } } } },
-      ],
-    },
-    select: { id: true },
-  });
-  return qualifying !== null;
 }
 
 export async function GET(
@@ -73,7 +53,7 @@ export async function GET(
 
   // Admins bypass the package gate (they curate the catalog).
   if (!isAdminRole(role)) {
-    const hasAccess = await userHasVideoPackageAccess(session.user.email);
+    const hasAccess = await hasVideoPackageAccess(session.user.email);
     if (!hasAccess) {
       return NextResponse.json(
         { error: "Akses video pembelajaran tidak ditemukan" },

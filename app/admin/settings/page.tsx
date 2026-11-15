@@ -1,5 +1,8 @@
 'use client';
 
+import { ACCESS_DURATION_OPTIONS, accessDurationLabel } from '@/lib/packageAccess';
+
+
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 
@@ -306,6 +309,20 @@ function TryoutManageModal({
 }
 
 /* ── Package create modal ──────────────────────────────────────── */
+function AccessDurationField({ value, onChange }: { value: number; onChange: (value: number) => void }) {
+  return (
+    <div>
+      <label className="text-xs font-bold text-gray-500 block mb-1">
+        Durasi akses paket
+        <select value={value} onChange={(event) => onChange(Number(event.target.value))} className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-bold">
+          {ACCESS_DURATION_OPTIONS.map((option) => <option key={option.months} value={option.months}>{option.label}</option>)}
+        </select>
+      </label>
+      <p className="text-xs text-gray-400">Dihitung sejak pembayaran diverifikasi. Perubahan berlaku untuk pembelian berikutnya.</p>
+    </div>
+  );
+}
+
 function PackageCreateModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const createPackage = useCreatePackage();
 
@@ -314,6 +331,7 @@ function PackageCreateModal({ open, onClose }: { open: boolean; onClose: () => v
   const [price, setPrice] = useState(0);
   const [isTrial, setIsTrial] = useState(false);
   const [includesVideoPembelajaran, setIncludesVideoPembelajaran] = useState(false);
+  const [accessDurationMonths, setAccessDurationMonths] = useState(1);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
@@ -326,6 +344,7 @@ function PackageCreateModal({ open, onClose }: { open: boolean; onClose: () => v
         price,
         isTrial,
         includesVideoPembelajaran,
+        accessDurationMonths,
         startDate: localDatetimeToIso(startDate),
         endDate: localDatetimeToIso(endDate),
       },
@@ -337,6 +356,7 @@ function PackageCreateModal({ open, onClose }: { open: boolean; onClose: () => v
           setPrice(0);
           setIsTrial(false);
           setIncludesVideoPembelajaran(false);
+          setAccessDurationMonths(1);
           setStartDate('');
           setEndDate('');
         },
@@ -372,15 +392,19 @@ function PackageCreateModal({ open, onClose }: { open: boolean; onClose: () => v
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <DateRangeField
-            startDate={startDate}
-            endDate={endDate}
-            onStartDateChange={setStartDate}
-            onEndDateChange={setEndDate}
-            startTestId="pkg-start-date"
-            endTestId="pkg-end-date"
-          />
+        <AccessDurationField value={accessDurationMonths} onChange={setAccessDurationMonths} />
+        <div>
+          <p className="text-xs font-bold text-gray-500 mb-2">Periode penjualan (tidak membatasi akses yang sudah dibeli)</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <DateRangeField
+              startDate={startDate}
+              endDate={endDate}
+              onStartDateChange={setStartDate}
+              onEndDateChange={setEndDate}
+              startTestId="pkg-start-date"
+              endTestId="pkg-end-date"
+            />
+          </div>
         </div>
         {createPackage.error && <div className="text-xs text-red-600 bg-red-50 p-2 rounded-lg">{createPackage.error.message}</div>}
         <Button variant="primary" onClick={save} disabled={createPackage.isPending || !name.trim()}>
@@ -411,6 +435,7 @@ function PackageCard({
   // Coerce to boolean so checkboxes stay controlled even when DB returns null/undefined
   const [isTrial, setIsTrial] = useState(Boolean(pkg.isTrial));
   const [includesVideoPembelajaran, setIncludesVideoPembelajaran] = useState(Boolean(pkg.includesVideoPembelajaran));
+  const [accessDurationMonths, setAccessDurationMonths] = useState(pkg.accessDurationMonths ?? 1);
   const [startDate, setStartDate] = useState(isoToLocalDatetime(pkg.startDate));
   const [endDate, setEndDate] = useState(isoToLocalDatetime(pkg.endDate));
   const [showConfirm, setShowConfirm] = useState(false);
@@ -426,6 +451,7 @@ function PackageCard({
         price,
         isTrial,
         includesVideoPembelajaran,
+        accessDurationMonths,
         startDate: localDatetimeToIso(startDate),
         endDate: localDatetimeToIso(endDate),
       },
@@ -466,14 +492,20 @@ function PackageCard({
               </label>
             </div>
           </div>
-          <DateRangeField
-            startDate={startDate}
-            endDate={endDate}
-            onStartDateChange={setStartDate}
-            onEndDateChange={setEndDate}
-            startTestId="pkg-start-date"
-            endTestId="pkg-end-date"
-          />
+          <AccessDurationField value={accessDurationMonths} onChange={setAccessDurationMonths} />
+          <div>
+            <p className="text-xs font-bold text-gray-500 mb-2">Periode penjualan (tidak membatasi akses yang sudah dibeli)</p>
+            <div className="grid gap-3">
+              <DateRangeField
+                startDate={startDate}
+                endDate={endDate}
+                onStartDateChange={setStartDate}
+                onEndDateChange={setEndDate}
+                startTestId="pkg-start-date"
+                endTestId="pkg-end-date"
+              />
+            </div>
+          </div>
           <div className="flex items-end gap-2">
             <Button variant="primary" size="sm" onClick={saveEdit} disabled={updatePackage.isPending}>
               {updatePackage.isPending ? 'Menyimpan...' : 'Simpan'}
@@ -486,6 +518,7 @@ function PackageCard({
           <div>
             <div className="font-extrabold text-sm text-brand">{pkg.name}</div>
             <div className="text-xs text-gray-400 mt-0.5">{pkg.description || '—'}</div>
+            <p className="text-xs text-gray-500 mt-1">Akses {accessDurationLabel(pkg.accessDurationMonths)} sejak verifikasi</p>
           </div>
           <div>
             <div className="font-bold text-sm">Rp {pkg.price.toLocaleString()}</div>

@@ -20,6 +20,7 @@
 // ─────────────────────────────────────────────
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { hasVideoPackageAccess } from '@/lib/packageAccessServer';
 import prisma from "@/lib/prisma";
 import { requireActiveSession } from "@/lib/routeAuth";
 import { isAdminRole } from "@/lib/deviceSession";
@@ -29,30 +30,6 @@ import { mapPublicVideoWithProgress, mapVideoWithProgress } from "@/lib/video";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const DENIED_STATUSES: ReadonlyArray<string> = ["rejected", "expired", "blocked"];
-
-async function userHasVideoPackageAccess(email: string): Promise<boolean> {
-  // Single query: join UserPurchase → Package, filter to video-enabled
-  // packages, exclude rejected/expired payments, and confirm at least one
-  // non-deleted row exists for this user.
-  const qualifying = await prisma.userPurchase.findFirst({
-    where: {
-      userId: email,
-      deletedAt: null,
-      package: {
-        is: { includesVideoPembelajaran: true, deletedAt: null },
-      },
-      // paymentId is optional (legacy / direct grants); only filter by
-      // status when a payment row is linked.
-      OR: [
-        { paymentId: null },
-        { payment: { is: { status: { notIn: [...DENIED_STATUSES] } } } },
-      ],
-    },
-    select: { id: true },
-  });
-  return qualifying !== null;
-}
 
 export async function GET(request: NextRequest) {
   const auth = await requireActiveSession(request);
@@ -89,7 +66,7 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const hasAccess = await userHasVideoPackageAccess(email);
+  const hasAccess = await hasVideoPackageAccess(email);
   if (!hasAccess) {
     // 200 with empty list + hasAccess:false — UI renders the upgrade banner.
     // 403 would force the client into error handling and lose the upsell

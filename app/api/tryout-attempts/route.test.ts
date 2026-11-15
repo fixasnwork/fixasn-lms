@@ -1,3 +1,5 @@
+vi.mock('@/lib/routeAuth', () => ({ requireActiveSession: vi.fn().mockResolvedValue({ ok: true, session: { user: { email: 'user-1', name: 'Test User' } } }) }));
+vi.mock('@/lib/packageAccessServer', () => ({ hasTryoutAccess: vi.fn().mockResolvedValue(true) }));
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
@@ -160,7 +162,7 @@ describe('POST /api/tryout-attempts — availability gate', () => {
     expect(data.retryable).toBe(true);
   });
 
-  it('parent package window closed (endDate in past) → 403 + reason=package_closed', async () => {
+  it('closed sales window does not revoke purchased access', async () => {
     mockFindUnique.mockResolvedValue(
       makeTryout({
         startDate: new Date('2026-01-01T00:00:00Z'),
@@ -169,11 +171,9 @@ describe('POST /api/tryout-attempts — availability gate', () => {
     );
 
     const res = await POST(makePostReq(BASE_BODY));
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(200);
     const data = await res.json();
-    expect(data.error).toBe('tryout_unavailable');
-    expect(data.reason).toBe('package_closed');
-    expect(data.retryable).toBe(true);
+    expect(data.success).toBe(true);
   });
 
   it('parent package endDate=null → active indefinitely → success', async () => {

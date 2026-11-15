@@ -1,3 +1,4 @@
+vi.mock('@/lib/packageAccessServer', () => ({ hasTryoutAccess: vi.fn().mockResolvedValue(true) }));
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { NextRequest } from 'next/server';
 

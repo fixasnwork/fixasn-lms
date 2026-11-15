@@ -4,7 +4,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import type { AttemptAnswer } from '@/lib/types';
-import { isAvailable, isPackageAvailable } from '@/lib/availability';
+import { isAvailable } from '@/lib/availability';
+import { requireActiveSession } from '@/lib/routeAuth';
+import { hasTryoutAccess } from '@/lib/packageAccessServer';
 
 /**
  * GET /api/tryout-attempts?userId=X
@@ -43,6 +45,8 @@ export async function GET(request: NextRequest) {
  * Answers are stored as separate rows in the AttemptAnswer table.
  */
 export async function POST(request: NextRequest) {
+  const auth = await requireActiveSession(request);
+  if (!auth.ok) return auth.response;
   const body = await request.json();
 
   // Validate required fields at the boundary
@@ -53,37 +57,26 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  body.userId = auth.session.user.email;
+  body.userName = auth.session.user.name || auth.session.user.email;
   const tryoutId = parseInt(body.tryoutId, 10);
+  if (!(await hasTryoutAccess(body.userId, tryoutId))) {
+    return NextResponse.json({ error: 'Masa akses paket berakhir atau belum aktif.' }, { status: 403 });
+  }
 
   // ── Availability gate ──────────────────────────────────────────
-    const tryout = await prisma.tryout.findUnique({
-      where: { id: tryoutId, deletedAt: null },
-      include: { packageTryouts: { include: { package: true } } },
-    });
-
-    if (!tryout) {
-      return NextResponse.json({ error: 'Tryout not found' }, { status: 404 });
-    }
-
-    if (!isAvailable(tryout)) {
-      return NextResponse.json(
-        { error: 'tryout_unavailable', reason: 'out_of_window', retryable: true },
-        { status: 403 }
-      );
-    }
-
-    for (const pt of tryout.packageTryouts) {
-      if (!isPackageAvailable(pt.package)) {
-        return NextResponse.json(
-          {
-            error: 'tryout_unavailable',
-            reason: 'package_closed',
-            retryable: true,
-          },
-          { status: 403 }
-        );
-      }
-    }
+  const tryout = await prisma.tryout.findUnique({
+    where: { id: tryoutId, deletedAt: null },
+  });
+  if (!tryout) {
+    return NextResponse.json({ error: 'Tryout not found' }, { status: 404 });
+  }
+  if (!isAvailable(tryout)) {
+    return NextResponse.json(
+      { error: 'tryout_unavailable', reason: 'out_of_window', retryable: true },
+      { status: 403 }
+    );
+  }
 
   // Convert answers to the correct format for the relation table
   let answerRows: Array<{ questionIndex: number; selectedOption: number }> = [];

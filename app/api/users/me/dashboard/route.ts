@@ -19,6 +19,7 @@ import { requireActiveSession } from '@/lib/routeAuth';
 import { getEmailFromSessionUser } from '@/lib/deviceSession';
 import { getUserRank } from '@/lib/ranking';
 import { isAvailable } from '@/lib/availability';
+import { activePaymentWhere } from '@/lib/packageAccess';
 import type { DashboardSummary } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -43,15 +44,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // ── 1. Fetch owned packages (via UserPayment, matching the tryout page)
-  //       The tryout page builds `ownedPkgIds` from userPayments with
-  //       status = 'pending' | 'verified'. We replicate that here plus
-  //       the `isAvailable` date check (which the tryout page's
-  //       `activeOwnedPkgIds` applies).
+  // Fetch verified, unexpired purchases. Package dates control sales only.
   const payments = await prisma.payment.findMany({
     where: {
       userId,
-      status: { in: ['pending', 'verified'] },
+      ...activePaymentWhere(),
       package: { deletedAt: null },
     },
     select: {
@@ -76,14 +73,9 @@ export async function GET(request: NextRequest) {
     },
   });
 
-  // ── 2. Build the set of tryoutIds the user currently owns AND are active.
-  //     Use `isAvailable` directly (same as the tryout page's
-  //     `isPackageAvailable` / `isAvailable(t)` checks). No null-date
-  //     fallback — if a package/tryout has null dates, `isAvailable` returns
-  //     false, matching the tryout page behavior.
+  // Tryouts retain their own scheduling window.
   const activeTryoutIds = new Set<number>();
   for (const p of payments) {
-    if (!isAvailable(p.package)) continue;
     for (const pt of p.package.packageTryouts) {
       if (pt.tryout.deletedAt !== null) continue;
       if (!isAvailable(pt.tryout)) continue;

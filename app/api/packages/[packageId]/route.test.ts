@@ -12,6 +12,7 @@ const existingPkg = {
   description: 'desc',
   price: 50000,
   isTrial: false,
+  accessDurationMonths: 1,
   startDate: new Date('2026-06-01T00:00:00Z'),
   endDate: new Date('2026-12-31T23:59:59Z'),
   createdAt: new Date('2026-01-01T00:00:00Z'),

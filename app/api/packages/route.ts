@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { requireAdmin } from '@/lib/adminAuth';
+import { isAccessDuration } from '@/lib/packageAccess';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -15,6 +16,7 @@ export interface PackageResponse {
   price: number;
   isTrial: boolean;
   includesVideoPembelajaran: boolean;
+  accessDurationMonths: number;
   startDate: string | null;
   endDate: string | null;
   createdAt: string;
@@ -29,6 +31,7 @@ function mapPackage(pkg: {
   price: number;
   isTrial: boolean;
   includesVideoPembelajaran: boolean | null;
+  accessDurationMonths: number;
   tryoutCount: number;
   startDate: Date | null;
   endDate: Date | null;
@@ -45,6 +48,7 @@ function mapPackage(pkg: {
     // schema default(false). Without this, the UI badge/checkbox would
     // silently show false for those rows.
     includesVideoPembelajaran: Boolean(pkg.includesVideoPembelajaran),
+    accessDurationMonths: pkg.accessDurationMonths,
     startDate: pkg.startDate ? pkg.startDate.toISOString() : null,
     endDate: pkg.endDate ? pkg.endDate.toISOString() : null,
     tryoutCount: pkg.tryoutCount,
@@ -68,6 +72,7 @@ export async function GET() {
       price: pkg.price,
       isTrial: pkg.isTrial,
       includesVideoPembelajaran: pkg.includesVideoPembelajaran,
+      accessDurationMonths: pkg.accessDurationMonths,
       startDate: pkg.startDate,
       endDate: pkg.endDate,
       tryoutCount: Math.max(pkg.tryoutCount, pkg._count.packageTryouts),
@@ -93,6 +98,10 @@ export async function POST(request: NextRequest) {
     const description = String(body.description ?? '').trim();
     const isTrial = Boolean(body.isTrial);
     const includesVideoPembelajaran = Boolean(body.includesVideoPembelajaran);
+    const accessDurationMonths = body.accessDurationMonths ?? 1;
+    if (!isAccessDuration(accessDurationMonths)) {
+      return NextResponse.json({ error: 'Durasi akses harus bilangan bulat positif dalam bulan' }, { status: 400 });
+    }
     const startDate = body.startDate ? new Date(body.startDate) : null;
     const endDate = body.endDate ? new Date(body.endDate) : null;
 
@@ -115,7 +124,7 @@ export async function POST(request: NextRequest) {
     }
 
     const pkg = await prisma.package.create({
-      data: { name, description, price, isTrial, includesVideoPembelajaran, startDate, endDate, tryoutCount: 0 },
+      data: { name, description, price, isTrial, includesVideoPembelajaran, accessDurationMonths, startDate, endDate, tryoutCount: 0 },
     });
 
     return NextResponse.json({ success: true, package: mapPackage({ ...pkg, tryoutCount: 0 }) }, { status: 201 });

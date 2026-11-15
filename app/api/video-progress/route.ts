@@ -7,6 +7,7 @@
 // `completed: true` — never on percentage or seek heuristics.
 // ─────────────────────────────────────────────
 import { NextRequest, NextResponse } from "next/server";
+import { hasVideoPackageAccess } from '@/lib/packageAccessServer';
 import prisma from "@/lib/prisma";
 import { requireActiveSession } from "@/lib/routeAuth";
 import { isAdminRole } from "@/lib/deviceSession";
@@ -80,6 +81,10 @@ export async function PATCH(request: NextRequest) {
   }
   if (!isAdminRole(role) && (!video.isPublished || video.deletedAt !== null)) {
     return NextResponse.json({ error: "Video not found" }, { status: 404 });
+  }
+
+  if (!isAdminRole(role) && !(await hasVideoPackageAccess(session.user.email))) {
+    return NextResponse.json({ error: 'Masa akses paket berakhir atau belum aktif.' }, { status: 403 });
   }
 
   // Look up the caller's UUID id (VideoProgress.userId references User.id).

@@ -156,7 +156,9 @@ export function useUserVideos() {
 			if (!res.ok) throw new Error("Failed to fetch videos");
 			return (await res.json()) as VideoListResponse;
 		},
-		staleTime: 60_000,
+		staleTime: 0,
+		refetchOnWindowFocus: true,
+		refetchInterval: 30_000,
 	});
 }
 

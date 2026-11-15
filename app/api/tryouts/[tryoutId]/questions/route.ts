@@ -105,6 +105,11 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ tryoutId: string }> }
 ) {
+  // Question-bank reads are used by the admin editor. User attempts fetch
+  // questions through the owned-attempt endpoint with the access-expiry gate.
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
   const { tryoutId: tryoutIdParam } = await params;
   const tryoutId = parseTryoutId(tryoutIdParam);
   if (!tryoutId) {

@@ -1,4 +1,5 @@
 "use client";
+import { hasPaymentAccess } from '@/lib/packageAccess';
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -82,19 +83,19 @@ export default function TryoutPage() {
     });
   }
 
-  // ── Task 1.2: ownedPkgIds (pending or verified = access granted) ──
+  // ── Task 1.2: ownedPkgIds (verified and unexpired = access granted) ──
   const ownedPkgIds = userPayments
-    .filter((p) => p.status === "pending" || p.status === "verified")
+    .filter((p) => hasPaymentAccess(p))
     .map((p) => p.packageId);
 
   // ── Task 1.3: availablePackages (date-available, not owned) ──
   const availablePackages = packages.filter(
-    (p) => isPackageAvailable(p) && !ownedPkgIds.includes(p.id),
+    (p) => isPackageAvailable(p) && !ownedPkgIds.includes(p.id) && !userPayments.some((payment) => payment.packageId === p.id && payment.status === "pending"),
   );
 
   // ── Task 1.4: ownedPackages (date-available, owned) ──
   const ownedPackages = packages.filter(
-    (p) => isPackageAvailable(p) && ownedPkgIds.includes(p.id),
+    (p) => ownedPkgIds.includes(p.id),
   );
 
   // ── Start / resume attempt ──
@@ -121,6 +122,9 @@ export default function TryoutPage() {
         </div>
       )}
 
+      {!isLoading && userPayments.some((payment) => payment.status === 'pending') && (
+        <p className="text-center text-sm text-amber-700 mb-4">Pembayaran menunggu verifikasi admin. Akses paket dimulai setelah diverifikasi.</p>
+      )}
       {!isLoading && (
         <>
           {/* ── Trial Card (always on top) ── */}
@@ -235,6 +239,11 @@ export default function TryoutPage() {
                     pkgTryouts.find((t) => t.id === selectedId) ??
                     pkgTryouts[0];
 
+                  const activePayments = userPayments.filter((payment) => payment.packageId === pkg.id && hasPaymentAccess(payment));
+                  const accessUntil = activePayments.some((payment) => !payment.accessExpiresAt)
+                    ? null
+                    : activePayments.map((payment) => payment.accessExpiresAt!).sort().at(-1);
+
                   return (
                     <Card
                       key={pkg.id}
@@ -257,6 +266,7 @@ export default function TryoutPage() {
                       {/* Divider */}
                       <div className="h-1.5 rounded-full bg-[#BFDBFE] mb-4" />
 
+                      <p className="text-xs text-gray-500 mb-3">{accessUntil ? "Akses sampai " + new Date(accessUntil).toLocaleString("id-ID", { timeZone: "Asia/Makassar" }) + " WITA" : "Akses aktif"}</p>
                       {/* Tryout list */}
                       {pkgTryouts.length === 0 ? (
                         <div className="text-sm text-gray-400 py-4">
@@ -366,7 +376,7 @@ export default function TryoutPage() {
             // Active, owned package IDs
             const activeOwnedPkgIds = ownedPkgIds.filter((pid) => {
               const pkg = packages.find((p) => p.id === pid);
-              return pkg ? isPackageAvailable(pkg) : false;
+              return Boolean(pkg);
             });
 
             // Finished attempts whose tryout is in an active + owned package

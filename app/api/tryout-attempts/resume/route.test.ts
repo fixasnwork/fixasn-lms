@@ -125,7 +125,7 @@ describe('POST /api/tryout-attempts/resume — package_closed bug regression', (
     expect(data.attempt.isNew).toBe(true);
   });
 
-  it('user accesses via closed package (endDate in past) → 403 + package_closed', async () => {
+  it('closed sales window does not revoke purchased access', async () => {
     mockTryoutFindUnique.mockResolvedValue(makeTryout({ id: 4 }));
     mockPaymentFindFirst.mockResolvedValue({
       package: makeAccessPackage({
@@ -134,13 +134,12 @@ describe('POST /api/tryout-attempts/resume — package_closed bug regression', (
     });
 
     const res = await POST(makePostReq({ tryoutId: 4 }));
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(200);
     const data = await res.json();
-    expect(data.error).toBe('tryout_unavailable');
-    expect(data.reason).toBe('package_closed');
+    expect(data.success).toBe(true);
   });
 
-  it('user accesses via scheduled package (startDate in future) → 403 + package_closed', async () => {
+  it('scheduled sales window does not revoke purchased access', async () => {
     mockTryoutFindUnique.mockResolvedValue(makeTryout({ id: 4 }));
     mockPaymentFindFirst.mockResolvedValue({
       package: makeAccessPackage({
@@ -149,9 +148,9 @@ describe('POST /api/tryout-attempts/resume — package_closed bug regression', (
     });
 
     const res = await POST(makePostReq({ tryoutId: 4 }));
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(200);
     const data = await res.json();
-    expect(data.reason).toBe('package_closed');
+    expect(data.success).toBe(true);
   });
 
   it('in-progress attempt (totalScore=0) bypasses package gate → success', async () => {

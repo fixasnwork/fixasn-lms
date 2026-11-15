@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { requireAdmin } from '@/lib/adminAuth';
+import { isAccessDuration } from '@/lib/packageAccess';
 import type { PackageResponse } from '../route';
 
 function parseId(value: string): number | null {
@@ -18,6 +19,7 @@ function mapPackage(pkg: {
   price: number;
   isTrial: boolean;
   includesVideoPembelajaran: boolean | null;
+  accessDurationMonths: number;
   tryoutCount: number;
   startDate: Date | null;
   endDate: Date | null;
@@ -34,6 +36,7 @@ function mapPackage(pkg: {
     // schema default(false). Without this, the UI badge/checkbox would
     // silently show false for those rows.
     includesVideoPembelajaran: Boolean(pkg.includesVideoPembelajaran),
+    accessDurationMonths: pkg.accessDurationMonths,
     startDate: pkg.startDate ? pkg.startDate.toISOString() : null,
     endDate: pkg.endDate ? pkg.endDate.toISOString() : null,
     tryoutCount: pkg.tryoutCount,
@@ -95,6 +98,11 @@ export async function PUT(
         ? Boolean(body.includesVideoPembelajaran)
         : existing.includesVideoPembelajaran;
 
+    const accessDurationMonths = body.accessDurationMonths ?? existing.accessDurationMonths;
+    if (!isAccessDuration(accessDurationMonths)) {
+      return NextResponse.json({ error: 'Durasi akses harus bilangan bulat positif dalam bulan' }, { status: 400 });
+    }
+
     // Date fields: use body value if provided, else preserve existing
     let startDate: Date | null | undefined = undefined;
     let endDate: Date | null | undefined = undefined;
@@ -131,6 +139,7 @@ export async function PUT(
         price,
         isTrial,
         includesVideoPembelajaran,
+        accessDurationMonths,
         ...(startDate !== undefined ? { startDate } : {}),
         ...(endDate !== undefined ? { endDate } : {}),
       },

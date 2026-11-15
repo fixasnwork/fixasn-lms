@@ -1,5 +1,7 @@
 # Code Context: Tryout Functionality (End-to-End)
 
+> November 2026 update: see `PACKAGE_ACCESS.md`. Paid access now requires a verified, unexpired payment. Pending payments no longer unlock content. Package dates control sales only; individual access expires using the duration captured at checkout. This supersedes the older pending-access descriptions below.
+
 Last updated: 2026-06-21. Scoped by combining two parallel scouts — runner side (`deleg_c0da6710`, 22 tool calls, 457s) and data/admin side (`deleg_b2b0e6b1`, 28 tool calls, 466s) — plus targeted follow-ups on auth leaks, the autosave spec, and `useAutosaveAnswers.ts`. Use this doc as the canonical map when changing anything under `app/(user)/tryout/`, `components/tryout/`, `app/api/tryout-attempts/`, `app/api/tryouts/`, or the related Prisma models.
 
 Branch: `staging` (clean, no uncommitted changes as of this snapshot).

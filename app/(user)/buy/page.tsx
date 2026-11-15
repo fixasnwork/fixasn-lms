@@ -1,4 +1,5 @@
 "use client";
+import { accessDurationLabel, hasPaymentAccess } from '@/lib/packageAccess';
 
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -17,7 +18,7 @@ export default function BuyPage() {
   const ownedPkgIds = userPayments
     .filter(
       (payment) =>
-        payment.status === "pending" || payment.status === "verified",
+        payment.status === "pending" || hasPaymentAccess(payment),
     )
     .map((payment) => payment.packageId);
 
@@ -50,6 +51,7 @@ export default function BuyPage() {
             .filter((p) => isPackageAvailable(p))
             .map((pkg) => {
               const owned = ownedPkgIds.includes(pkg.id);
+              const pending = userPayments.some((payment) => payment.packageId === pkg.id && payment.status === "pending") && !userPayments.some((payment) => payment.packageId === pkg.id && hasPaymentAccess(payment));
               return (
                 <Card
                   key={pkg.id}
@@ -59,7 +61,7 @@ export default function BuyPage() {
                 >
                   {owned && (
                     <div className="absolute top-3 right-3 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-extrabold z-10 whitespace-nowrap shadow-sm">
-                      ✅ Dimiliki
+                      {pending ? "Menunggu verifikasi" : "Paket aktif"}
                     </div>
                   )}
 
@@ -75,6 +77,7 @@ export default function BuyPage() {
                     <p className="text-xs text-gray-500 mb-3">
                       {pkg.description}
                     </p>
+                    <p className="text-xs text-gray-500 mb-3">Akses {accessDurationLabel(pkg.accessDurationMonths)} sejak verifikasi</p>
                     <div className="flex flex-wrap gap-1.5 mb-3">
                       <Badge color="blue">📝 Tryout SKD</Badge>
                       <Badge color="yellow">⏱ 100 menit/sesi</Badge>
@@ -83,7 +86,7 @@ export default function BuyPage() {
 
                     {owned ? (
                       <Button variant="success" className="w-full" disabled>
-                        ✅ Dimiliki
+                        {pending ? "Menunggu verifikasi" : "Paket aktif"}
                       </Button>
                     ) : (
                       <div className="flex items-end justify-between gap-2">

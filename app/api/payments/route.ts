@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { isPackageAvailable } from '@/lib/availability';
+import { accessExpiry } from '@/lib/packageAccess';
 import { getEmailFromSessionUser, getRoleFromSessionUser, isAdminRole } from '@/lib/deviceSession';
 import { requireActiveSession } from '@/lib/routeAuth';
 
@@ -16,12 +17,18 @@ function mapPayment(payment: {
   blockReason: string | null;
   createdAt: Date;
   updatedAt: Date;
+  accessDurationMonths: number | null;
+  verifiedAt: Date | null;
+  accessExpiresAt: Date | null;
 }) {
   return {
     id: payment.id,
     userId: payment.userId,
     packageId: payment.packageId,
     status: payment.status,
+    accessDurationMonths: payment.accessDurationMonths,
+    verifiedAt: payment.verifiedAt?.toISOString() ?? null,
+    accessExpiresAt: payment.accessExpiresAt?.toISOString() ?? null,
     proofUrl: payment.proofUrl || null,
     blockReason: payment.blockReason || null,
     createdAt: payment.createdAt.toISOString(),
@@ -35,14 +42,16 @@ export async function GET(request: NextRequest) {
     return authResult.response;
   }
   const session = authResult.session;
-  const searchParams = request.nextUrl.searchParams;
 
   // Admin sees all; users see their own
   const isAdmin = isAdminRole(getRoleFromSessionUser(session.user));
-  const userId = isAdmin ? null : searchParams.get('userId') || getEmailFromSessionUser(session.user);
+  const userId = isAdmin ? null : getEmailFromSessionUser(session.user);
+  if (!isAdmin && !userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   const payments = await prisma.payment.findMany({
-    ...(userId ? { where: { userId } } : {}),
+    where: { deletedAt: null, ...(userId ? { userId } : {}) },
     orderBy: { createdAt: 'desc' },
   });
 
@@ -102,28 +111,12 @@ export async function POST(request: NextRequest) {
       userId,
       packageId,
       status: 'pending',
+      accessDurationMonths: pkg.accessDurationMonths,
       proofUrl: body.proofUrl || null,
     },
   });
 
-  // Mirror to UserPurchase: pending payments grant access per the
-  // video-pembelajaran spec ("Pending purchase grants access"). The
-  // @@unique([userId, packageId]) constraint makes the upsert idempotent
-  // — re-submits or retries never duplicate the access grant. The
-  // `update: { deletedAt: null }` re-activates a previously soft-deleted
-  // grant (e.g., a prior rejected payment for the same package).
-  await prisma.userPurchase.upsert({
-    where: { userId_packageId: { userId, packageId } },
-    create: {
-      userId,
-      packageId,
-      paymentId: data.id,
-    },
-    update: {
-      paymentId: data.id,
-      deletedAt: null,
-    },
-  });
+  // Pending payments do not grant access; verification activates the purchase.
 
   return NextResponse.json({
     success: true,
@@ -148,46 +141,45 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: 'Payment ID is required' }, { status: 400 });
   }
 
-  const data = await prisma.payment.update({
-    where: { id: body.id },
-    data: {
-      ...(body.status !== undefined ? { status: body.status } : {}),
-      ...(body.proofUrl !== undefined ? { proofUrl: body.proofUrl } : {}),
-      ...(body.blockReason !== undefined ? { blockReason: body.blockReason } : {}),
-    },
-  });
-
-  // Mirror status transitions to the linked UserPurchase so the access
-  // check (`/api/videos`) reflects the admin's decision. verified → grant
-  // access (upsert in case the row was missing — e.g., payment created
-  // before this hook existed). rejected/expired/blocked → soft-delete
-  // the linked grant so access is revoked. Other status values
-  // (pending, etc.) leave the UserPurchase untouched.
-  if (body.status === 'verified') {
-    await prisma.userPurchase.upsert({
-      where: {
-        userId_packageId: { userId: data.userId, packageId: data.packageId },
-      },
-      create: {
-        userId: data.userId,
-        packageId: data.packageId,
-        paymentId: data.id,
-      },
-      update: {
-        paymentId: data.id,
-        deletedAt: null,
-      },
-    });
-  } else if (
-    body.status === 'rejected' ||
-    body.status === 'expired' ||
-    body.status === 'blocked'
-  ) {
-    await prisma.userPurchase.updateMany({
-      where: { paymentId: data.id, deletedAt: null },
-      data: { deletedAt: new Date() },
-    });
+  if (body.status !== undefined && !['pending', 'verified', 'rejected', 'expired', 'blocked'].includes(body.status)) {
+    return NextResponse.json({ error: 'Invalid payment status' }, { status: 400 });
   }
+
+  const data = await prisma.$transaction(async (tx) => {
+    // The update locks this payment row. Concurrent verifications read the
+    // latest timestamp after the lock, so its access clock starts only once.
+    const payment = await tx.payment.update({
+      where: { id: body.id, deletedAt: null },
+      data: {
+        updatedAt: new Date(),
+        ...(body.proofUrl !== undefined ? { proofUrl: body.proofUrl } : {}),
+        ...(body.blockReason !== undefined ? { blockReason: body.blockReason } : {}),
+      },
+      include: { package: true },
+    });
+    if (body.status === 'verified') {
+      const legacyVerified = payment.status === 'verified' && payment.accessDurationMonths === null;
+      if (!payment.verifiedAt && !legacyVerified) {
+        const now = new Date();
+        const months = payment.accessDurationMonths ?? payment.package.accessDurationMonths;
+        await tx.payment.update({
+          where: { id: payment.id },
+          data: { verifiedAt: now, accessDurationMonths: months, accessExpiresAt: accessExpiry(now, months) },
+        });
+      }
+      await tx.userPurchase.upsert({
+        where: { userId_packageId: { userId: payment.userId, packageId: payment.packageId } },
+        create: { userId: payment.userId, packageId: payment.packageId, paymentId: payment.id },
+        update: { paymentId: payment.id, deletedAt: null },
+      });
+    }
+    // Access gates evaluate payment status directly. Revoking one payment
+    // does not revoke a different active purchase of the same package.
+    return tx.payment.update({
+      where: { id: payment.id },
+      data: { ...(body.status !== undefined ? { status: body.status } : {}) },
+    });
+  });
 
   return NextResponse.json({
     success: true,

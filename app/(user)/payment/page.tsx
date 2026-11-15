@@ -1,4 +1,5 @@
 "use client";
+import { accessDurationLabel } from '@/lib/packageAccess';
 
 import { useState, Suspense } from "react";
 import Image from "next/image";
@@ -207,6 +208,7 @@ function PaymentContent() {
             </div>
           </Card>
 
+          <p className="text-sm text-gray-500 mb-4">Durasi akses: {accessDurationLabel(selectedPkg.accessDurationMonths)}, dihitung sejak pembayaran diverifikasi.</p>
           {/* Transfer instructions */}
           <Card className="mb-4">
             {banks.length > 0 && (

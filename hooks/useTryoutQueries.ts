@@ -52,6 +52,9 @@ export function useUserPayments(userId: string | undefined) {
       return data.payments as Payment[];
     },
     enabled: !!userId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchInterval: 30_000,
   });
 }
 
@@ -433,7 +436,7 @@ export function useCreatePackage() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { name: string; description?: string; price?: number; isTrial?: boolean; includesVideoPembelajaran?: boolean; startDate?: string; endDate?: string }) => {
+    mutationFn: async (data: { name: string; description?: string; price?: number; isTrial?: boolean; includesVideoPembelajaran?: boolean; accessDurationMonths?: number; startDate?: string; endDate?: string }) => {
       const res = await fetch('/api/packages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -454,7 +457,7 @@ export function useUpdatePackage() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { id: number; name?: string; description?: string; price?: number; isTrial?: boolean; includesVideoPembelajaran?: boolean; startDate?: string; endDate?: string }) => {
+    mutationFn: async (data: { id: number; name?: string; description?: string; price?: number; isTrial?: boolean; includesVideoPembelajaran?: boolean; accessDurationMonths?: number; startDate?: string; endDate?: string }) => {
       const { id, ...body } = data;
       const res = await fetch(`/api/packages/${id}`, {
         method: 'PUT',

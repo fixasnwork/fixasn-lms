@@ -1,5 +1,7 @@
 # Code Context: Video Pembelajaran (End-to-End)
 
+> November 2026 update: see `PACKAGE_ACCESS.md`. Paid access now requires a verified, unexpired payment. Pending payments no longer unlock content. Package dates control sales only; individual access expires using the duration captured at checkout. This supersedes the older pending-access descriptions below.
+
 Last updated: 2026-06-28. Living doc for the `video-pembelajaran` OpenSpec change. Mirrors `TRYOUTS.md` style. Use this as the canonical map when changing anything under `app/(user)/video/`, `app/admin/video/`, `components/admin/video/`, `app/api/admin/videos/`, `app/api/videos/`, or the related Prisma `Video` model.
 
 Branch: `feature/video-pembelajaran` (4 stacked PRs; the spec is complete when all 4 merge).

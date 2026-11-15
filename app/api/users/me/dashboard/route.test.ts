@@ -201,7 +201,8 @@ describe('GET /api/users/me/dashboard', () => {
       expect.objectContaining({
         where: expect.objectContaining({
           userId: 'user@example.com',
-          status: { in: ['pending', 'verified'] },
+          status: 'verified',
+          OR: [{ accessExpiresAt: null }, { accessExpiresAt: { gt: expect.any(Date) } }],
         }),
       })
     );

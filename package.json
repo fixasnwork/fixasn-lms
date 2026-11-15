@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "db:migrate": "prisma migrate deploy && prisma generate",
     "db:create-uuid-v7": "tsx prisma/create-uuid-v7-function.ts",
     "db:seed": "tsx prisma/seed.ts",
     "prepare": "husky install"

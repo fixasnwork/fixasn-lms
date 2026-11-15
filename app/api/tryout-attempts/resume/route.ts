@@ -5,7 +5,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { requireActiveSession } from '@/lib/routeAuth';
-import { isAvailable, isPackageAvailable } from '@/lib/availability';
+import { isAvailable } from '@/lib/availability';
+import { hasTryoutAccess } from '@/lib/packageAccessServer';
 
 export async function POST(request: NextRequest) {
   const authResult = await requireActiveSession(request);
@@ -28,25 +29,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Tryout not found' }, { status: 404 });
   }
 
-  // Check if user has access to this tryout (trial = always accessible)
-  let accessPayment: { package: { startDate: Date | string | null; endDate: Date | string | null } } | null = null;
-  if (!tryout.isTrial) {
-    const hasAccess = await prisma.payment.findFirst({
-      where: {
-        userId: session.user.email,
-        status: { in: ['pending', 'verified'] },
-        package: {
-          packageTryouts: {
-            some: { tryoutId },
-          },
-        },
-      },
-      select: { package: { select: { startDate: true, endDate: true } } },
-    });
-    if (!hasAccess) {
-      return NextResponse.json({ error: 'Access denied. Purchase a package to unlock this tryout.' }, { status: 403 });
-    }
-    accessPayment = hasAccess;
+  if (!(await hasTryoutAccess(session.user.email, tryoutId))) {
+    return NextResponse.json({ error: 'Akses paket belum aktif atau sudah berakhir. Silakan beli paket atau tunggu verifikasi.' }, { status: 403 });
   }
 
   // Find the most recent attempt for this user + tryout
@@ -75,26 +59,11 @@ export async function POST(request: NextRequest) {
 
   // ── Availability gate (new attempts only; in-progress resumes are not blocked) ──
   if (!isAvailable(tryout)) {
-      return NextResponse.json(
-        { error: 'tryout_unavailable', reason: 'out_of_window', retryable: true },
-        { status: 403 }
-      );
-    }
-
-    // Only enforce the package date window on the package the user is actually
-    // accessing the tryout through. Other linked packages may be inactive for
-    // unrelated reasons (e.g. legacy product variants) and must not block
-    // attempts from users who already paid for access via a different package.
-    if (accessPayment && !isPackageAvailable(accessPayment.package)) {
-      return NextResponse.json(
-        {
-          error: 'tryout_unavailable',
-          reason: 'package_closed',
-          retryable: true,
-        },
-        { status: 403 }
-      );
-    }
+    return NextResponse.json(
+      { error: 'tryout_unavailable', reason: 'out_of_window', retryable: true },
+      { status: 403 }
+    );
+  }
 
   // Otherwise, create a new blank attempt
   const newAttempt = await prisma.tryoutAttempt.create({

@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import type { Question, QuestionOption } from '@/lib/types';
 import { requireActiveSession } from '@/lib/routeAuth';
+import { hasTryoutAccess } from '@/lib/packageAccessServer';
 
 /* ── Mappers (reuse logic from /api/tryouts) ── */
 function mapOption(opt: {
@@ -96,6 +97,10 @@ export async function GET(
     return NextResponse.json({ error: 'Attempt not found' }, { status: 404 });
   }
 
+  if (!(await hasTryoutAccess(session.user.email, attempt.tryoutId))) {
+    return NextResponse.json({ error: 'Masa akses paket berakhir atau belum aktif.' }, { status: 403 });
+  }
+
   const questions = attempt.tryout.tryoutQuestions.map((tq) =>
     mapQuestion(tq.question)
   );
@@ -155,6 +160,10 @@ export async function PUT(
   });
   if (!existing) {
     return NextResponse.json({ error: 'Attempt not found' }, { status: 404 });
+  }
+
+  if (!(await hasTryoutAccess(session.user.email, existing.tryoutId))) {
+    return NextResponse.json({ error: 'Masa akses paket berakhir atau belum aktif.' }, { status: 403 });
   }
 
   // Build answer rows

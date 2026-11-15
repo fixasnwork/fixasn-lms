@@ -15,6 +15,7 @@ const { mockPackage } = vi.hoisted(() => ({
     description: 'desc',
     price: 50000,
     isTrial: false,
+    accessDurationMonths: 1,
     startDate: new Date('2026-06-01T00:00:00Z'),
     endDate: new Date('2026-12-31T23:59:59Z'),
     createdAt: new Date('2026-01-01T00:00:00Z'),
@@ -151,5 +152,21 @@ describe('POST /api/packages', () => {
       makeRequest({ name: 'Invalid Dates', startDate: 'not-a-date', endDate: '2026-06-30T00:00:00Z' })
     );
     expect(response.status).toBe(400);
+  });
+  it('rejects non-positive access durations', async () => {
+    const response = await POST(makeRequest({ name: 'Paket', accessDurationMonths: 0 }));
+    expect(response.status).toBe(400);
+  });
+
+  it('persists the selected access duration', async () => {
+    const response = await POST(makeRequest({ name: 'Paket tahunan', accessDurationMonths: 12 }));
+    expect(response.status).toBe(201);
+    expect((await response.json()).package.accessDurationMonths).toBe(12);
+  });
+
+  it('accepts positive integer durations outside the dropdown options', async () => {
+    const response = await POST(makeRequest({ name: 'Paket sembilan bulan', accessDurationMonths: 9 }));
+    expect(response.status).toBe(201);
+    expect((await response.json()).package.accessDurationMonths).toBe(9);
   });
 });

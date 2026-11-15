@@ -330,6 +330,10 @@ export async function GET(request: NextRequest) {
   const packageIdParam = searchParams.get('packageId');
   const includeQuestions = searchParams.get('include') === 'questions';
   const flatScope = searchParams.get('scope') === 'all';
+  if (includeQuestions) {
+    const authError = await requireAdmin();
+    if (authError) return authError;
+  }
 
   try {
     let tryoutIds: number[] | undefined;
@@ -342,7 +346,7 @@ export async function GET(request: NextRequest) {
       });
 
       if (mappings.length === 0) {
-        return NextResponse.json({ tryouts: DEFAULT_PACKAGE_BANKS });
+        return NextResponse.json({ tryouts: flatScope ? [] : {} });
       }
 
       tryoutIds = mappings.map((m) => m.tryoutId);
@@ -388,7 +392,7 @@ export async function GET(request: NextRequest) {
       });
 
       if (tryouts.length === 0) {
-        return NextResponse.json({ tryouts: DEFAULT_PACKAGE_BANKS });
+        return NextResponse.json({ tryouts: flatScope ? [] : {} });
       }
     }
 

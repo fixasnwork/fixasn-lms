@@ -90,6 +90,7 @@ export interface PackageTryout {
 
 // ── Packages ──────────────────────────────────
 export interface Package {
+  accessDurationMonths?: number;
   id: number;
   name: string;
   description: string;
@@ -240,6 +241,9 @@ export interface UserPermission {
 
 // ── Payments ──────────────────────────────────
 export interface Payment {
+  accessDurationMonths?: number | null;
+  verifiedAt?: string | null;
+  accessExpiresAt?: string | null;
   id: string;       // UUID v7
   userId: string;   // references user.email
   packageId: number;
