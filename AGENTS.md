@@ -260,4 +260,4 @@ Playwright e2e specs exist in `e2e/` (`admin-responsive.spec.ts`, `tryout-perfor
 - For upload/image changes, validate MIME/size and Supabase env/bucket assumptions.
 - For tryout changes, start with `TRYOUTS.md`; for video changes, start with `VIDEO.md`. For known feature gaps, consult `AUDIT.md`.
 - **For per-tryout ranking changes** (the pembahasan `Ranking` tab, its panel, or `GET /api/tryouts/[id]/ranking`): start with `openspec/specs/per-tryout-ranking/spec.md` and `TRYOUTS.md`. The spec is the source of truth for the 9 requirements + 22 scenarios.
-- Keep tests co-located; add/adjust Vitest tests for `lib`, stores, shared UI, and route handlers when behavior changes.
+- Keep tests co-located; add/adjust Vitest tests for `lib`, stores, shared UI, and route handlers when behavior changes
