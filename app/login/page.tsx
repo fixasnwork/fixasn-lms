@@ -1,12 +1,36 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect, type ReactNode } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
-import { Logo, Card } from "@/components/ui";
+import { Logo } from "@/components/ui";
+import { FloatingWhatsappCta } from "@/components/landing/FloatingWhatsappCta";
 import { useAppStore } from "@/store/useAppStore";
 import { useLogoConfig } from "@/hooks/useTryoutQueries";
 import { waMeLink } from "@/lib/utils";
+import styles from "./login.module.css";
+
+function LoginShell({ children }: { children: ReactNode }) {
+  const logoConfig = useAppStore((state) => state.logoConfig);
+  const { data: fetchedLogoConfig } = useLogoConfig();
+
+  return (
+    <main className={styles.page}>
+      <div className={styles.container}>
+        <div className={styles.logo}>
+          <Link href="/" aria-label="Ke beranda FIX ASN" className={styles.logoLink}>
+            <Logo size="lg" cfg={fetchedLogoConfig ?? logoConfig} />
+          </Link>
+        </div>
+        <section className={styles.card} aria-labelledby="login-title">
+          {children}
+        </section>
+      </div>
+      <FloatingWhatsappCta contactWA={(fetchedLogoConfig ?? logoConfig).contactWA} />
+    </main>
+  );
+}
 
 function useRedirectIfAuthenticated() {
   const router = useRouter();
@@ -33,7 +57,6 @@ function useRedirectIfAuthenticated() {
 }
 
 function LoginForm() {
-  const logoConfig = useAppStore((state) => state.logoConfig);
   const { data: fetchedLogoConfig } = useLogoConfig();
   const waLink = waMeLink(fetchedLogoConfig?.contactWA);
   const searchParams = useSearchParams();
@@ -45,35 +68,31 @@ function LoginForm() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFF] flex items-center justify-center p-6">
-      <Card className="w-full max-w-md p-8">
-        {/* Logo & Title */}
-        <div className="text-center mb-5.5">
-          <div className="flex justify-center mb-3">
-            <Logo size="md" cfg={logoConfig} />
-          </div>
-          <h2 className="font-['Montserrat',sans-serif] font-black text-2xl text-brand mb-1 m-0">
-            Masuk ke FIX ASN
-          </h2>
-          <p className="font-['Montserrat',sans-serif] text-sm text-gray-400 m-0">
-            Gunakan akun Google untuk melanjutkan
+    <LoginShell>
+        <div className={styles.heading}>
+          <h1 id="login-title" className={styles.title}>
+            Masuk
+          </h1>
+          <p className={styles.description}>
+            Masuk untuk lanjut ke dashboard dan akses programmu.
           </p>
         </div>
 
         {/* Google Sign In Button */}
         <div>
           {reason === "device-replaced" && (
-            <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 font-['Montserrat',sans-serif] text-sm text-amber-700">
+            <p role="alert" className="mb-5 rounded-2xl bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-800">
               {message ||
                 "Akun Anda telah masuk di perangkat lain. Silakan masuk kembali untuk melanjutkan."}
             </p>
           )}
 
           <button
+            type="button"
             onClick={handleGoogleSignIn}
-            className="w-full py-3.5 px-5 border-1.5 border-gray-200 rounded-xl bg-white cursor-pointer flex items-center justify-center gap-3 font-['Montserrat',sans-serif] font-bold text-base text-gray-700 shadow-md transition-shadow duration-200 hover:shadow-lg"
+            className={styles.googleButton}
           >
-            <svg width="22" height="22" viewBox="0 0 48 48">
+            <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true" className="shrink-0">
               <path
                 fill="#FFC107"
                 d="M43.6 20H24v8h11.3C33.7 33.1 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34.1 6.5 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c11 0 19.7-8 19.7-20 0-1.3-.1-2.7-.1-4z"
@@ -91,55 +110,50 @@ function LoginForm() {
                 d="M43.6 20H24v8h11.3c-.8 2.2-2.3 4.1-4.2 5.4l6.2 5.2C40.9 35.1 44 30 44 24c0-1.3-.1-2.7-.4-4z"
               />
             </svg>
-            Lanjutkan dengan Google
+            Lanjut dengan Google
           </button>
 
-          <p className="font-['Montserrat',sans-serif] text-xs text-gray-400 text-center mt-4.5 leading-relaxed">
+          <p className={styles.terms}>
             Dengan masuk, kamu menyetujui <strong>Syarat & Ketentuan</strong>{" "}
             FIX ASN.
-            {waLink && (
-              <>
-                <br />
-                Butuh bantuan?{" "}
-                <a href={waLink} className="text-brand font-bold">
-                  Chat WhatsApp
-                </a>
-              </>
-            )}
           </p>
+          <div className={styles.footer}>
+            {waLink ? (
+              <p>
+                Butuh bantuan?{" "}
+                <a href={waLink} className={styles.helpLink}>Chat WhatsApp</a>
+              </p>
+            ) : (
+              <p>Belum punya akun? Mulai dengan akun Google kamu.</p>
+            )}
+          </div>
         </div>
-      </Card>
-    </div>
+    </LoginShell>
   );
 }
 
 function LoadingScreen() {
-  const logoConfig = useAppStore((state) => state.logoConfig);
-
   return (
-    <div className="min-h-screen bg-[#F8FAFF] flex items-center justify-center p-6">
-      <Card className="w-full max-w-md p-8 text-center">
-        <div className="flex justify-center mb-3">
-          <Logo size="md" cfg={logoConfig} />
-        </div>
-        <h2 className="font-['Montserrat',sans-serif] font-black text-2xl text-brand mb-1 m-0">
+    <LoginShell>
+      <div className="text-center" role="status">
+        <h1 id="login-title" className={styles.title}>
           Memeriksa sesi...
-        </h2>
+        </h1>
         <div className="flex gap-1.5 justify-center mt-4">
           {[0, 1, 2].map((i) => (
             <div
               key={i}
-              className="w-2 h-2 rounded-full bg-brand-secondary opacity-70 animate-bounce"
+              className="w-2 h-2 rounded-full bg-brand-secondary opacity-70 motion-safe:animate-bounce"
               style={{ animationDelay: `${i * 0.2}s` }}
             />
           ))}
         </div>
-      </Card>
-    </div>
+      </div>
+    </LoginShell>
   );
 }
 
-export default function LoginPage() {
+function LoginContent() {
   const { status } = useSession();
 
   useRedirectIfAuthenticated();
@@ -149,4 +163,12 @@ export default function LoginPage() {
   }
 
   return <LoginForm />;
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoadingScreen />}>
+      <LoginContent />
+    </Suspense>
+  );
 }
