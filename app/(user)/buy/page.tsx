@@ -55,7 +55,8 @@ export default function BuyPage() {
               return (
                 <Card
                   key={pkg.id}
-                  className={`relative overflow-hidden border-2 ${
+                  id={`paket-${pkg.id}`}
+                  className={`relative scroll-mt-6 overflow-hidden border-2 ${
                     owned ? "border-green-200" : "border-gray-100"
                   }`}
                 >

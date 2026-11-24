@@ -9,13 +9,16 @@ interface CardProps {
   hover?: boolean;
   onClick?: () => void;
   "data-testid"?: string;
+  id?: string;
 }
 
-export default function Card({ children, className = '', style = {}, hover = false, onClick, "data-testid": dataTestId }: CardProps) {
+export default function Card({ children, className = '', style = {}, hover = false, onClick, "data-testid": dataTestId, id }: CardProps) {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
     <div
+      id={id}
+      data-ui="card"
       onMouseEnter={() => hover && setIsHovered(true)}
       onMouseLeave={() => hover && setIsHovered(false)}
       onClick={onClick}

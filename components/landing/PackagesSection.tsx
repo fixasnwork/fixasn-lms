@@ -2,12 +2,10 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { BookOpen, Check, Clock3, ClipboardList, LayoutGrid, PackageOpen, PlayCircle } from "lucide-react";
-import { Button } from "@/components/shadcn/button";
-import { Card, CardContent } from "@/components/shadcn/card";
+import { ClipboardList, LayoutGrid, PackageOpen, PlayCircle } from "lucide-react";
+import { PackageCard } from "@/components/packages/PackageCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/shadcn/tabs";
 import { isPackageAvailable } from "@/lib/availability";
-import { accessDurationLabel } from "@/lib/packageAccess";
 import type { Package, LogoConfig } from "@/lib/types";
 import { Highlight } from "./Highlight";
 
@@ -93,38 +91,13 @@ export function PackagesSection({ packages, isLoading = false, isError = false, 
                   {shown.length ? (
                     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                       {shown.map((pkg, index) => {
-                        const tryouts = hasTryouts(pkg);
-                        const Icon = tryouts ? ClipboardList : PlayCircle;
                         return (
                           <motion.article key={pkg.id} inherit={false}
                             initial={{ opacity: reducedMotion ? 1 : 0, y: reducedMotion ? 0 : 18 }}
                             whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }}
                             transition={{ duration: reducedMotion ? 0 : 0.35, delay: reducedMotion ? 0 : (index % columns) * 0.06 }}
-                            className="min-w-0" aria-labelledby={`package-${pkg.id}`}>
-                            <Card className="h-full rounded-2xl border border-border/80 bg-card py-0 shadow-none ring-0 transition-shadow duration-300 hover:shadow-lg hover:shadow-brand/5">
-                              <CardContent className="h-full gap-5 p-5">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <Icon aria-hidden="true" className="size-5 text-primary" />
-                                  <span className="text-sm font-medium text-primary">{tryouts && pkg.includesVideoPembelajaran ? "Tryout + Video" : tryouts ? "Tryout SKD" : "Video Pembelajaran"}</span>
-                                </div>
-                                <div>
-                                  <h3 id={`package-${pkg.id}`} className="text-lg font-semibold tracking-tight text-brand-dark">
-                                    <Highlight lineClassName="-bottom-1 h-1.5 text-yellow-400">{pkg.name}</Highlight>
-                                  </h3>
-                                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{pkg.description}</p>
-                                </div>
-                                <ul className="flex flex-col gap-3 text-sm leading-6 text-muted-foreground">
-                                  <li className="flex items-start gap-2"><Clock3 aria-hidden="true" className="mt-1 size-4 shrink-0 text-yellow-600" /><span>Akses {accessDurationLabel(pkg.accessDurationMonths)}</span></li>
-                                  {tryouts && <li className="flex items-start gap-2"><ClipboardList aria-hidden="true" className="mt-1 size-4 shrink-0 text-primary" /><span>110 soal · 100 menit/sesi</span></li>}
-                                  {(pkg.tryoutCount ?? 0) > 0 && <li className="flex items-start gap-2"><Check aria-hidden="true" className="mt-1 size-4 shrink-0 text-brand-secondary" /><span>{pkg.tryoutCount} tryout SKD</span></li>}
-                                  {pkg.includesVideoPembelajaran && <li className="flex items-start gap-2"><BookOpen aria-hidden="true" className="mt-1 size-4 shrink-0 text-yellow-600" /><span>Akses video pembelajaran</span></li>}
-                                </ul>
-                                <div className="mt-auto flex flex-col gap-4 border-t border-border/70 pt-5">
-                                  <p className="text-2xl font-semibold tracking-tight text-primary">Rp {pkg.price.toLocaleString("id-ID")}</p>
-                                  <Button onClick={onRegister} aria-label={`Beli ${pkg.name}`} className="w-full rounded-xl">Beli Paket</Button>
-                                </div>
-                              </CardContent>
-                            </Card>
+                            className="min-w-0">
+                            <PackageCard pkg={pkg} onAction={onRegister} />
                           </motion.article>
                         );
                       })}

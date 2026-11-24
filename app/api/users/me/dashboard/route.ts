@@ -6,10 +6,8 @@
 // Per-tryout classification uses "latest attempt wins" semantics, matching the
 // inProgressByTryout map in app/(user)/tryout/page.tsx and the resume API.
 //
-// Attempt scope: only attempts for tryouts in packages the user ACTUALLY OWNS
-// (UserPayment status = pending|verified → Package → PackageTryout → Tryout).
-// This matches the tryout page's `ownedPkgIds` + `activeOwnedPkgIds` check
-// so the two surfaces never disagree on which tryouts are in scope.
+// Resuming requires trial or paid access. Finished statistics use the
+// currently scheduled tryouts in paid packages.
 //
 // Auth: requireActiveSession.
 // ─────────────────────────────────────────────
@@ -20,18 +18,19 @@ import { getEmailFromSessionUser } from '@/lib/deviceSession';
 import { getUserRank } from '@/lib/ranking';
 import { isAvailable } from '@/lib/availability';
 import { activePaymentWhere } from '@/lib/packageAccess';
-import type { DashboardSummary } from '@/lib/types';
+import type { DashboardOpenTryout, DashboardSummary } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
-type AttemptLite = {
-  tryoutId: number;
-  finishedAt: Date | null;
-  createdAt: Date;
-  twkScore: number;
-  tiuScore: number;
-  tkpScore: number;
-};
+const dashboardTryoutSelect = {
+  id: true,
+  name: true,
+  sortOrder: true,
+  startDate: true,
+  endDate: true,
+  deletedAt: true,
+  _count: { select: { tryoutQuestions: true } },
+} as const;
 
 export async function GET(request: NextRequest) {
   const authResult = await requireActiveSession(request);
@@ -44,90 +43,105 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const now = new Date();
   // Fetch verified, unexpired purchases. Package dates control sales only.
-  const payments = await prisma.payment.findMany({
-    where: {
-      userId,
-      ...activePaymentWhere(),
-      package: { deletedAt: null },
-    },
-    select: {
-      package: {
-        select: {
-          startDate: true,
-          endDate: true,
-          packageTryouts: {
-            select: {
-              tryout: {
-                select: {
-                  id: true,
-                  startDate: true,
-                  endDate: true,
-                  deletedAt: true,
-                },
+  const [payments, trialTryouts, allAttempts, rankResult] = await Promise.all([
+    prisma.payment.findMany({
+      where: {
+        userId,
+        ...activePaymentWhere(now),
+        package: { deletedAt: null },
+      },
+      select: {
+        package: {
+          select: {
+            packageTryouts: {
+              select: {
+                tryout: { select: dashboardTryoutSelect },
               },
             },
           },
         },
       },
-    },
-  });
-
-  // Tryouts retain their own scheduling window.
-  const activeTryoutIds = new Set<number>();
-  for (const p of payments) {
-    for (const pt of p.package.packageTryouts) {
-      if (pt.tryout.deletedAt !== null) continue;
-      if (!isAvailable(pt.tryout)) continue;
-      activeTryoutIds.add(pt.tryout.id);
-    }
-  }
-
-  // ── 3. Fetch all non-deleted attempts. Run in parallel with rank.
-  const [allAttempts, rankResult] = await Promise.all([
+    }),
+    prisma.tryout.findMany({
+      where: { isTrial: true, deletedAt: null },
+      select: dashboardTryoutSelect,
+    }),
     prisma.tryoutAttempt.findMany({
       where: { userId, deletedAt: null },
       select: {
         tryoutId: true,
         finishedAt: true,
-        createdAt: true,
         twkScore: true,
         tiuScore: true,
         tkpScore: true,
+        tryout: {
+          select: {
+            isTrial: true,
+            deletedAt: true,
+          },
+        },
+        _count: { select: { answers: { where: { selectedOption: { gte: 0 }, questionIndex: { gte: 0 } } } } },
       },
       orderBy: { createdAt: 'desc' },
     }),
     getUserRank(userId),
   ]);
 
-  // ── 4. Keep only attempts for active tryouts.
-  const activeAttempts: AttemptLite[] = activeTryoutIds.size === 0
-    ? []
-    : allAttempts.filter((a) => activeTryoutIds.has(a.tryoutId));
+  const paidTryouts = payments.flatMap(({ package: pkg }) =>
+    pkg.packageTryouts.map(({ tryout }) => tryout).filter((tryout) => tryout.deletedAt === null),
+  );
+  const paidTryoutIds = new Set(paidTryouts.map(({ id }) => id));
+  const activePaidTryouts = paidTryouts.filter((tryout) => isAvailable(tryout, now));
+  const activeTryoutIds = new Set(activePaidTryouts.map(({ id }) => id));
 
-  // ── 5. Latest attempt per tryoutId.
-  const latestByTryout = new Map<number, AttemptLite>();
-  for (const a of activeAttempts) {
+  // ── 4. Keep only attempts for active tryouts.
+  const activeAttempts = allAttempts.filter((a) => activeTryoutIds.has(a.tryoutId));
+
+  // Select the newest attempt first, so a completed attempt hides older unfinished ones.
+  const latestByTryout = new Map<number, (typeof allAttempts)[number]>();
+  for (const a of allAttempts) {
     if (!latestByTryout.has(a.tryoutId)) {
       latestByTryout.set(a.tryoutId, a);
     }
   }
 
-  // ── 6. Classify (latest-wins, deduped by tryoutId).
-  let distinctInProgressTryouts = 0;
-  let distinctFinishedTryouts = 0;
-  for (const a of latestByTryout.values()) {
-    if (a.finishedAt === null) {
-      distinctInProgressTryouts++;
-    } else {
-      distinctFinishedTryouts++;
+  const latestAttempts = [...latestByTryout.values()];
+  const resumableAttempts = latestAttempts.filter(
+    (a) => a.finishedAt === null &&
+      a.tryout.deletedAt === null &&
+      (a.tryout.isTrial || paidTryoutIds.has(a.tryoutId)),
+  );
+  const openById = new Map(activePaidTryouts.map((tryout) => [tryout.id, tryout]));
+  for (const tryout of trialTryouts) {
+    if (isAvailable(tryout, now)) openById.set(tryout.id, tryout);
+  }
+  const openTryouts = [...openById.values()]
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id)
+    .map<DashboardOpenTryout>((tryout) => {
+      const latest = latestByTryout.get(tryout.id);
+      const questionCount = tryout._count.tryoutQuestions;
+      const status = latest ? (latest.finishedAt === null ? 'in-progress' : 'finished') : 'not-started';
+      return {
+        tryoutId: tryout.id,
+        name: tryout.name,
+        status,
+        answeredCount: status === 'in-progress' && latest ? Math.min(latest._count.answers, questionCount) : 0,
+        questionCount,
+      };
+    });
+
+  // Average the latest finished attempt per tryout. An unfinished retry keeps
+  // the previous finished result until the retry is completed.
+  const latestFinishedByTryout = new Map<number, (typeof allAttempts)[number]>();
+  for (const a of activeAttempts) {
+    if (a.finishedAt !== null && !latestFinishedByTryout.has(a.tryoutId)) {
+      latestFinishedByTryout.set(a.tryoutId, a);
     }
   }
-
-  // ── 7. categoryScores (finished attempts in active scope only).
-  const categoryScores = activeAttempts.reduce(
+  const categoryTotals = [...latestFinishedByTryout.values()].reduce(
     (acc, a) => {
-      if (a.finishedAt === null) return acc;
       acc.twk += a.twkScore;
       acc.tiu += a.tiuScore;
       acc.tkp += a.tkpScore;
@@ -135,10 +149,21 @@ export async function GET(request: NextRequest) {
     },
     { twk: 0, tiu: 0, tkp: 0 }
   );
+  const finishedCount = latestFinishedByTryout.size;
+  const categoryScores = finishedCount === 0
+    ? { twk: 0, tiu: 0, tkp: 0 }
+    : {
+      twk: categoryTotals.twk / finishedCount,
+      tiu: categoryTotals.tiu / finishedCount,
+      tkp: categoryTotals.tkp / finishedCount,
+    };
 
   const summary: DashboardSummary = {
-    remainingTryouts: distinctInProgressTryouts,
-    completedTryouts: distinctFinishedTryouts,
+    remainingTryouts: resumableAttempts.length,
+    completedTryouts: latestAttempts.filter(
+      (a) => a.finishedAt !== null && activeTryoutIds.has(a.tryoutId),
+    ).length,
+    openTryouts,
     rank: rankResult?.rank ?? null,
     totalScore: rankResult?.totalScore ?? 0,
     tryoutCount: rankResult?.tryoutCount ?? 0,

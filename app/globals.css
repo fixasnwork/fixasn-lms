@@ -96,6 +96,23 @@
 }
 
 /* Global styles */
+/* User dashboard: separate surfaces with color and spacing, without decoration. */
+[data-ui="user-dashboard"] [data-ui="card"],
+[data-ui="user-dashboard"] [data-slot="package-card-footer"],
+[data-ui="user-dashboard"] [data-ui="button"] {
+  border-width: 0;
+  --tw-shadow: 0 0 #0000;
+}
+
+[data-ui="user-dashboard"] [data-ui="card"] {
+  background-color: var(--card);
+}
+
+[data-ui="user-dashboard"] [data-ui="button"][data-variant="outline"],
+[data-ui="user-dashboard"] [data-ui="button"][data-variant="ghost"] {
+  background-color: var(--muted);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -115,7 +132,6 @@ html, body {
 
 img {
   max-width: 100%;
-  display: block;
 }
 
 /* Touch optimizations */

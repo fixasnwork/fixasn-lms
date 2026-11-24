@@ -34,5 +34,6 @@ export function useDashboardSummaryQuery() {
     queryFn: fetchDashboardSummary,
     enabled: status === 'authenticated' && !!userId,
     staleTime: 60_000,
+    refetchOnMount: 'always',
   });
 }
