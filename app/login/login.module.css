@@ -1,0 +1,172 @@
+.page {
+  display: flex;
+  min-height: 100svh;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+  background-color: #f5fafa;
+  background-image:
+    linear-gradient(rgba(27, 58, 107, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(27, 58, 107, 0.025) 1px, transparent 1px);
+  background-size: 42px 42px;
+  color: var(--brand-dark);
+}
+
+.container {
+  width: 100%;
+  max-width: 560px;
+}
+
+.logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 36px;
+}
+
+.card {
+  padding: 34px 30px 28px;
+  border: 1px solid #d9e5ec;
+  border-radius: 34px;
+  background: #fff;
+  box-shadow: 0 28px 60px -38px rgba(27, 58, 107, 0.35);
+}
+
+.heading {
+  margin-bottom: 34px;
+  text-align: center;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(30px, 5vw, 38px);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.035em;
+}
+
+.description {
+  margin: 16px 0 0;
+  color: #526d8c;
+  font-size: 17px;
+  line-height: 1.65;
+}
+
+.googleButton {
+  display: flex;
+  width: 100%;
+  min-height: 56px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border: 1px solid #d9e5ec;
+  border-radius: 18px;
+  background: #fbfefe;
+  color: var(--brand-dark);
+  font: inherit;
+  font-size: 18px;
+  font-weight: 500;
+  box-shadow: 0 2px 3px rgba(27, 58, 107, 0.05);
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.googleButton:hover {
+  border-color: #b8cedd;
+  background: #f0f7fa;
+}
+
+.googleButton:active {
+  background: #e6f0f5;
+}
+
+.googleButton:focus-visible,
+.logoLink:focus-visible,
+.helpLink:focus-visible {
+  outline: 3px solid var(--brand-secondary);
+  outline-offset: 4px;
+}
+
+.logoLink {
+  display: inline-flex;
+  border-radius: 8px;
+  transition: transform 200ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .logoLink:hover {
+    transform: translateY(-3px) scale(1.04);
+  }
+}
+
+.logoLink:active {
+  transform: scale(0.98);
+}
+
+.terms {
+  margin: 20px auto 0;
+  max-width: 360px;
+  color: #526d8c;
+  font-size: 12px;
+  line-height: 1.8;
+  text-align: center;
+}
+
+.terms strong {
+  font-weight: 500;
+}
+
+.footer {
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid #e0e9ef;
+  color: #526d8c;
+  font-size: 14px;
+  line-height: 1.7;
+  text-align: center;
+}
+
+.footer p {
+  margin: 0;
+}
+
+.helpLink {
+  border-radius: 3px;
+  color: var(--brand-secondary);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+@media (width < 480px) {
+  .page {
+    padding: 32px 16px;
+  }
+
+  .logo {
+    margin-bottom: 28px;
+  }
+
+  .card {
+    padding: 30px 22px 24px;
+    border-radius: 28px;
+  }
+
+  .description {
+    font-size: 15px;
+  }
+
+  .googleButton {
+    font-size: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logoLink,
+  .googleButton {
+    transition: none;
+  }
+
+  .logoLink:hover,
+  .logoLink:active {
+    transform: none;
+  }
+}

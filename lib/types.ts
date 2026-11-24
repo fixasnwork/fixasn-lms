@@ -386,8 +386,8 @@ export interface ScoringResult {
 
 // ── Dashboard Summary (per-user aggregates) ────
 /**
- * Per-category accumulated scores for the user, computed from
- * `TryoutAttempt.twkScore/tiuScore/tkpScore` across finished attempts.
+ * Per-category average scores from the latest finished attempt per tryout
+ * within the dashboard's active access scope. Zero when no results exist.
  */
 export interface DashboardCategoryScores {
   twk: number;
@@ -395,20 +395,29 @@ export interface DashboardCategoryScores {
   tkp: number;
 }
 
+export interface DashboardOpenTryout {
+  tryoutId: number;
+  name: string;
+  status: 'not-started' | 'in-progress' | 'finished';
+  answeredCount: number;
+  questionCount: number;
+}
+
 /**
  * Aggregated snapshot returned by `GET /api/users/me/dashboard` and
  * consumed by the user dashboard client.
  *
- * - `remainingTryouts` = Σ(purchased package.tryoutCount) − count(DISTINCT finished tryoutId), floored at 0
- * - `completedTryouts` = count of TryoutAttempt rows with finishedAt IS NOT NULL
+ * - `remainingTryouts` = count of accessible tryouts whose latest attempt is unfinished
+ * - `completedTryouts` = count of active paid tryouts whose latest attempt is finished
  * - `rank`            = all-time position (sum of max totalScore per tryoutId); null when the user has no attempts
  * - `totalScore`      = same sum rule as the rank, mirrors the leaderboard score
  * - `tryoutCount`     = count of distinct tryouts the user has at least one attempt for
- * - `categoryScores`  = sum of twk/tiu/tkp across finished attempts (NOT the leaderboard's max-per-tryout rule;
- *                       these are the running category totals the progress bar should display)
+ * - `categoryScores`  = average twk/tiu/tkp from the latest finished attempt per active tryout;
+ *                       unfinished retries retain the previous finished result
  */
 export interface DashboardSummary {
   remainingTryouts: number;
+  openTryouts: DashboardOpenTryout[];
   completedTryouts: number;
   rank: number | null;
   totalScore: number;

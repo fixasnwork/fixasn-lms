@@ -5,6 +5,8 @@ import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
 import prisma from '@/lib/prisma';
 import { makeQueryClient } from '@/lib/queryClient';
 import UserSidebar from '@/components/layouts/UserSidebar';
+import { SidebarProvider } from '@/components/shadcn/sidebar';
+import { TooltipProvider } from '@/components/shadcn/tooltip';
 
 export const dynamic = "force-dynamic";
 
@@ -49,8 +51,9 @@ export default async function DashboardLayout({
         const data = await prisma.package.findMany({
           where: { deletedAt: null },
           orderBy: { id: 'asc' },
+          include: { _count: { select: { packageTryouts: true } } },
         });
-        return data.map((p) => ({ ...p, createdAt: p.createdAt.toISOString(), updatedAt: p.updatedAt.toISOString() }));
+        return data.map(({ _count, ...p }) => ({ ...p, tryoutCount: Math.max(p.tryoutCount, _count.packageTryouts), createdAt: p.createdAt.toISOString(), updatedAt: p.updatedAt.toISOString() }));
       },
     }),
     queryClient.prefetchQuery({
@@ -66,15 +69,21 @@ export default async function DashboardLayout({
   ]);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFF]">
-      <Suspense fallback={<div className="hidden md:flex w-[228px] fixed h-screen top-0 bg-white border-r border-gray-100" />}>
-        <UserSidebar />
-      </Suspense>
-      <main className="md:ml-[228px] p-7 pb-32 md:pb-7 min-w-0 md:max-w-[calc(100vw-228px)]">
-        <HydrationBoundary state={dehydrate(queryClient)}>
-          {children}
-        </HydrationBoundary>
-      </main>
-    </div>
+    <TooltipProvider>
+      <SidebarProvider
+        data-ui="user-dashboard"
+        className="min-h-screen bg-background"
+        style={{ "--sidebar-width": "16rem", "--sidebar-width-icon": "4rem" } as React.CSSProperties}
+      >
+        <Suspense fallback={<div className="hidden md:block w-64 shrink-0 bg-white border-r border-gray-100" />}>
+          <UserSidebar />
+        </Suspense>
+        <main className="relative min-h-svh min-w-0 flex-1 p-4 pb-[calc(env(safe-area-inset-bottom,0px)+112px)] sm:p-7 sm:pb-32 md:pb-7">
+          <HydrationBoundary state={dehydrate(queryClient)}>
+            {children}
+          </HydrationBoundary>
+        </main>
+      </SidebarProvider>
+    </TooltipProvider>
   );
 }

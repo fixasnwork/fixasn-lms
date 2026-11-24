@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import TryoutEngine from './TryoutEngine';
@@ -14,7 +14,6 @@ const { mockUpdateAnswersMutate, mockUpdateAnswersMutateAsync, mockUpdateFlagsMu
 }));
 
 vi.mock('@/hooks/useTryoutQueries', () => ({
-  useLogoConfig: () => ({ data: null }),
   useUpdateAttemptAnswers: () => ({
     mutate: mockUpdateAnswersMutate,
     mutateAsync: mockUpdateAnswersMutateAsync,
@@ -25,13 +24,6 @@ vi.mock('@/hooks/useTryoutQueries', () => ({
     mutateAsync: mockUpdateFlagsMutateAsync,
   }),
   queueFlagUpdate: vi.fn(),
-}));
-
-// The engine renders <Logo> from useLogoConfig; mock it out so the test
-// doesn't depend on the Logo component's null-handling (which is the real
-// production concern, not the engine's).
-vi.mock('@/components/ui/Logo', () => ({
-  default: () => <div data-testid="mock-logo" />,
 }));
 
 const baseQuestion: Question = {
@@ -63,6 +55,29 @@ function makeWrapper() {
 }
 
 describe('TryoutEngine — Simpan & Keluar (save-and-exit)', () => {
+  it('shows completion choices after saving on timeout, and opens review only on request', async () => {
+    const onFinish = vi.fn().mockResolvedValue(undefined);
+    render(<TryoutEngine questions={makeQuestions(1)} durationMin={15} initialTimeLeftSeconds={1} onFinish={onFinish} />, { wrapper: makeWrapper() });
+    fireEvent.click(screen.getByRole('button', { name: 'Lanjutkan Tryout' }));
+    fireEvent.click(screen.getAllByText('B')[0].closest('button')!);
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    expect(onFinish).toHaveBeenCalledWith({ 0: 1 });
+    expect(screen.getByRole('heading', { name: 'Terima kasih' })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Jawaban dan kunci soal' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Lihat Pembahasan' }));
+    expect(screen.getByRole('group', { name: 'Jawaban dan kunci soal' })).toBeInTheDocument();
+  });
+
+  it('keeps the completion screen hidden and offers retry when timeout saving fails', async () => {
+    const onFinish = vi.fn().mockRejectedValue(new Error('Save failed'));
+    render(<TryoutEngine questions={makeQuestions(1)} durationMin={15} initialTimeLeftSeconds={1} onFinish={onFinish} />, { wrapper: makeWrapper() });
+    fireEvent.click(screen.getByRole('button', { name: 'Lanjutkan Tryout' }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    expect(screen.queryByRole('heading', { name: 'Terima kasih' })).not.toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Tryout belum berhasil diselesaikan');
+    expect(screen.getByRole('button', { name: 'Ya, Selesaikan' })).toBeInTheDocument();
+  });
+
   beforeEach(() => {
     vi.useFakeTimers();
     mockUpdateAnswersMutate.mockReset();
@@ -84,7 +99,7 @@ describe('TryoutEngine — Simpan & Keluar (save-and-exit)', () => {
   const getSimpanButton = () =>
     screen.getByText(/Simpan & Keluar/).closest('button') as HTMLButtonElement | null;
 
-  it('seeds the timer from initialTimeLeftSeconds when preloadedAnswers is non-empty (resume)', () => {
+  it('restores a saved timer even when no questions were answered', () => {
     const wrapper = makeWrapper();
     const questions = makeQuestions(3);
     render(
@@ -92,17 +107,14 @@ describe('TryoutEngine — Simpan & Keluar (save-and-exit)', () => {
         attemptId="att-resume"
         questions={questions}
         durationMin={100}
-        preloadedAnswers={{ 0: 0 }}
         initialTimeLeftSeconds={1234}
         onFinish={vi.fn()}
       />,
       { wrapper },
     );
 
-    // The seeded timer is observable only after Mulai Tryout transitions
-    // the engine into the running phase, where the header renders
-    // formatTime(timeLeft). formatTime(1234) = "20:34".
-    fireEvent.click(screen.getByText(/Mulai Tryout/));
+    expect(screen.getByText("20:34")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Lanjutkan Tryout" }));
     expect(screen.getAllByText(/20:34/).length).toBeGreaterThanOrEqual(1);
   });
 
@@ -118,10 +130,12 @@ describe('TryoutEngine — Simpan & Keluar (save-and-exit)', () => {
       { wrapper },
     );
 
-    expect(screen.queryByText(/Simpan & Keluar/)).not.toBeInTheDocument();
+    expect(screen.getByText("2 soal · 15 menit")).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Simpan & Keluar/ })).not.toBeInTheDocument();
+    expect(mockUpdateAnswersMutateAsync).not.toHaveBeenCalled();
   });
 
-  it('shows the Simpan & Keluar button in the running phase', () => {
+  it('saves the initial timer before opening questions', async () => {
     const wrapper = makeWrapper();
     render(
       <TryoutEngine
@@ -133,10 +147,81 @@ describe('TryoutEngine — Simpan & Keluar (save-and-exit)', () => {
       { wrapper },
     );
 
-    fireEvent.click(screen.getByText(/Mulai Tryout/));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Mulai Tryout' })); });
+    expect(mockUpdateAnswersMutateAsync).toHaveBeenCalledWith({ answers: {}, timeLeftSeconds: 900 });
     // The Button primitive doesn't forward arbitrary props like data-testid,
     // so we locate the Simpan & Keluar button by its visible text instead.
     expect(screen.getByText(/Simpan & Keluar/)).toBeInTheDocument();
+  });
+
+  it('keeps selected answers and flags when navigating between questions', () => {
+    render(
+      <TryoutEngine
+        attemptId="att-navigation"
+        questions={makeQuestions(2)}
+        durationMin={15}
+        initialTimeLeftSeconds={900}
+      />,
+      { wrapper: makeWrapper() },
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Lanjutkan Tryout' }));
+    fireEvent.click(screen.getByRole('button', { name: 'A A' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tandai Ragu-ragu' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Selanjutnya' }));
+    expect(screen.getByRole('heading', { name: 'Soal 2 dari 2' })).toBeInTheDocument();
+
+    const navigator = within(screen.getByRole('region', { name: 'Navigator Soal' }));
+    fireEvent.click(navigator.getByRole('button', { name: 'Soal 1, ditandai Ragu-ragu, sudah dijawab' }));
+
+    expect(screen.getByRole('button', { name: 'A A' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Batalkan Ragu-ragu' })).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Daftar Soal' }));
+    const drawer = screen.getByRole('dialog', { name: 'Daftar Soal' });
+    expect(drawer).toHaveAttribute('data-side', 'bottom');
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Soal 2' }));
+    expect(screen.getByRole('heading', { name: 'Soal 2 dari 2' })).toBeInTheDocument();
+  });
+
+  it('waits for confirmation before completing a tryout', async () => {
+    const onFinish = vi.fn();
+    render(
+      <TryoutEngine
+        attemptId="att-finish"
+        questions={makeQuestions(2)}
+        durationMin={15}
+        initialTimeLeftSeconds={900}
+        preloadedAnswers={{ 0: 0 }}
+        onFinish={onFinish}
+      />,
+      { wrapper: makeWrapper() },
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Lanjutkan Tryout' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Selesaikan Tryout' }));
+
+    const confirmation = within(screen.getByRole('dialog', { name: 'Selesaikan tryout?' }));
+    expect(confirmation.getByText(/1 soal belum dijawab/)).toBeInTheDocument();
+    expect(onFinish).not.toHaveBeenCalled();
+
+    await act(async () => {
+      fireEvent.click(confirmation.getByRole('button', { name: 'Ya, Selesaikan' }));
+    });
+    expect(onFinish).toHaveBeenCalledExactlyOnceWith({ 0: 0 });
+  });
+
+  it('keeps the preparation screen open if the initial timer cannot be saved', async () => {
+    mockUpdateAnswersMutateAsync.mockRejectedValueOnce(new Error('network down'));
+    render(
+      <TryoutEngine attemptId="att-start-error" questions={makeQuestions(2)} durationMin={15} />,
+      { wrapper: makeWrapper() },
+    );
+
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Mulai Tryout' })); });
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Tryout belum bisa dimulai');
+    expect(screen.queryByRole('button', { name: /Simpan & Keluar/ })).not.toBeInTheDocument();
   });
 
   it('clicking the button opens the modal; clicking Batal closes it without calling onExit', () => {
@@ -147,13 +232,14 @@ describe('TryoutEngine — Simpan & Keluar (save-and-exit)', () => {
         attemptId="att-modal-cancel"
         questions={makeQuestions(3)}
         durationMin={15}
+        initialTimeLeftSeconds={900}
         onExit={onExit}
         onFinish={vi.fn()}
       />,
       { wrapper },
     );
 
-    fireEvent.click(screen.getByText(/Mulai Tryout/));
+    fireEvent.click(screen.getByRole('button', { name: 'Lanjutkan Tryout' }));
     fireEvent.click(getSimpanButton()!);
 
     // Modal renders: title + answered count + time-left + Batal + confirm.
@@ -178,6 +264,7 @@ describe('TryoutEngine — Simpan & Keluar (save-and-exit)', () => {
         attemptId="att-modal-confirm"
         questions={makeQuestions(3)}
         durationMin={15}
+        initialTimeLeftSeconds={900}
         onExit={onExit}
         onFinish={vi.fn()}
       />,
@@ -185,7 +272,7 @@ describe('TryoutEngine — Simpan & Keluar (save-and-exit)', () => {
     );
 
     // Start the engine, then select an option to populate `answers`.
-    fireEvent.click(screen.getByText(/Mulai Tryout/));
+    fireEvent.click(screen.getByRole('button', { name: 'Lanjutkan Tryout' }));
     // The option button label is the option letter inside a span; pick the
     // first matching button to disambiguate from any duplicate option text.
     const optionA = screen.getAllByText('A')[0].closest('button') as HTMLButtonElement;
@@ -226,13 +313,14 @@ describe('TryoutEngine — Simpan & Keluar (save-and-exit)', () => {
         attemptId="att-modal-error"
         questions={makeQuestions(3)}
         durationMin={15}
+        initialTimeLeftSeconds={900}
         onExit={onExit}
         onFinish={vi.fn()}
       />,
       { wrapper },
     );
 
-    fireEvent.click(screen.getByText(/Mulai Tryout/));
+    fireEvent.click(screen.getByRole('button', { name: 'Lanjutkan Tryout' }));
     fireEvent.click(getSimpanButton()!);
 
     await act(async () => {

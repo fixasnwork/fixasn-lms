@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Card } from "@/components/ui";
+import { BookOpen } from "lucide-react";
 
 interface FinishedAttemptCardProps {
   attemptId: string;
@@ -30,15 +31,16 @@ export default function FinishedAttemptCard({
     day: "numeric",
     month: "long",
     year: "numeric",
+    timeZone: "Asia/Makassar",
   });
 
   return (
     <Card className="w-full bg-white p-5 sm:p-6 shadow-md">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <h4 className="font-extrabold text-base sm:text-lg text-gray-800 mb-0.5 truncate">
+          <h3 className="wrap-break-word font-semibold text-slate-900">
             {tryoutName}
-          </h4>
+          </h3>
           <p className="text-xs sm:text-sm text-gray-500 mb-1">
             {packageName} · {formattedDate}
           </p>
@@ -55,9 +57,10 @@ export default function FinishedAttemptCard({
           variant="primary"
           data-testid="finished-attempt-view-pembahasan"
           onClick={() => onView(attemptId)}
-          className="shrink-0 w-full sm:w-auto"
+          className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 bg-teal-700 bg-none! hover:bg-teal-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700 sm:w-auto"
         >
-          Lihat Pembahasan
+          Pembahasan
+          <BookOpen aria-hidden="true" className="size-4 shrink-0" />
         </Button>
       </div>
     </Card>

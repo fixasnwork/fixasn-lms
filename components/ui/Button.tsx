@@ -54,6 +54,8 @@ export default function Button({
 
   return (
     <button
+      data-ui="button"
+      data-variant={variant}
       onClick={onClick}
       disabled={disabled}
       type={type}

@@ -2,25 +2,39 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
+import { useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, ArrowRight, BatteryCharging, Check, CirclePlay, ClipboardList, Clock3, Flag, LogOut, NotebookPen, RotateCcw, Save, ShieldCheck, VolumeX, Wifi } from "lucide-react";
 import type { Question } from "@/lib/types";
 import { getScore, formatTime } from "@/lib/scoring";
-import { Logo, Button, Badge, Card, Modal } from "@/components/ui";
+import { Button, Badge, Card, Modal } from "@/components/ui";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/shadcn/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/shadcn/sheet";
 import {
-  useLogoConfig,
   useUpdateAttemptFlags,
   useUpdateAttemptAnswers,
   queueFlagUpdate,
 } from "@/hooks/useTryoutQueries";
 import { useAutosaveAnswers } from "@/hooks/useAutosaveAnswers";
 import { useNavGuardStore } from "@/store/useNavGuardStore";
-import PembahasanNavigator from "./PembahasanNavigator";
+import TryoutReviewMode from "./TryoutReviewMode";
+import TryoutCompletion from "./TryoutCompletion";
+
+const playerButton = "inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm";
+
+const preparationTips = [
+  { Icon: NotebookPen, label: "Sediakan kertas coretan", color: "bg-blue-50 text-blue-700" },
+  { Icon: VolumeX, label: "Cari tempat yang tenang", color: "bg-violet-50 text-violet-700" },
+  { Icon: ShieldCheck, label: "Kerjakan dengan jujur", color: "bg-teal-50 text-teal-700" },
+  { Icon: Wifi, label: "Pastikan koneksi stabil", color: "bg-cyan-50 text-cyan-700" },
+  { Icon: BatteryCharging, label: "Pastikan baterai cukup", color: "bg-amber-50 text-amber-700" },
+  { Icon: LogOut, label: "Gunakan Simpan & Keluar saat jeda", color: "bg-rose-50 text-rose-700" },
+];
 
 // ── Types ──
 interface Section {
   label: string;
   indices: number[];
   color: string;
-  bg: string;
 }
 
 // ── External QuestionGrid component (prevents scroll-reset on re-render) ──
@@ -32,7 +46,6 @@ interface QuestionGridProps {
   raguRagu: Record<number, boolean>;
   cur: number;
   onSelect: (index: number) => void;
-  variant?: "sidebar" | "modal";
 }
 
 function QuestionGrid({
@@ -43,122 +56,93 @@ function QuestionGrid({
   raguRagu,
   cur,
   onSelect,
-  variant = "sidebar",
 }: QuestionGridProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const visibleSections = sections.filter(({ indices }) => indices.length > 0);
 
   return (
     <>
-      <p className="font-extrabold text-xs text-brand mb-2">
-        📊 {answered}/{totalQuestions} dijawab
-      </p>
-      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-4">
+      <dl className="grid shrink-0 grid-cols-2 gap-2">
+        <div className="rounded-xl bg-emerald-50 p-2.5">
+          <dt className="text-xs text-emerald-800">Terjawab</dt>
+          <dd className="mt-0.5 text-lg font-semibold tabular-nums text-emerald-900">{answered}</dd>
+        </div>
+        <div className="rounded-xl bg-slate-50 p-2.5">
+          <dt className="text-xs text-slate-600">Kosong</dt>
+          <dd className="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">{totalQuestions - answered}</dd>
+        </div>
+      </dl>
+      <dl aria-label="Soal terjawab per kategori" className="mt-2 flex shrink-0 gap-2">
+        {visibleSections.map(({ label, color, indices }) => (
+          <div key={label} className="min-w-0 flex-1 rounded-lg bg-slate-50 px-2 py-2 text-center">
+            <dt className="text-xs font-semibold" style={{ color }}>{label}</dt>
+            <dd className="mt-0.5 text-sm font-semibold tabular-nums text-slate-900">
+              {indices.filter((index) => answers[index] >= 0).length}<span className="sr-only"> dari </span><span aria-hidden="true">/</span>{indices.length}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <div aria-hidden="true" className="mt-3 mb-4 h-1.5 shrink-0 overflow-hidden rounded-full bg-slate-100">
         <div
-          className="h-full bg-gradient-to-r from-brand to-blue-500 rounded-full transition-all duration-500"
+          className="h-full rounded-full bg-emerald-600"
           style={{ width: `${(answered / totalQuestions) * 100}%` }}
         />
       </div>
 
       <div
-        ref={scrollRef}
-        className={
-          variant === "sidebar"
-            ? "max-h-[calc(100vh-220px)] overflow-y-auto overscroll-contain"
-            : "max-h-[60vh] overflow-y-auto overscroll-contain"
-        }
+        className="min-h-0 overflow-y-auto overscroll-contain p-0.5"
         style={{
           scrollbarWidth: "thin",
           scrollbarColor: "#CBD5E1 transparent",
           WebkitOverflowScrolling: "touch",
         }}
       >
-        {sections.map((sec) => {
-          const done = sec.indices.filter(
-            (i) => answers[i] !== undefined,
-          ).length;
-          return (
+        {visibleSections.map((sec) => (
             <div key={sec.label} className="mb-3">
-              <div className="flex justify-between items-center mb-1.5">
-                <span
-                  className="font-bold text-xs"
-                  style={{ color: sec.color }}
-                >
-                  {sec.label}
-                </span>
-                <span className="text-xs text-gray-400">
-                  {done}/{sec.indices.length}
-                </span>
-              </div>
+              <p className="mb-1.5 text-xs font-bold" style={{ color: sec.color }}>{sec.label}</p>
               <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-5 gap-1.5">
                 {sec.indices.map((gi) => {
                   const isActive = gi === cur;
-                  const isDone = answers[gi] !== undefined;
+                  const isDone = answers[gi] >= 0;
                   const isFlagged = !!raguRagu[gi];
                   return (
                     <button
                       key={gi}
+                      type="button"
                       onClick={() => onSelect(gi)}
+                      aria-current={isActive ? "step" : undefined}
                       aria-label={
                         isFlagged
                           ? `Soal ${gi + 1}, ditandai Ragu-ragu${isDone ? ", sudah dijawab" : ""}`
                           : `Soal ${gi + 1}${isDone ? ", sudah dijawab" : ""}`
                       }
-                      className={`
-                        relative w-full aspect-square rounded-md border-none cursor-pointer font-semibold text-xs transition-all
-                        ${isActive ? "ring-2 ring-offset-1" : ""}
-                      `}
-                      style={{
-                        background: isActive
-                          ? sec.color
-                          : isDone
-                            ? sec.bg
-                            : "#F1F5F9",
-                        color: isActive
-                          ? "#fff"
-                          : isDone
-                            ? sec.color
-                            : "#9CA3AF",
-                        outline: isActive ? `2px solid ${sec.color}` : "none",
-                        outlineOffset: 1,
-                      }}
+                      className={`aspect-square min-h-9 w-full cursor-pointer rounded-lg text-xs font-semibold focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand ${isActive ? "ring-2 ring-inset ring-brand-secondary" : ""} ${isFlagged ? "bg-amber-400 text-amber-950" : isDone ? "bg-emerald-700 text-white" : isActive ? "bg-blue-50 text-brand" : "bg-slate-100 text-slate-600"}`}
                     >
                       {gi + 1}
-                      {isFlagged && (
-                        <span
-                          aria-hidden="true"
-                          className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-yellow-400 ring-1 ring-white"
-                        />
-                      )}
                     </button>
                   );
                 })}
               </div>
             </div>
-          );
-        })}
+        ))}
       </div>
 
-      <div className="mt-3 pt-3 border-t border-gray-100 flex flex-col gap-1">
+      <div className="mt-3 grid shrink-0 grid-cols-2 gap-2">
         {[
-          { color: "#2563EB", label: "Soal aktif" },
-          { color: "#DBEAFE", label: "Sudah dijawab" },
-          { color: "#F1F5F9", label: "Belum dijawab" },
+          { color: "bg-blue-50 ring-1 ring-inset ring-brand-secondary", label: "Soal aktif" },
+          { color: "bg-emerald-700", label: "Sudah dijawab" },
+          { color: "bg-slate-100", label: "Belum dijawab" },
+          { color: "bg-amber-400", label: "Ragu-ragu" },
         ].map((item) => (
           <div
             key={item.label}
-            className="flex gap-1.5 items-center text-xs text-gray-500"
+            className="flex gap-1.5 items-center text-xs text-slate-600"
           >
             <div
-              className="w-3 h-3 rounded border border-gray-200 flex-shrink-0"
-              style={{ background: item.color }}
+              className={`size-3 shrink-0 rounded ${item.color}`}
             />
             {item.label}
           </div>
         ))}
-        <div className="flex gap-1.5 items-center text-xs text-gray-500">
-          <div className="w-2 h-2 rounded-full bg-yellow-400 flex-shrink-0" />
-          Ragu-ragu
-        </div>
       </div>
     </>
   );
@@ -204,9 +188,9 @@ export default function TryoutEngine({
   initialTimeLeftSeconds,
   onExit,
 }: TryoutEngineProps) {
-  const { data: logoConfig } = useLogoConfig();
   const updateFlags = useUpdateAttemptFlags(attemptId ?? "");
   const updateAnswers = useUpdateAttemptAnswers(attemptId ?? "");
+  const queryClient = useQueryClient();
   const DURATION = (durationMin || 100) * 60;
 
   const [answers, setAnswers] =
@@ -214,27 +198,38 @@ export default function TryoutEngine({
   const [raguRagu, setRaguRagu] =
     useState<Record<number, boolean>>(preloadedRaguRagu);
   const [cur, setCur] = useState(0);
-  // Lazy initializer: when this is a resume (preloadedAnswers non-empty AND
-  // the server returned a saved timer), seed the countdown from the server.
-  // Otherwise start at the full duration. Runs exactly once on mount — later
-  // server refetches must NOT reset the live timer.
-  const [timeLeft, setTimeLeft] = useState<number>(() => {
-    if (
-      initialTimeLeftSeconds !== undefined &&
-      initialTimeLeftSeconds !== null &&
-      Object.keys(preloadedAnswers).length > 0
-    ) {
-      return Math.max(0, Math.min(DURATION, initialTimeLeftSeconds));
-    }
-    return DURATION;
-  });
+  // Restore a saved countdown even if no questions were answered.
+  const [timeLeft, setTimeLeft] = useState<number>(() =>
+    Math.max(0, Math.min(DURATION, initialTimeLeftSeconds ?? DURATION)),
+  );
   const [phase, setPhase] = useState<"ready" | "running" | "result">("ready");
+  const [showReview, setShowReview] = useState(false);
+  const [showSavedTime, setShowSavedTime] = useState(initialTimeLeftSeconds != null);
+  const [startError, setStartError] = useState(false);
+  const hasSavedStart = useRef(initialTimeLeftSeconds != null);
+  const startPending = useRef(false);
+  const mounted = useRef(false);
   const [showMobileNav, setShowMobileNav] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [showFinishConfirm, setShowFinishConfirm] = useState(false);
+  const [isFinishing, setIsFinishing] = useState(false);
+  const [finishError, setFinishError] = useState(false);
+  const finishPending = useRef(false);
+  const finishRef = useRef<() => Promise<void>>(async () => {});
   const [exitError, setExitError] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const shouldRehydrate = useRef(false);
   const prevPreloaded = useRef(preloadedAnswers);
+  const playerHeaderRef = useRef<HTMLDivElement>(null);
+  const questionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
 
   // ── Autosave hook (60s cadence, lifecycle flush, rehydration) ──
   const { tryScheduleAutosave, syncAnswers } = useAutosaveAnswers({
@@ -318,29 +313,61 @@ export default function TryoutEngine({
     [attemptId],
   );
 
-  const startTryout = useCallback(() => {
+  const startTryout = useCallback(async () => {
+    if (startPending.current) return;
+    if (attemptId && !hasSavedStart.current) {
+      startPending.current = true;
+      setStartError(false);
+      try {
+        await updateAnswers.mutateAsync({ answers: {}, timeLeftSeconds: timeLeft });
+        hasSavedStart.current = true;
+        void queryClient.invalidateQueries({ queryKey: ["attempt-history"] });
+        void queryClient.invalidateQueries({ queryKey: ["dashboard", "summary"] });
+      } catch {
+        if (mounted.current) setStartError(true);
+        return;
+      } finally {
+        startPending.current = false;
+      }
+      if (!mounted.current) return;
+    }
     setPhase("running");
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
       setTimeLeft((t) => {
         if (t <= 1) {
+          if (finishPending.current) return 0;
           clearInterval(timerRef.current!);
-          setPhase("result");
-          if (attemptId) updateFlags.mutate(raguRagu);
-          onFinish?.(answers);
+          void finishRef.current();
           return 0;
         }
         return t - 1;
       });
     }, 1000);
-  }, [answers, onFinish, attemptId, raguRagu, updateFlags]);
+  }, [attemptId, updateAnswers, timeLeft, queryClient]);
 
   const finish = useCallback(async () => {
-    clearInterval(timerRef.current!);
-    if (attemptId) await updateFlags.mutateAsync(raguRagu);
-    await onFinish?.(answers);
-    setPhase("result");
+    if (finishPending.current) return;
+    finishPending.current = true;
+    setIsFinishing(true);
+    setFinishError(false);
+    try {
+      if (attemptId) await updateFlags.mutateAsync(raguRagu);
+      await onFinish?.(answers);
+      if (timerRef.current) clearInterval(timerRef.current);
+      setShowFinishConfirm(false);
+      setPhase("result");
+    } catch {
+      setFinishError(true);
+      setShowFinishConfirm(true);
+    } finally {
+      finishPending.current = false;
+      setIsFinishing(false);
+    }
   }, [answers, onFinish, attemptId, raguRagu, updateFlags]);
+  useEffect(() => {
+    finishRef.current = finish;
+  }, [finish]);
 
   // ── Save-and-exit (Simpan & Keluar) ──
   // Delegates the actual PUT to the ref so the nav-guard modal and this
@@ -365,12 +392,13 @@ export default function TryoutEngine({
   questions.forEach((q, i) => {
     totals[q.category] += getScore(q, answers[i]);
   });
-  const totalScore = totals.TWK + totals.TIU + totals.TKP;
 
   const retry = () => {
+    setShowReview(false);
     setAnswers({});
     setCur(0);
     setTimeLeft(DURATION);
+    setShowSavedTime(false);
     if (timerRef.current) clearInterval(timerRef.current);
     setPhase("ready");
   };
@@ -378,68 +406,76 @@ export default function TryoutEngine({
   const handleSelectQuestion = useCallback((index: number) => {
     setCur(index);
     setShowMobileNav(false);
+    const question = questionRef.current;
+    const header = playerHeaderRef.current;
+    if (question && header && question.getBoundingClientRect().top < header.getBoundingClientRect().bottom) {
+      header.parentElement?.scrollIntoView?.({ block: "start" });
+    }
   }, []);
 
   // ── PHASE: READY ──
   if (phase === "ready") {
     const durMenit = Math.round(DURATION / 60);
-    const tips = [
-      { icon: "📝", label: "Sediakan kertas coretan" },
-      { icon: "🔇", label: "Cari tempat yang tenang" },
-      { icon: "🤝", label: "Kerjakan dengan jujur" },
-      { icon: "📶", label: "Pastikan koneksi stabil" },
-      { icon: "🔋", label: "Baterai cukup" },
-      { icon: "🚫", label: "Jangan keluar / pindah tab" },
-    ];
+    const answeredCount = questions.filter((_, index) => answers[index] >= 0).length;
+    const isResume = showSavedTime || answeredCount > 0;
+    const ActionIcon = isResume ? RotateCcw : CirclePlay;
+    const actionColor = isResume
+      ? "bg-amber-300 text-amber-950! hover:bg-amber-400 focus-visible:outline-amber-700"
+      : "bg-brand text-white hover:bg-brand-dark focus-visible:outline-brand";
 
     return (
       <div className="min-h-screen bg-[#F8FAFF] flex items-center justify-center p-4 sm:p-6">
         <Card className="max-w-xl w-full p-6 sm:p-8 lg:p-10 text-center">
-          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-brand to-brand-secondary flex items-center justify-center text-2xl sm:text-3xl mx-auto mb-4 sm:mb-5">
-            📋
+          <div className={`mx-auto mb-4 flex size-14 items-center justify-center rounded-full sm:mb-5 sm:size-16 ${isResume ? "bg-amber-100 text-amber-800" : "bg-blue-50 text-brand"}`}>
+            <ClipboardList aria-hidden="true" className="size-7 sm:size-8" />
           </div>
           <h2 className="font-black text-xl sm:text-2xl text-brand mb-1 sm:mb-1.5">
             {setName}
           </h2>
           <p className="text-gray-500 text-xs sm:text-sm mb-2 sm:mb-3">
-            {isTrial
-              ? "Trial · 10 soal · 15 menit"
-              : `110 soal · ${durMenit} menit · TWK + TIU + TKP`}
+            {isTrial && "Trial · "}{questions.length} soal · {durMenit} menit
           </p>
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 sm:p-3 mb-4 sm:mb-6 inline-block">
-            <span className="font-bold text-amber-800 text-xs sm:text-sm">
-              ⏱ Ujian berlangsung selama{" "}
-              <strong className="text-amber-900">{durMenit} menit</strong>
-              .&nbsp; Pastikan kamu siap!
-            </span>
+          <div className={`mb-4 inline-flex items-center gap-2 rounded-xl p-2.5 text-xs font-semibold sm:mb-6 sm:p-3 sm:text-sm ${isResume ? "bg-amber-50 text-amber-900" : "bg-blue-50 text-brand"}`}>
+            <Clock3 aria-hidden="true" className="size-4 shrink-0" />
+            {isResume ? (
+              <span>{showSavedTime && <>Sisa waktu <strong>{formatTime(timeLeft)}</strong> · </>}{answeredCount} dari {questions.length} soal terjawab</span>
+            ) : (
+              <span>Ujian berlangsung selama <strong>{durMenit} menit</strong>. Pastikan kamu siap!</span>
+            )}
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
-            {tips.map((t, i) => (
+            {preparationTips.map(({ Icon, label, color }) => (
               <div
-                key={i}
+                key={label}
                 className="flex flex-col items-center gap-1.5 sm:gap-2"
               >
-                <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-brand flex items-center justify-center text-xl sm:text-2xl">
-                  {t.icon}
+                <div className={`flex size-11 items-center justify-center rounded-full sm:size-13 ${color}`}>
+                  <Icon aria-hidden="true" className="size-5" />
                 </div>
                 <span className="text-[11px] sm:text-xs font-semibold text-gray-700 text-center leading-tight">
-                  {t.label}
+                  {label}
                 </span>
               </div>
             ))}
           </div>
 
+          {startError && <p role="alert" className="mb-3 text-sm text-red-700">Tryout belum bisa dimulai. Coba lagi.</p>}
           <div className="flex flex-col sm:flex-row gap-3">
-            <Button variant="outline" className="flex-1" onClick={onBack}>
-              Batalkan
-            </Button>
+            {onBack && (
+              <Button variant="outline" className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 bg-brand/5! hover:bg-brand/10! focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand" onClick={onBack} disabled={updateAnswers.isPending}>
+                <ArrowLeft aria-hidden="true" className="size-4" />
+                Kembali
+              </Button>
+            )}
             <Button
               variant="primary"
-              className="flex-[2]"
+              className={`inline-flex min-h-11 flex-[2] items-center justify-center gap-2 bg-none! shadow-none! focus-visible:outline-2 focus-visible:outline-offset-2 ${actionColor}`}
               onClick={startTryout}
+              disabled={updateAnswers.isPending}
             >
-              Mulai Tryout
+              <ActionIcon aria-hidden="true" className="size-4" />
+              {updateAnswers.isPending ? "Membuka..." : isResume ? "Lanjutkan Tryout" : "Mulai Tryout"}
             </Button>
           </div>
         </Card>
@@ -449,467 +485,208 @@ export default function TryoutEngine({
 
   // ── PHASE: RESULT ──
   if (phase === "result") {
+    if (!showReview) return <TryoutCompletion questions={questions} answers={answers} totalScore={totals.TWK + totals.TIU + totals.TKP} onReview={() => setShowReview(true)} onBack={() => onBack?.()} />;
     return (
-      <div className="min-h-screen bg-[#F8FAFF] p-3 sm:p-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex flex-col sm:flex-row gap-3 mb-4 sm:mb-5">
-            <Button
-              variant="outline"
-              onClick={onBack}
-              className="w-full sm:w-auto"
-            >
-              ← Kembali ke Dashboard
-            </Button>
-            <Button
-              variant="primary"
-              onClick={retry}
-              className="w-full sm:w-auto sm:ml-auto"
-            >
-              🔄 Ulangi Tryout
-            </Button>
-          </div>
-
-          <Card className="bg-gradient-to-br from-brand-dark to-brand-secondary text-white text-center p-5 sm:p-8 mb-5 sm:mb-6">
-            <div className="text-4xl sm:text-5xl lg:text-6xl mb-2 sm:mb-3">
-              {totalScore >= 195 ? "🎉" : "💪"}
-            </div>
-            <h2 className="text-lg sm:text-xl lg:text-2xl font-black mb-1">
-              Hasil {setName}
-            </h2>
-            <div className="text-5xl sm:text-6xl lg:text-7xl font-black text-yellow-400 leading-none my-2 sm:my-3">
-              {totalScore}
-            </div>
-            <div className="text-white/70 text-xs sm:text-sm mt-1">
-              Total Skor · Nilai Ambang Batas SKD: 195 (TWK≥13, TIU≥16, TKP≥166)
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-4 sm:mt-6">
-              {[
-                { cat: "TWK", col: "#60A5FA", pass: 13 },
-                { cat: "TIU", col: "#A78BFA", pass: 16 },
-                { cat: "TKP", col: "#FCD34D", pass: 166 },
-              ].map(({ cat, col, pass }) => (
-                <div key={cat} className="bg-white/10 rounded-xl p-3 sm:p-4">
-                  <div className="font-bold text-xs sm:text-sm mb-1">{cat}</div>
-                  <div
-                    className="text-2xl sm:text-3xl font-black"
-                    style={{ color: col }}
-                  >
-                    {totals[cat as keyof typeof totals]}
-                  </div>
-                  <div className="text-white/60 text-[10px] sm:text-xs mt-1">
-                    Ambang: {pass}
-                    {cat === "TKP" ? "" : " soal"} &nbsp;{" "}
-                    {totals[cat as keyof typeof totals] >= pass ? "✅" : "❌"}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          <PembahasanNavigator
-            questions={questions}
-            answers={answers}
-            name={setName}
-            onBack={onBack}
-            onRetry={retry}
-          />
-        </div>
-      </div>
+      <TryoutReviewMode
+        questions={questions}
+        answers={answers}
+        name={setName}
+        scores={{ twk: totals.TWK, tiu: totals.TIU, tkp: totals.TKP }}
+        raguRaguFlags={raguRagu}
+        onBack={() => onBack?.()}
+        onRetry={retry}
+      />
     );
   }
-
-  // ── PHASE: RUNNING ──
+  // Running player.
   const q = questions[cur];
-  const answered = Object.keys(answers).length;
-
-  const categoryIndices: Record<string, number[]> = {
-    TWK: [],
-    TIU: [],
-    TKP: [],
-  };
-  questions.forEach((question, i) => {
-    if (categoryIndices[question.category]) {
-      categoryIndices[question.category].push(i);
-    }
+  const answered = questions.filter((_, index) => answers[index] >= 0).length;
+  const sections: Section[] = [
+    { label: "TWK", indices: [], color: "#1D4ED8" },
+    { label: "TIU", indices: [], color: "#6D28D9" },
+    { label: "TKP", indices: [], color: "#92400E" },
+  ];
+  questions.forEach((question, index) => {
+    sections.find((section) => section.label === question.category)?.indices.push(index);
   });
 
-  const twkDone = categoryIndices.TWK.filter(
-    (i) => answers[i] !== undefined,
-  ).length;
-  const tiuDone = categoryIndices.TIU.filter(
-    (i) => answers[i] !== undefined,
-  ).length;
-  const tkpDone = categoryIndices.TKP.filter(
-    (i) => answers[i] !== undefined,
-  ).length;
+  if (!q) {
+    return <p role="alert" className="mx-auto max-w-xl rounded-2xl bg-white p-5 text-sm text-red-700">Soal tryout belum tersedia.</p>;
+  }
 
-  const sections: Section[] = [
-    {
-      label: "TWK",
-      indices: categoryIndices.TWK,
-      color: "#2563EB",
-      bg: "#DBEAFE",
-    },
-    {
-      label: "TIU",
-      indices: categoryIndices.TIU,
-      color: "#7C3AED",
-      bg: "#EDE9FE",
-    },
-    {
-      label: "TKP",
-      indices: categoryIndices.TKP,
-      color: "#D97706",
-      bg: "#FEF3C7",
-    },
-  ];
-
-  const currentSection =
-    sections.find((s) => s.indices.includes(cur)) || sections[0];
-
-  const timeStr = formatTime(timeLeft);
-  const timerShort = timeStr.split(":").slice(-2).join(":"); // MM:SS for mobile
+  const optionSizes = "(max-width: 768px) 92vw, (max-width: 1280px) 58vw, 900px";
+  const navigationProps = {
+    sections,
+    answered,
+    totalQuestions: questions.length,
+    answers,
+    raguRagu,
+    cur,
+    onSelect: handleSelectQuestion,
+  };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFF] w-full max-w-[100vw] overflow-x-hidden">
-      {/* ── Sticky Header ── */}
-      <div
-        className="bg-white border-b border-gray-100 px-3 sm:px-4 h-14 flex items-center justify-between sticky top-0 z-50 shadow-sm"
-        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
-      >
-        {/* Logo */}
-        <div className="flex-shrink-0">
-          <Logo size="sm" cfg={logoConfig} />
+    <div data-tryout-player="" className="mx-auto grid w-full max-w-[1440px] min-w-0 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_18rem] xl:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="min-w-0 space-y-4">
+        <div ref={playerHeaderRef} className="sticky top-0 z-20 bg-background">
+          <header className="flex min-h-18 flex-wrap items-center justify-between gap-2 rounded-2xl bg-white p-3 sm:p-4">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <span className="hidden size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-brand sm:flex">
+                <ClipboardList aria-hidden="true" className="size-5" />
+              </span>
+              <div className="min-w-0">
+                <h1 className="truncate text-sm font-semibold text-slate-900 sm:text-base" title={setName}>{setName}</h1>
+                <p className="mt-0.5 text-xs text-slate-600 lg:hidden">Soal {cur + 1} dari {questions.length}</p>
+              </div>
+            </div>
+
+            <div role="timer" aria-label="Sisa waktu" className={`flex shrink-0 items-center gap-2 rounded-xl px-2.5 py-1.5 sm:px-3 ${timeLeft < 300 ? "bg-red-50 text-red-700" : "bg-blue-50 text-brand"}`}>
+              <Clock3 aria-hidden="true" className="size-4 shrink-0" />
+              <div>
+                <p className="text-[11px] font-medium">Sisa waktu</p>
+                <p className="text-sm font-semibold tabular-nums sm:text-lg">{formatTime(timeLeft)}</p>
+              </div>
+            </div>
+          </header>
+          <div className="mt-2 flex justify-start lg:hidden">
+            <Sheet open={showMobileNav} onOpenChange={setShowMobileNav}>
+              <SheetTrigger className={`${playerButton} bg-primary px-3 text-primary-foreground hover:bg-primary/90`}>
+                <ClipboardList aria-hidden="true" className="size-4" />
+                Daftar Soal
+              </SheetTrigger>
+              <SheetContent
+                side="bottom"
+                className="max-h-[85dvh] overflow-hidden rounded-t-2xl"
+                overlayClassName="bg-black/45 supports-backdrop-filter:backdrop-blur-none"
+              >
+                <SheetHeader className="shrink-0 pb-0">
+                  <SheetTitle>Daftar Soal</SheetTitle>
+                </SheetHeader>
+                <div className="flex min-h-0 flex-col px-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
+                  <QuestionGrid {...navigationProps} />
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
 
-        {/* Right side */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Desktop stats */}
-          <div className="hidden md:flex gap-3 text-xs text-gray-400 font-semibold">
-            <span>
-              TWK: {twkDone}/{categoryIndices.TWK.length}
-            </span>
-            <span>
-              TIU: {tiuDone}/{categoryIndices.TIU.length}
-            </span>
-            <span>
-              TKP: {tkpDone}/{categoryIndices.TKP.length}
-            </span>
+        <section ref={questionRef} aria-labelledby="question-title" className="min-w-0 rounded-2xl bg-white p-4 sm:p-6">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 id="question-title" className="text-sm font-semibold text-slate-900">Soal {cur + 1} dari {questions.length}</h2>
+            <Badge color={q.category === "TWK" ? "blue" : q.category === "TIU" ? "purple" : "yellow"}>{q.category}</Badge>
+            {raguRagu[cur] && (
+              <span data-testid="ragu-ragu-badge" className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-900">
+                <Flag aria-hidden="true" className="size-3" /> Ragu-ragu
+              </span>
+            )}
           </div>
 
-          {/* Timer — full on desktop, short (MM:SS) on mobile */}
-          <div
-            className={`px-2 sm:px-3 py-1 rounded-full font-black text-center flex-shrink-0 ${
-              timeLeft < 300
-                ? "bg-red-50 text-red-600"
-                : "bg-blue-50 text-blue-700"
-            } text-xs sm:text-sm md:text-lg min-w-[52px] sm:min-w-[64px] md:min-w-[80px]`}
-          >
-            ⏱ <span className="hidden sm:inline">{timeStr}</span>
-            <span className="sm:hidden">{timerShort}</span>
-          </div>
-
-          {/* Simpan & Keluar — running phase only, opens the confirmation modal. */}
-          {attemptId && (
-            <Button
-              variant="outline"
-              size="sm"
-              data-testid="simpan-keluar-button"
-              onClick={() => setShowExitConfirm(true)}
-              disabled={updateAnswers.isPending}
-              className="!px-2 sm:!px-3 hidden sm:inline-flex"
-            >
-              💾 Simpan & Keluar
-            </Button>
+          <p className="mt-4 whitespace-pre-wrap wrap-break-word text-sm leading-relaxed text-slate-900 sm:text-base sm:leading-7">{q.question}</p>
+          {q.questionImage && (
+            <div className="relative mt-4 h-44 w-full rounded-xl bg-slate-50 sm:h-64">
+              <Image src={q.questionImage} alt="Gambar soal" fill sizes={optionSizes} className="rounded-xl object-contain" />
+            </div>
           )}
 
-          {/* Finish */}
-          <Button
-            variant="danger"
-            size="sm"
-            onClick={finish}
-            className="!px-2 sm:!px-3"
-          >
-            <span className="hidden sm:inline">Selesai</span>
-            <span className="sm:hidden">✓</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* ── Main Content ── */}
-      <div className="max-w-6xl mx-auto p-3 sm:p-4 grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-4 sm:gap-5 pb-24 lg:pb-4">
-        {/* Question Card */}
-        <div>
-          <Card
-            className={`p-4 sm:p-6 transition-colors ${
-              raguRagu[cur]
-                ? "border-2 border-yellow-400 bg-yellow-50/40 shadow-[0_0_0_1px_rgba(250,204,21,0.35)]"
-                : ""
-            }`}
-          >
-            {/* Meta row */}
-            <div className="flex flex-wrap items-center gap-2 mb-3 sm:mb-4">
-              <Badge
-                color={
-                  q.category === "TWK"
-                    ? "blue"
-                    : q.category === "TIU"
-                      ? "purple"
-                      : "yellow"
-                }
-              >
-                {q.category}
-              </Badge>
-              <span className="text-xs sm:text-sm text-gray-400 font-semibold">
-                Soal {cur + 1} / {questions.length}
-              </span>
-              {raguRagu[cur] && (
-                <span
-                  data-testid="ragu-ragu-badge"
-                  className="inline-flex items-center gap-1 text-[10px] sm:text-xs font-bold text-yellow-800 bg-yellow-200/80 px-2 py-0.5 rounded-md"
+          <div className="mt-5 grid gap-2.5" role="group" aria-label="Pilihan jawaban">
+            {q.options.map((option, index) => {
+              const letter = String.fromCharCode(65 + index);
+              const isSelected = answers[cur] === index;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => {
+                    setAnswers({ ...answers, [cur]: index });
+                    tryScheduleAutosave();
+                  }}
+                  className={`flex min-h-13 w-full min-w-0 cursor-pointer items-start gap-3 rounded-xl p-3 text-left text-sm leading-relaxed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:items-center sm:p-3.5 ${isSelected ? "bg-blue-50 text-brand ring-2 ring-inset ring-brand-secondary" : "bg-slate-50 text-slate-700 hover:bg-slate-100"}`}
                 >
-                  <span aria-hidden="true">🚩</span> Ragu-ragu
-                </span>
-              )}
-              {q.category === "TKP" && (
-                <span className="text-[10px] sm:text-xs font-semibold text-violet-700 bg-violet-50 px-2 py-0.5 rounded-md ml-auto">
-                  Pilih yang paling mencerminkan dirimu
-                </span>
-              )}
-            </div>
+                  <span className={`flex size-8 shrink-0 items-center justify-center rounded-lg text-sm font-semibold ${isSelected ? "bg-brand text-white" : "bg-white text-slate-700"}`}>{letter}</span>
+                  <span className="block min-w-0 flex-1 wrap-break-word">
+                    {option.optionText && <span className="whitespace-pre-wrap">{option.optionText}</span>}
+                    {option.optionImage && (
+                      <span className="relative mt-1 block h-24 w-full sm:h-36">
+                        <Image src={option.optionImage} alt={`Gambar pilihan ${letter}`} fill sizes={optionSizes} className="rounded-lg object-contain object-left" />
+                      </span>
+                    )}
+                  </span>
+                  {isSelected && <Check aria-hidden="true" className="mt-2 size-4 shrink-0 sm:mt-0" />}
+                </button>
+              );
+            })}
+          </div>
 
-            {/* Question text */}
-            <p className="font-bold text-sm sm:text-base text-gray-800 mb-3 leading-relaxed">
-              {q.question}
-            </p>
-            {q.questionImage && (
-              <div className="relative w-full h-36 sm:h-48 mb-4">
-                <Image
-                  src={q.questionImage}
-                  alt="soal"
-                  fill
-                  sizes="(max-width: 640px) 100vw, 640px"
-                  className="rounded-lg border border-gray-200 object-contain bg-white"
-                />
-              </div>
-            )}
+          {q.category === "TKP" && (
+            <p className="mt-3 text-xs text-slate-600">Pilih jawaban yang paling mencerminkan dirimu.</p>
+          )}
 
-            {/* Options */}
-            <div className="flex flex-col gap-2 sm:gap-2.5">
-              {q.options.map((opt, j) => {
-                const optImg = opt.optionImage;
-                const isSelected = answers[cur] === j;
-                return (
-                  <button
-                    key={j}
-                    onClick={() => {
-                      setAnswers({ ...answers, [cur]: j });
-                      tryScheduleAutosave();
-                    }}
-                    className={`p-2.5 sm:p-3.5 border-2 rounded-xl text-left cursor-pointer font-medium text-xs sm:text-sm transition-all flex items-center gap-2 sm:gap-3 ${
-                      isSelected
-                        ? q.category === "TWK"
-                          ? "border-blue-500 bg-blue-50 text-blue-700"
-                          : q.category === "TIU"
-                            ? "border-violet-500 bg-violet-50 text-violet-700"
-                            : "border-amber-500 bg-amber-50 text-amber-700"
-                        : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
-                    }`}
-                  >
-                    <span
-                      className={`w-6 h-6 rounded-md flex items-center justify-center font-bold text-xs flex-shrink-0 ${
-                        isSelected
-                          ? "bg-blue-500 text-white"
-                          : "bg-gray-100 text-gray-400"
-                      }`}
-                    >
-                      {String.fromCharCode(65 + j)}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      {opt.optionText && (
-                        <span className="leading-relaxed">
-                          {opt.optionText}
-                        </span>
-                      )}
-                      {optImg && (
-                        <div className="relative w-full h-16 sm:h-24 mt-1">
-                          <Image
-                            src={optImg}
-                            alt={`Opsi ${String.fromCharCode(65 + j)}`}
-                            fill
-                            sizes="(max-width: 640px) 100vw, 600px"
-                            className="rounded-lg object-contain"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Nav buttons */}
-            <div className="flex justify-between mt-4 sm:mt-5">
-              <Button
-                variant="ghost"
-                onClick={() => setCur(Math.max(0, cur - 1))}
-                disabled={cur === 0}
-              >
-                ← Sebelumnya
-              </Button>
-              <Button
-                variant={answers[cur] !== undefined ? "primary" : "ghost"}
-                onClick={() => setCur(Math.min(questions.length - 1, cur + 1))}
-                disabled={cur === questions.length - 1}
-              >
-                Selanjutnya →
-              </Button>
-            </div>
-          </Card>
-
-          {/* Ragu-ragu toggle */}
-          <div className="mt-3 flex justify-center sm:justify-end">
+          <div className="mt-5 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-between">
+            <button type="button" className={`${playerButton} bg-slate-100 text-slate-700 hover:bg-slate-200`} onClick={() => handleSelectQuestion(cur - 1)} disabled={cur === 0}>
+              <ArrowLeft aria-hidden="true" className="size-4 shrink-0" /> Sebelumnya
+            </button>
             <button
               type="button"
               data-testid="ragu-ragu-toggle"
-              onClick={() => toggleRaguRagu(cur)}
               aria-pressed={!!raguRagu[cur]}
-              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold border transition-all ${
-                raguRagu[cur]
-                  ? "bg-yellow-100 border-yellow-400 text-yellow-800 hover:bg-yellow-200"
-                  : "bg-white border-gray-200 text-gray-600 hover:border-yellow-300 hover:text-yellow-700"
-              }`}
+              onClick={() => toggleRaguRagu(cur)}
+              className={`${playerButton} order-last col-span-2 text-amber-950 sm:order-none ${raguRagu[cur] ? "bg-amber-400 hover:bg-amber-500" : "bg-amber-200 hover:bg-amber-300"}`}
             >
-              <span aria-hidden="true">{raguRagu[cur] ? "🚩" : "⚑"}</span>
-              {raguRagu[cur] ? "Batalkan Ragu-ragu" : "Tandai Ragu-ragu"}
+              <Flag aria-hidden="true" className="size-4 shrink-0" /> {raguRagu[cur] ? "Batalkan Ragu-ragu" : "Tandai Ragu-ragu"}
+            </button>
+            <button type="button" className={`${playerButton} bg-brand text-white hover:bg-brand-dark`} onClick={() => handleSelectQuestion(cur + 1)} disabled={cur === questions.length - 1}>
+              Selanjutnya <ArrowRight aria-hidden="true" className="size-4 shrink-0" />
             </button>
           </div>
-        </div>
-
-        {/* Desktop Sidebar */}
-        <div className="hidden lg:block">
-          <div className="sticky top-[72px] flex flex-col gap-3">
-            <Card className="p-3">
-              <QuestionGrid
-                sections={sections}
-                answered={answered}
-                totalQuestions={questions.length}
-                answers={answers}
-                raguRagu={raguRagu}
-                cur={cur}
-                onSelect={setCur}
-                variant="sidebar"
-              />
-            </Card>
-          </div>
-        </div>
+        </section>
       </div>
 
-      {/* ── Mobile Bottom Bar ── */}
-      <div
-        className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 shadow-[0_-2px_10px_rgba(0,0,0,0.08)]"
-        style={{ paddingBottom: "max(0.625rem, env(safe-area-inset-bottom))" }}
-      >
-        <div className="max-w-6xl mx-auto px-3 py-2 flex items-center gap-2">
-          {/* Progress + current info */}
-          <div className="flex flex-col min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-semibold text-gray-500 truncate">
-                {answered}/{questions.length} dijawab
-              </span>
-              <div
-                className="w-2 h-2 rounded-full flex-shrink-0"
-                style={{ background: currentSection.color }}
-              />
-              <span
-                className="text-[11px] font-bold truncate"
-                style={{ color: currentSection.color }}
-              >
-                {q.category} #{cur + 1}
-              </span>
-            </div>
-            <div className="h-1 bg-gray-100 rounded-full overflow-hidden mt-1">
-              <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{
-                  width: `${(answered / questions.length) * 100}%`,
-                  background: currentSection.color,
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Prev / Next */}
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <button
-              onClick={() => setCur(Math.max(0, cur - 1))}
-              disabled={cur === 0}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold text-gray-600 bg-gray-100 disabled:opacity-30 active:bg-gray-200"
-            >
-              ‹
+      <aside aria-label="Navigator dan tindakan tryout" className="flex min-w-0 flex-col gap-3 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)]">
+        <section aria-labelledby="question-nav-title" className="hidden min-h-0 flex-col rounded-2xl bg-white p-4 lg:flex">
+          <h2 id="question-nav-title" className="mb-3 flex shrink-0 items-center gap-2 text-sm font-semibold text-slate-900">
+            <ClipboardList aria-hidden="true" className="size-4 text-brand-secondary" /> Navigator Soal
+          </h2>
+          <QuestionGrid {...navigationProps} />
+        </section>
+        <div className="grid shrink-0 gap-2 rounded-2xl bg-white p-3 sm:grid-cols-2 lg:grid-cols-1">
+          {attemptId && (
+            <button type="button" data-testid="simpan-keluar-button" className={`${playerButton} bg-emerald-700 text-white hover:bg-emerald-800`} onClick={() => setShowExitConfirm(true)} disabled={updateAnswers.isPending}>
+              <Save aria-hidden="true" className="size-4" /> Simpan &amp; Keluar
             </button>
-            <button
-              onClick={() => setCur(Math.min(questions.length - 1, cur + 1))}
-              disabled={cur === questions.length - 1}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold text-gray-600 bg-gray-100 disabled:opacity-30 active:bg-gray-200"
-            >
-              ›
-            </button>
-          </div>
-
-          {/* Daftar Soal */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowMobileNav(true)}
-            className="!px-2.5 !py-1.5 text-[11px] flex-shrink-0"
-          >
-            📋 Soal
-          </Button>
+          )}
+          <Dialog open={showFinishConfirm} onOpenChange={(open) => {
+            if (isFinishing) return;
+            setShowFinishConfirm(open);
+            setFinishError(false);
+          }}>
+            <DialogTrigger className={`${playerButton} bg-red-700 text-white hover:bg-red-800`}>
+              <Check aria-hidden="true" className="size-4" /> Selesaikan Tryout
+            </DialogTrigger>
+            <DialogContent showCloseButton={false} overlayClassName="bg-black/45 supports-backdrop-filter:backdrop-blur-none">
+              <DialogHeader>
+                <DialogTitle>Selesaikan tryout?</DialogTitle>
+                <DialogDescription>
+                  {answered < questions.length && <>{questions.length - answered} soal belum dijawab. </>}
+                  Setelah tryout selesai, jawaban tidak bisa diubah.
+                </DialogDescription>
+              </DialogHeader>
+              {finishError && <p role="alert" className="text-sm text-red-700">Tryout belum berhasil diselesaikan. Coba lagi.</p>}
+              <DialogFooter>
+                <button type="button" className={`${playerButton} bg-slate-100 text-slate-700 hover:bg-slate-200`} onClick={() => {
+                  setShowFinishConfirm(false);
+                  setFinishError(false);
+                }} disabled={isFinishing}>
+                  Batal
+                </button>
+                <button type="button" className={`${playerButton} bg-red-700 text-white hover:bg-red-800`} onClick={finish} disabled={isFinishing}>
+                  {isFinishing ? "Menyelesaikan..." : "Ya, Selesaikan"}
+                </button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
-      </div>
-
-      {/* ── Mobile Question Grid Modal ── */}
-      <Modal
-        open={showMobileNav}
-        onClose={() => setShowMobileNav(false)}
-        title="Daftar Soal"
-        width="min(95vw, 520px)"
-      >
-        {/* Category summary */}
-        <div className="flex gap-2 mb-4">
-          {sections.map((sec) => {
-            const done = sec.indices.filter(
-              (i) => answers[i] !== undefined,
-            ).length;
-            return (
-              <div
-                key={sec.label}
-                className="flex-1 rounded-lg p-2 text-center"
-                style={{ background: `${sec.color}15` }}
-              >
-                <div className="text-xs font-bold" style={{ color: sec.color }}>
-                  {sec.label}
-                </div>
-                <div className="text-xs text-gray-600">
-                  {done}/{sec.indices.length}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <QuestionGrid
-          sections={sections}
-          answered={answered}
-          totalQuestions={questions.length}
-          answers={answers}
-          raguRagu={raguRagu}
-          cur={cur}
-          onSelect={handleSelectQuestion}
-          variant="modal"
-        />
-      </Modal>
+      </aside>
 
       {/* ── Simpan & Keluar — Confirmation Modal ── */}
       <Modal
@@ -982,7 +759,7 @@ export default function TryoutEngine({
             </Button>
             <Button
               variant="primary"
-              className="flex-1"
+              className="flex-1 bg-emerald-700 bg-none! shadow-none! hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
               onClick={handleConfirmExit}
               disabled={updateAnswers.isPending}
               data-testid="exit-confirm-button"

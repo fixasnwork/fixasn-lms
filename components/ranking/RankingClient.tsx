@@ -1,18 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Card, Button } from "@/components/ui";
+import GlobalRanking from "./GlobalRanking";
 import type { RankingEntry } from "@/lib/ranking";
 
 // ── types ────────────────────────────────────
 export type ScoreType = "total" | "twk" | "tiu" | "tkp";
 
 interface Props {
+	viewerUserId?: string;
 	all: RankingEntry[];
-	weekly: RankingEntry[];
-	monthly: RankingEntry[];
 }
 
 // ── helpers ──────────────────────────────────
@@ -36,104 +33,8 @@ export function getMetricScore(entry: RankingEntry, metric: ScoreType): number {
 }
 
 // ── component ────────────────────────────────
-export default function RankingClient({ all, weekly, monthly }: Props) {
-	const router = useRouter();
-	const [tab, setTab] = useState<"all" | "weekly" | "monthly">("all");
-	const [scoreType, setScoreType] = useState<ScoreType>("total");
-
-	const data = tab === "weekly" ? weekly : tab === "monthly" ? monthly : all;
-
-	// Re-sort by selected metric. useMemo so the sort only runs when
-	// data or scoreType change — not on every render.
-	const sortedData = useMemo(() => {
-		return [...data].sort(
-			(a, b) => getMetricScore(b, scoreType) - getMetricScore(a, scoreType),
-		);
-	}, [data, scoreType]);
-
-	const maxScore =
-		sortedData.length > 0 ? getMetricScore(sortedData[0], scoreType) : 350;
-
-	// ── empty state ────────────────────────────
-	if (data.length === 0) {
-		return (
-			<div>
-				<h2 className="font-black text-2xl text-brand mb-1">
-					🏅 Ranking Nasional
-				</h2>
-				<p className="text-gray-400 text-sm mb-5">
-					Bersaing dan pantau posisimu di ranking nasional
-				</p>
-
-				<TabBar tab={tab} setTab={setTab} />
-
-				<ScoreTypeBar scoreType={scoreType} setScoreType={setScoreType} />
-
-				<Card className="p-12 text-center">
-					<div className="text-5xl mb-4">📭</div>
-					<h3 className="font-black text-lg text-brand mb-2">
-						Belum ada ranking
-					</h3>
-					<p className="text-gray-400 text-sm mb-6">
-						Belum ada yang mengerjakan tryout di periode ini. Jadilah yang
-						pertama!
-					</p>
-					<Button variant="gold" onClick={() => router.push("/tryout")}>
-						🚀 Mulai Tryout Sekarang
-					</Button>
-				</Card>
-			</div>
-		);
-	}
-
-	// ── data available ─────────────────────────
-	const top3 = sortedData.slice(0, 3);
-	const rest = sortedData; // all entries shown in table
-
-	return (
-		<div>
-			<h2 className="font-black text-2xl text-brand mb-1">
-				🏅 Ranking Nasional
-			</h2>
-			<p className="text-gray-400 text-sm mb-5">
-				Bersaing dan pantau posisimu di ranking nasional
-			</p>
-
-			<Podium top3={top3} maxScore={maxScore} metric={scoreType} />
-
-			<TabBar tab={tab} setTab={setTab} />
-
-			<ScoreTypeBar scoreType={scoreType} setScoreType={setScoreType} />
-
-			{/* Ranking table — shows all entries (rank 1+) */}
-			<Card className="p-0 overflow-hidden">
-				<div className="flex flex-col gap-0">
-					{rest.map((entry, i) => (
-						<RankingRow
-							key={entry.userId}
-							entry={entry}
-							rank={i + 1}
-							scoreType={scoreType}
-						/>
-					))}
-				</div>
-			</Card>
-
-			{/* CTA */}
-			<div className="mt-6 text-center">
-				<Card className="bg-gradient-to-br from-brand-dark to-brand-secondary text-white p-6">
-					<div className="text-3xl mb-2">💪</div>
-					<h3 className="font-black text-lg mb-1">Ingin masuk Top 3?</h3>
-					<p className="text-white/70 text-sm mb-3">
-						Rutin tryout dan naikkan skormu sekarang!
-					</p>
-					<Button variant="gold" onClick={() => router.push("/tryout")}>
-						🚀 Mulai Tryout Sekarang
-					</Button>
-				</Card>
-			</div>
-		</div>
-	);
+export default function RankingClient(props: Props) {
+	return <GlobalRanking {...props} />;
 }
 
 // ── Score-type bar (exported for re-use in TryoutRankingPanel) ──

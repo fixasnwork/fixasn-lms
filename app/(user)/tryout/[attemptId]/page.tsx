@@ -1,10 +1,11 @@
 "use client";
 
-import { use, useEffect } from "react";
+import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { calculateScoring } from "@/lib/scoring";
 import TryoutEngine from "@/components/tryout/TryoutEngine";
 import { Button } from "@/components/ui";
+import PageLoading from "@/components/ui/PageLoading";
 import { useAttempt, useUpdateAttempt } from "@/hooks/useTryoutQueries";
 import TryoutReviewMode from "@/components/tryout/TryoutReviewMode";
 
@@ -18,6 +19,7 @@ export default function TryoutAttemptPage({
 
 	const { data, isFetching, error } = useAttempt(attemptId);
 	const updateAttempt = useUpdateAttempt(attemptId);
+	const [finishingHere, setFinishingHere] = useState(false);
 
 	// ── Browser-close guard ──
 	// Only register while an in-progress attempt is mounted. The native
@@ -38,14 +40,9 @@ export default function TryoutAttemptPage({
 		return () => window.removeEventListener("beforeunload", handler);
 	}, [data]);
 
-	if (isFetching) {
+	if (isFetching && !data) {
 		return (
-			<div className="min-h-screen flex items-center justify-center">
-				<div className="flex items-center gap-2 text-gray-400 text-sm">
-					<span className="inline-block w-5 h-5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
-					Memuat tryout...
-				</div>
-			</div>
+			<PageLoading label="Memuat tryout..." />
 		);
 	}
 
@@ -74,7 +71,7 @@ export default function TryoutAttemptPage({
 	const isCompleted = !!attempt.finishedAt;
 
 	// If completed, show review mode
-	if (isCompleted) {
+	if (isCompleted && !finishingHere) {
 		return (
 			<TryoutReviewMode
 				questions={tryout.questions}
@@ -85,11 +82,7 @@ export default function TryoutAttemptPage({
 					twk: attempt.twkScore,
 					tiu: attempt.tiuScore,
 					tkp: attempt.tkpScore,
-				}}
-				tryoutId={tryout.id}
-				attemptId={attempt.id}
-				viewerUserId={attempt.userId}
-				onBack={() => router.push("/tryout")}
+				}}				onBack={() => router.push("/tryout")}
 				onRetry={async () => {
 					// Create new attempt for the same tryout
 					try {
@@ -128,6 +121,7 @@ export default function TryoutAttemptPage({
 			// already flushed answers + timer + flags before invoking onExit.
 			onExit={() => router.push("/tryout")}
 			onFinish={async (answers: Record<number, number>) => {
+				setFinishingHere(true);
 				try {
 					const scores = calculateScoring(tryout.questions, answers);
 					await updateAttempt.mutateAsync({
@@ -137,8 +131,10 @@ export default function TryoutAttemptPage({
 						totalScore: scores.total,
 						answers,
 					});
+					router.replace(`/tryout/${attemptId}/hasil`);
 				} catch (err) {
-					alert(err instanceof Error ? err.message : "Gagal menyimpan hasil");
+					setFinishingHere(false);
+					throw err;
 				}
 			}}
 			onBack={() => router.push("/tryout")}

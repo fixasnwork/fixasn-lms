@@ -1,19 +1,21 @@
 // ─────────────────────────────────────────────
 // Ranking Page — Server Component
-// Fetches ranking data (all / weekly / monthly) and passes to client shell.
+// Fetches all-time ranking data and passes to client shell.
 // ─────────────────────────────────────────────
 import { getRankingData } from '@/lib/ranking';
-import { getStartOfWeek, getStartOfMonth } from '@/lib/utils';
 import RankingClient from '@/components/ranking/RankingClient';
+import { auth } from '@/auth';
+import prisma from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic'; // always fresh data
 
 export default async function RankingPage() {
-  const [all, weekly, monthly] = await Promise.all([
+  const [all, viewer] = await Promise.all([
     getRankingData(),
-    getRankingData(getStartOfWeek()),
-    getRankingData(getStartOfMonth()),
+    auth().then((session) => session?.user?.email
+      ? prisma.user.findUnique({ where: { email: session.user.email }, select: { id: true } })
+      : null),
   ]);
 
-  return <RankingClient all={all} weekly={weekly} monthly={monthly} />;
+  return <RankingClient all={all} viewerUserId={viewer?.id} />;
 }

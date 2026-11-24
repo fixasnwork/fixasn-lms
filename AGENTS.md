@@ -247,6 +247,13 @@ Playwright e2e specs exist in `e2e/` (`admin-responsive.spec.ts`, `tryout-perfor
 - Build artifacts: do not edit `.next/`, `next-env.d.ts`, `node_modules/`, coverage output, or generated Prisma client.
 - Docker uses Node 26 Alpine, standalone Next output, `npx prisma generate`, then `npm run build`. Build args must include `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_APP_URL`, `DATABASE_URL`, `SUPABASE_SECRET_KEY`.
 
+## User dashboard UI rules
+
+- Use a clean design for the user dashboard revamp, with `bg-background` from `app/globals.css`, matching the landing page.
+- Use white card surfaces on the gray page background. Distinguish components through background color, spacing, and rounded corners; do not add decorative borders or shadows, including on hover.
+- Use soft background fills for secondary actions instead of outline borders. Preserve visible keyboard focus and clear interactive states.
+- Keep shared dashboard surface rules in `app/globals.css`, scoped to `[data-ui="user-dashboard"]`. Shared `Card` and `Button` components expose `data-ui` attributes for these rules.
+
 ## Implementation Guidelines
 
 - Read relevant files first; avoid broad rewrites.
