@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, BatteryCharging, CirclePlay, ClipboardList, Clock3, LogOut, NotebookPen, RotateCcw, ShieldCheck, VolumeX, Wifi } from "lucide-react";
 import type { Question } from "@/lib/types";
 import { getScore, formatTime } from "@/lib/scoring";
 import { Logo, Button, Badge, Card, Modal } from "@/components/ui";
@@ -15,6 +16,15 @@ import {
 import { useAutosaveAnswers } from "@/hooks/useAutosaveAnswers";
 import { useNavGuardStore } from "@/store/useNavGuardStore";
 import PembahasanNavigator from "./PembahasanNavigator";
+
+const preparationTips = [
+  { Icon: NotebookPen, label: "Sediakan kertas coretan", color: "bg-blue-50 text-blue-700" },
+  { Icon: VolumeX, label: "Cari tempat yang tenang", color: "bg-violet-50 text-violet-700" },
+  { Icon: ShieldCheck, label: "Kerjakan dengan jujur", color: "bg-teal-50 text-teal-700" },
+  { Icon: Wifi, label: "Pastikan koneksi stabil", color: "bg-cyan-50 text-cyan-700" },
+  { Icon: BatteryCharging, label: "Pastikan baterai cukup", color: "bg-amber-50 text-amber-700" },
+  { Icon: LogOut, label: "Gunakan Simpan & Keluar saat jeda", color: "bg-rose-50 text-rose-700" },
+];
 
 // ── Types ──
 interface Section {
@@ -221,6 +231,7 @@ export default function TryoutEngine({
     Math.max(0, Math.min(DURATION, initialTimeLeftSeconds ?? DURATION)),
   );
   const [phase, setPhase] = useState<"ready" | "running" | "result">("ready");
+  const [showSavedTime, setShowSavedTime] = useState(initialTimeLeftSeconds != null);
   const [startError, setStartError] = useState(false);
   const hasSavedStart = useRef(initialTimeLeftSeconds != null);
   const startPending = useRef(false);
@@ -392,6 +403,7 @@ export default function TryoutEngine({
     setAnswers({});
     setCur(0);
     setTimeLeft(DURATION);
+    setShowSavedTime(false);
     if (timerRef.current) clearInterval(timerRef.current);
     setPhase("ready");
   };
@@ -404,48 +416,45 @@ export default function TryoutEngine({
   // ── PHASE: READY ──
   if (phase === "ready") {
     const durMenit = Math.round(DURATION / 60);
-    const tips = [
-      { icon: "📝", label: "Sediakan kertas coretan" },
-      { icon: "🔇", label: "Cari tempat yang tenang" },
-      { icon: "🤝", label: "Kerjakan dengan jujur" },
-      { icon: "📶", label: "Pastikan koneksi stabil" },
-      { icon: "🔋", label: "Baterai cukup" },
-      { icon: "🚫", label: "Jangan keluar / pindah tab" },
-    ];
+    const answeredCount = questions.filter((_, index) => answers[index] >= 0).length;
+    const isResume = showSavedTime || answeredCount > 0;
+    const ActionIcon = isResume ? RotateCcw : CirclePlay;
+    const actionColor = isResume
+      ? "bg-amber-300 text-amber-950! hover:bg-amber-400 focus-visible:outline-amber-700"
+      : "bg-brand text-white hover:bg-brand-dark focus-visible:outline-brand";
 
     return (
       <div className="min-h-screen bg-[#F8FAFF] flex items-center justify-center p-4 sm:p-6">
         <Card className="max-w-xl w-full p-6 sm:p-8 lg:p-10 text-center">
-          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-brand to-brand-secondary flex items-center justify-center text-2xl sm:text-3xl mx-auto mb-4 sm:mb-5">
-            📋
+          <div className={`mx-auto mb-4 flex size-14 items-center justify-center rounded-full sm:mb-5 sm:size-16 ${isResume ? "bg-amber-100 text-amber-800" : "bg-blue-50 text-brand"}`}>
+            <ClipboardList aria-hidden="true" className="size-7 sm:size-8" />
           </div>
           <h2 className="font-black text-xl sm:text-2xl text-brand mb-1 sm:mb-1.5">
             {setName}
           </h2>
           <p className="text-gray-500 text-xs sm:text-sm mb-2 sm:mb-3">
-            {isTrial
-              ? "Trial · 10 soal · 15 menit"
-              : `110 soal · ${durMenit} menit · TWK + TIU + TKP`}
+            {isTrial && "Trial · "}{questions.length} soal · {durMenit} menit
           </p>
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 sm:p-3 mb-4 sm:mb-6 inline-block">
-            <span className="font-bold text-amber-800 text-xs sm:text-sm">
-              ⏱ Ujian berlangsung selama{" "}
-              <strong className="text-amber-900">{durMenit} menit</strong>
-              .&nbsp; Pastikan kamu siap!
-            </span>
+          <div className={`mb-4 inline-flex items-center gap-2 rounded-xl p-2.5 text-xs font-semibold sm:mb-6 sm:p-3 sm:text-sm ${isResume ? "bg-amber-50 text-amber-900" : "bg-blue-50 text-brand"}`}>
+            <Clock3 aria-hidden="true" className="size-4 shrink-0" />
+            {isResume ? (
+              <span>{showSavedTime && <>Sisa waktu <strong>{formatTime(timeLeft)}</strong> · </>}{answeredCount} dari {questions.length} soal terjawab</span>
+            ) : (
+              <span>Ujian berlangsung selama <strong>{durMenit} menit</strong>. Pastikan kamu siap!</span>
+            )}
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
-            {tips.map((t, i) => (
+            {preparationTips.map(({ Icon, label, color }) => (
               <div
-                key={i}
+                key={label}
                 className="flex flex-col items-center gap-1.5 sm:gap-2"
               >
-                <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-brand flex items-center justify-center text-xl sm:text-2xl">
-                  {t.icon}
+                <div className={`flex size-11 items-center justify-center rounded-full sm:size-13 ${color}`}>
+                  <Icon aria-hidden="true" className="size-5" />
                 </div>
                 <span className="text-[11px] sm:text-xs font-semibold text-gray-700 text-center leading-tight">
-                  {t.label}
+                  {label}
                 </span>
               </div>
             ))}
@@ -453,16 +462,20 @@ export default function TryoutEngine({
 
           {startError && <p role="alert" className="mb-3 text-sm text-red-700">Tryout belum bisa dimulai. Coba lagi.</p>}
           <div className="flex flex-col sm:flex-row gap-3">
-            <Button variant="outline" className="flex-1" onClick={onBack} disabled={updateAnswers.isPending}>
-              Batalkan
-            </Button>
+            {onBack && (
+              <Button variant="outline" className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 bg-brand/5! hover:bg-brand/10! focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand" onClick={onBack} disabled={updateAnswers.isPending}>
+                <ArrowLeft aria-hidden="true" className="size-4" />
+                Kembali
+              </Button>
+            )}
             <Button
               variant="primary"
-              className="flex-[2]"
+              className={`inline-flex min-h-11 flex-[2] items-center justify-center gap-2 bg-none! shadow-none! focus-visible:outline-2 focus-visible:outline-offset-2 ${actionColor}`}
               onClick={startTryout}
               disabled={updateAnswers.isPending}
             >
-              {updateAnswers.isPending ? "Memulai..." : "Mulai Tryout"}
+              <ActionIcon aria-hidden="true" className="size-4" />
+              {updateAnswers.isPending ? "Membuka..." : isResume ? "Lanjutkan Tryout" : "Mulai Tryout"}
             </Button>
           </div>
         </Card>

@@ -98,10 +98,8 @@ describe('TryoutEngine — Simpan & Keluar (save-and-exit)', () => {
       { wrapper },
     );
 
-    // The seeded timer is observable only after Mulai Tryout transitions
-    // the engine into the running phase, where the header renders
-    // formatTime(timeLeft). formatTime(1234) = "20:34".
-    fireEvent.click(screen.getByText(/Mulai Tryout/));
+    expect(screen.getByText("20:34")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Lanjutkan Tryout" }));
     expect(screen.getAllByText(/20:34/).length).toBeGreaterThanOrEqual(1);
   });
 
@@ -117,7 +115,8 @@ describe('TryoutEngine — Simpan & Keluar (save-and-exit)', () => {
       { wrapper },
     );
 
-    expect(screen.queryByText(/Simpan & Keluar/)).not.toBeInTheDocument();
+    expect(screen.getByText("2 soal · 15 menit")).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Simpan & Keluar/ })).not.toBeInTheDocument();
     expect(mockUpdateAnswersMutateAsync).not.toHaveBeenCalled();
   });
 
@@ -133,7 +132,7 @@ describe('TryoutEngine — Simpan & Keluar (save-and-exit)', () => {
       { wrapper },
     );
 
-    await act(async () => { fireEvent.click(screen.getByText(/Mulai Tryout/)); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Mulai Tryout' })); });
     expect(mockUpdateAnswersMutateAsync).toHaveBeenCalledWith({ answers: {}, timeLeftSeconds: 900 });
     // The Button primitive doesn't forward arbitrary props like data-testid,
     // so we locate the Simpan & Keluar button by its visible text instead.
@@ -147,10 +146,10 @@ describe('TryoutEngine — Simpan & Keluar (save-and-exit)', () => {
       { wrapper: makeWrapper() },
     );
 
-    await act(async () => { fireEvent.click(screen.getByText(/Mulai Tryout/)); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Mulai Tryout' })); });
 
     expect(screen.getByRole('alert')).toHaveTextContent('Tryout belum bisa dimulai');
-    expect(screen.queryByText(/Simpan & Keluar/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Simpan & Keluar/ })).not.toBeInTheDocument();
   });
 
   it('clicking the button opens the modal; clicking Batal closes it without calling onExit', () => {
@@ -168,7 +167,7 @@ describe('TryoutEngine — Simpan & Keluar (save-and-exit)', () => {
       { wrapper },
     );
 
-    fireEvent.click(screen.getByText(/Mulai Tryout/));
+    fireEvent.click(screen.getByRole('button', { name: 'Lanjutkan Tryout' }));
     fireEvent.click(getSimpanButton()!);
 
     // Modal renders: title + answered count + time-left + Batal + confirm.
@@ -201,7 +200,7 @@ describe('TryoutEngine — Simpan & Keluar (save-and-exit)', () => {
     );
 
     // Start the engine, then select an option to populate `answers`.
-    fireEvent.click(screen.getByText(/Mulai Tryout/));
+    fireEvent.click(screen.getByRole('button', { name: 'Lanjutkan Tryout' }));
     // The option button label is the option letter inside a span; pick the
     // first matching button to disambiguate from any duplicate option text.
     const optionA = screen.getAllByText('A')[0].closest('button') as HTMLButtonElement;
@@ -249,7 +248,7 @@ describe('TryoutEngine — Simpan & Keluar (save-and-exit)', () => {
       { wrapper },
     );
 
-    fireEvent.click(screen.getByText(/Mulai Tryout/));
+    fireEvent.click(screen.getByRole('button', { name: 'Lanjutkan Tryout' }));
     fireEvent.click(getSimpanButton()!);
 
     await act(async () => {
