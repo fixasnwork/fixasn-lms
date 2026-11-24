@@ -3,42 +3,45 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, BadgeCheck, BookOpen, ChartColumnIncreasing, ClipboardList, Package, Star, Trophy, Video } from "lucide-react";
+import { ArrowRight, BadgeCheck, BookOpen, Package, Star, Trophy, Users } from "lucide-react";
 import { Button } from "@/components/shadcn/button";
 import type { LogoConfig } from "@/lib/types";
 
-const FEATURES = [
-  { icon: ClipboardList, title: "Tryout SKD Real-Time", desc: "110 soal · 100 menit · TWK, TIU, TKP" },
-  { icon: Trophy, title: "Ranking Nasional Live", desc: "Bersaing dan pantau posisimu real-time" },
-  { icon: Video, title: "Video + Modul Download", desc: "Materi lengkap TWK, TIU, TKP + PDF" },
-  { icon: ChartColumnIncreasing, title: "Pembahasan Lengkap", desc: "Pembahasan tiap soal setelah tryout selesai" },
-] as const;
+const STAT_ICONS = [Users, BadgeCheck, BookOpen] as const;
 
-const HERO_FALLBACK = "https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=700&q=85";
+const HERO_FALLBACK = "/hero1.png";
 
 export function HeroSection({ logoConfig }: { logoConfig: LogoConfig }) {
   const [errorUrl, setErrorUrl] = useState<string | null>(null);
   const imageUrl = logoConfig.heroImg || HERO_FALLBACK;
 
   return (
-    <section id="hero" aria-labelledby="hero-title" className="relative isolate overflow-hidden bg-linear-to-br from-brand-dark via-brand to-[#1e4da0] text-white">
-      <div aria-hidden="true" className="pointer-events-none absolute -right-40 -top-40 -z-10 size-[32rem] rounded-full bg-brand-secondary/20 blur-3xl" />
-      <div className="mx-auto w-full max-w-6xl px-5 pb-10 pt-28 sm:px-6 sm:pb-14 sm:pt-36">
-        <div className="grid items-center gap-12 pb-10 md:grid-cols-2 md:gap-10 lg:gap-16 lg:pb-14">
+    <section id="hero" aria-labelledby="hero-title" className="relative isolate overflow-hidden bg-white text-brand-dark">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10">
+        <div className="absolute inset-0 bg-linear-to-br from-white via-white to-blue-50/80" />
+        <div className="absolute -right-16 bottom-0 size-64 rounded-full bg-blue-50 md:-bottom-20 md:size-[28rem]" />
+        <div className="absolute -left-32 -top-40 size-96 rounded-full bg-sky-50/60 blur-3xl" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(27,58,107,0.035)_1px,transparent_1px),linear-gradient(to_bottom,rgba(27,58,107,0.035)_1px,transparent_1px)] bg-size-[32px_32px]" />
+      </div>
+      <div className="w-full px-5 pb-12 pt-28 sm:px-6 sm:pb-16 sm:pt-32 lg:px-12">
+        <div className="grid items-center gap-14 md:grid-cols-2 md:gap-10 lg:gap-16">
           <div className="flex min-w-0 flex-col items-start gap-6 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 motion-safe:duration-700">
-            <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-sm font-medium text-white/90">
-              <Trophy className="size-4 shrink-0 text-yellow-400" aria-hidden="true" />
+            <div className="inline-flex max-w-full items-center gap-2 rounded-md bg-brand/5 px-3 py-1.5 text-xs font-semibold tracking-wide text-brand sm:text-sm">
+              <Trophy className="size-4 shrink-0 text-amber-600" aria-hidden="true" />
               {logoConfig.promoBannerText || "Platform Tryout CPNS Terpercaya #1"}
             </div>
             <h1 id="hero-title" className="text-4xl font-bold leading-[1.12] tracking-tight sm:text-5xl lg:text-6xl">
-              {logoConfig.heroTitle1}<br />
-              <span className="text-yellow-400">{logoConfig.heroTitle2}</span><br />
+              <span className="relative isolate inline-block text-brand-secondary">
+                <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0.5 -z-10 h-[0.22em] -rotate-1 rounded-full bg-yellow-200/80" />
+                {logoConfig.heroTitle1}
+              </span><br />
+              {logoConfig.heroTitle2}<br />
               {logoConfig.heroTitle3}
             </h1>
-            <p className="max-w-lg text-base leading-relaxed text-white/80 sm:text-lg">{logoConfig.heroDesc}</p>
+            <p className="max-w-lg text-base leading-relaxed text-slate-600 sm:text-lg">{logoConfig.heroDesc}</p>
             <div className="grid w-full grid-cols-2 gap-3 sm:w-auto">
               <Button render={<Link href="/login?action=register" />} nativeButton={false} size="lg"
-                className="h-11 min-w-0 bg-white px-2 text-brand-dark hover:bg-white/90 sm:px-5">
+                className="h-11 min-w-0 bg-brand px-2 text-white hover:bg-brand-dark sm:px-5">
                 Daftar Sekarang <ArrowRight aria-hidden="true" />
               </Button>
               <Button render={<a href="#paket" />} nativeButton={false} size="lg"
@@ -46,51 +49,46 @@ export function HeroSection({ logoConfig }: { logoConfig: LogoConfig }) {
                 <Package aria-hidden="true" /> Lihat Paket
               </Button>
             </div>
-            <dl className="grid w-full grid-cols-3 gap-3 border-t border-white/15 pt-6 sm:gap-6">
+            <dl className="mt-2 grid w-full grid-cols-3 gap-2 sm:gap-3">
               {[
                 [logoConfig.stat1Val, logoConfig.stat1Label],
                 [logoConfig.stat2Val, logoConfig.stat2Label],
                 [logoConfig.stat3Val, logoConfig.stat3Label],
-              ].map(([value, label], index) => (
-                <div key={index} className="flex flex-col">
-                  <dt className="mt-1 text-sm text-white/65">{label}</dt>
-                  <dd className="-order-1 text-xl font-semibold tracking-tight text-white sm:text-2xl">{value}</dd>
-                </div>
-              ))}
+              ].map(([value, label], index) => {
+                const Icon = STAT_ICONS[index];
+                return (
+                  <div key={index} className="relative flex min-w-0 flex-col rounded-xl bg-white p-3 ring-1 ring-slate-100 sm:px-4 sm:py-5 xl:pl-14">
+                    <Icon aria-hidden="true" className="mb-2 size-7 rounded-lg bg-brand-secondary/5 p-1.5 text-brand-secondary xl:absolute xl:left-4 xl:top-5" />
+                    <dt className="order-2 mt-1 text-xs leading-relaxed text-slate-500">{label}</dt>
+                    <dd className="order-1 text-lg font-bold tracking-tight text-brand-dark sm:text-xl">{value}</dd>
+                  </div>
+                );
+              })}
             </dl>
           </div>
 
-          <div className="relative mx-2 min-w-0 sm:mx-3 md:mx-0 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 motion-safe:duration-1000">
-            <div className="relative aspect-video overflow-hidden rounded-xl border border-white/20 bg-brand-dark/30 shadow-2xl shadow-black/15">
+          <div className="relative isolate mx-auto w-full max-w-sm min-w-0 px-5 pb-8 pt-4 sm:max-w-md sm:px-8 lg:max-w-lg motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 motion-safe:duration-1000">
+            <div aria-hidden="true" className="pointer-events-none absolute inset-x-10 bottom-10 -z-10 aspect-square rounded-full bg-blue-100/70 sm:inset-x-12" />
+            <div aria-hidden="true" className="pointer-events-none absolute left-4 top-[18%] -z-10 size-16 -rotate-[25deg] rounded-xl border-2 border-yellow-400/80 sm:size-24" />
+            <div aria-hidden="true" className="pointer-events-none absolute right-3 top-[26%] -z-10 size-20 rotate-[35deg] rounded-2xl border-2 border-brand-secondary/50 sm:size-28" />
+            <div aria-hidden="true" className="pointer-events-none absolute left-[12%] top-0 size-4 rounded-full bg-yellow-400" />
+            <div className="relative aspect-square">
               <Image src={errorUrl === imageUrl ? HERO_FALLBACK : imageUrl}
                 alt={logoConfig.heroCaption || "Persiapan CPNS bersama FIX ASN"} fill
-                sizes="(max-width: 767px) calc(100vw - 56px), (max-width: 1152px) 45vw, 520px"
-                className="object-cover" loading="eager" fetchPriority="high" onError={() => setErrorUrl(imageUrl)} />
-              <div className="absolute inset-0 bg-linear-to-t from-brand-dark/95 via-brand-dark/10 to-transparent" />
-              <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
-                <p className="text-base font-semibold text-white">{logoConfig.heroCaption}</p>
-                <p className="mt-1 text-sm leading-relaxed text-white/75">{logoConfig.heroSubCaption}</p>
-              </div>
+                sizes="(max-width: 639px) min(344px, calc(100vw - 80px)), (max-width: 767px) 384px, (max-width: 1023px) min(384px, calc(50vw - 108px)), min(448px, calc(50vw - 144px))"
+                className="object-contain" loading="eager" fetchPriority="high" onError={() => setErrorUrl(imageUrl)} />
             </div>
-            <Star aria-hidden="true" className="absolute -left-4 -top-5 hidden size-11 -rotate-12 rounded-xl border border-white/20 bg-white/15 p-2.5 text-yellow-300 backdrop-blur-md sm:block" />
-            <BadgeCheck aria-hidden="true" className="absolute -right-5 top-1/3 hidden size-11 rotate-12 rounded-xl border border-white/20 bg-white/15 p-2.5 text-white backdrop-blur-md sm:block" />
-            <BookOpen aria-hidden="true" className="absolute -bottom-5 -left-4 hidden size-11 -rotate-6 rounded-xl border border-white/20 bg-white/15 p-2.5 text-white backdrop-blur-md sm:block" />
+            {/* <div className="relative mt-5 text-center">
+              <p className="text-base font-semibold text-brand-dark">{logoConfig.heroCaption}</p>
+              <p className="mt-1 text-sm leading-relaxed text-slate-600">{logoConfig.heroSubCaption}</p>
+            </div> */}
+            <Star aria-hidden="true" className="pointer-events-none absolute -left-1 bottom-[18%] size-12 -rotate-12 fill-yellow-400 text-yellow-400 sm:size-16" />
+            <Star aria-hidden="true" className="pointer-events-none absolute right-1 top-2 size-7 rotate-12 fill-brand-secondary text-brand-secondary sm:size-9" />
+            <div aria-hidden="true" className="pointer-events-none absolute bottom-5 right-3 rounded-2xl bg-white p-3 text-brand sm:right-5 sm:p-4">
+              <BookOpen className="size-6 sm:size-8" />
+            </div>
           </div>
         </div>
-
-        {/* <div className="grid grid-cols-1 gap-6 border-t border-white/15 pt-7 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
-          {FEATURES.map(({ icon: Icon, title, desc }) => (
-            <div key={title} className="flex items-start gap-3">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-white/15 bg-white/5">
-                <Icon className="size-4 text-white/85" aria-hidden="true" />
-              </div>
-              <div>
-                <h2 className="text-sm font-semibold text-white">{title}</h2>
-                <p className="mt-1 text-sm leading-relaxed text-white/65">{desc}</p>
-              </div>
-            </div>
-          ))}
-        </div> */}
       </div>
     </section>
   );
