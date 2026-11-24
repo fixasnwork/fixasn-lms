@@ -30,6 +30,8 @@ function mapOption(opt: {
 function mapQuestion(q: {
   id: number;
   category: string;
+  topicId?: number | null;
+  topic?: { name: string } | null;
   question: string;
   questionImage: string | null;
   correctAnswer: number | null;
@@ -49,6 +51,8 @@ function mapQuestion(q: {
   return {
     id: q.id,
     category: q.category as Question['category'],
+    topicId: q.topicId ?? null,
+    topicName: q.topic?.name ?? null,
     question: q.question,
     correctAnswer: q.correctAnswer,
     questionImage: q.questionImage,
@@ -83,6 +87,7 @@ export async function GET(
             include: {
               question: {
                 include: {
+                  topic: { select: { name: true } },
                   options: { orderBy: { optionIndex: 'asc' } },
                 },
               },

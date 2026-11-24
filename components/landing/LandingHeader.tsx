@@ -57,10 +57,10 @@ export function LandingHeader({ logoConfig }: { logoConfig: LogoConfig }) {
   }, []);
 
   return (
-    <header className="fixed inset-x-0 top-3 z-50 px-3 sm:px-6">
+    <header className="fixed inset-x-0 top-0 z-50">
       <nav aria-label="Navigasi utama" className={cn(
-        "mx-auto flex max-w-6xl items-center justify-between gap-3 rounded-2xl border p-2 backdrop-blur-md backdrop-saturate-150 transition-colors duration-300 sm:px-3",
-        solid ? "border-border/70 bg-card/95 text-foreground shadow-sm" : "border-white/20 bg-white/10 text-white",
+        "flex w-full items-center justify-between gap-3 border-b px-5 py-3 backdrop-blur-md backdrop-saturate-150 transition-colors duration-300 sm:px-6 lg:px-12",
+        solid ? "border-border/70 bg-card/95 text-foreground shadow-sm" : "border-transparent bg-white/90 text-brand-dark",
       )}>
         <Link href="/" aria-label="FIX ASN — Beranda" className="shrink-0 rounded-lg bg-white px-2 py-1.5 focus-visible:outline-2 focus-visible:outline-offset-2">
           <Logo size="sm" cfg={logoConfig} />
@@ -75,10 +75,10 @@ export function LandingHeader({ logoConfig }: { logoConfig: LogoConfig }) {
               onBlur={() => setFocused(null)}
               className={cn(
                 "py-2 text-sm font-medium transition-colors",
-                solid ? "hover:text-brand focus-visible:text-brand" : "hover:text-yellow-400 focus-visible:text-yellow-400",
+                "hover:text-brand focus-visible:text-brand",
                 active === item.href || hovered === item.href || focused === item.href
-                  ? solid ? "text-brand" : "text-yellow-400"
-                  : solid ? "text-muted-foreground" : "text-white/80",
+                  ? "text-brand"
+                  : "text-muted-foreground",
               )}>
               <Highlight show={active === item.href || hovered === item.href || focused === item.href}
                 lineClassName="-bottom-1.5 h-1.5 text-yellow-400">
@@ -90,15 +90,15 @@ export function LandingHeader({ logoConfig }: { logoConfig: LogoConfig }) {
 
         <div className="flex items-center gap-1.5 sm:gap-2">
           <Button render={<Link href="/login" />} nativeButton={false} variant="ghost" size="sm"
-            className={cn("hidden sm:inline-flex", !solid && "text-white hover:bg-white/10 hover:text-white")}>
+            className="hidden text-brand-dark hover:bg-brand/5 hover:text-brand sm:inline-flex">
             Masuk
           </Button>
           <Button render={<Link href="/login?action=register" />} nativeButton={false} size="sm"
-            className={solid ? "bg-brand text-white hover:bg-brand-dark" : "bg-white text-brand-dark hover:bg-white/90"}>
+            className="bg-brand text-white hover:bg-brand-dark">
             Daftar <ArrowRight aria-hidden="true" />
           </Button>
           <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger render={<Button variant="ghost" size="icon" className={cn("lg:hidden", !solid && "text-white hover:bg-white/10 hover:text-white")} />}
+            <SheetTrigger render={<Button variant="ghost" size="icon" className="text-brand-dark hover:bg-brand/5 hover:text-brand lg:hidden" />}
               aria-label="Buka menu navigasi">
               <Menu aria-hidden="true" />
             </SheetTrigger>

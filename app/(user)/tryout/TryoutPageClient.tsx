@@ -16,6 +16,7 @@ import {
   usePackages,
   useTryouts,
   useUserPayments,
+  type AttemptHistoryEntry,
 } from "@/hooks/useTryoutQueries";
 import { isAvailable } from "@/lib/availability";
 import { hasPaymentAccess } from "@/lib/packageAccess";
@@ -66,14 +67,17 @@ export default function TryoutPageClient({ rankingPreview }: { rankingPreview: R
   }
 
   const latestAttempts = new Map<number, (typeof attempts)[number]>();
-  const bestScores = new Map<number, number>();
+  const bestAttempts = new Map<number, AttemptHistoryEntry>();
   const results = attempts.flatMap((attempt) => {
     const entry = accessibleTryouts.get(attempt.tryoutId);
     if (attempt.deletedAt || !entry) return [];
     if (!latestAttempts.has(attempt.tryoutId)) latestAttempts.set(attempt.tryoutId, attempt);
     if (!attempt.finishedAt) return [];
-    const best = bestScores.get(attempt.tryoutId);
-    bestScores.set(attempt.tryoutId, best === undefined ? attempt.totalScore : Math.max(best, attempt.totalScore));
+    const best = bestAttempts.get(attempt.tryoutId);
+    if (!best || attempt.totalScore > best.totalScore ||
+      (attempt.totalScore === best.totalScore && Date.parse(attempt.finishedAt) < Date.parse(best.finishedAt ?? best.createdAt))) {
+      bestAttempts.set(attempt.tryoutId, attempt);
+    }
     return [{ ...entry, attempt, finishedAt: attempt.finishedAt }];
   }).sort((a, b) => Date.parse(b.finishedAt) - Date.parse(a.finishedAt));
 
@@ -96,10 +100,13 @@ export default function TryoutPageClient({ rankingPreview }: { rankingPreview: R
 
   function renderTryout(tryout: Tryout, packageName?: string, answeredCount?: number) {
     const questionCount = tryout._questionCount ?? tryout.questions.length;
-    const score = bestScores.get(tryout.id);
+    const bestAttempt = bestAttempts.get(tryout.id);
+    const score = bestAttempt?.totalScore;
     const action = answeredCount !== undefined ? "Lanjutkan" : score !== undefined ? "Ulangi" : "Mulai";
     const actionColor = answeredCount !== undefined
       ? "bg-amber-300 text-amber-950 hover:bg-amber-400 focus-visible:outline-amber-700"
+      : action === "Ulangi"
+        ? "bg-yellow-400 text-yellow-950 hover:bg-yellow-300 focus-visible:outline-yellow-700"
       : "bg-brand text-white hover:bg-brand-dark focus-visible:outline-brand";
     const isCurrent = createOrResume.variables === tryout.id;
     const isOpening = isCurrent && createOrResume.isPending;
@@ -124,8 +131,15 @@ export default function TryoutPageClient({ rankingPreview }: { rankingPreview: R
                 </div>
               </>
             )}
-            {answeredCount === undefined && score !== undefined && (
-              <p className="mt-2 text-xs font-semibold text-brand">Skor terbaik {score}</p>
+            {answeredCount === undefined && bestAttempt && (
+              <div className="mt-2">
+                <p className="text-xs font-semibold text-brand">Skor terbaik {bestAttempt.totalScore}</p>
+                <dl aria-label={`Nilai kategori skor terbaik ${tryout.name}`} className="mt-2 flex flex-wrap gap-2 text-xs">
+                  <div className="flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1.5 text-blue-800"><dt>TWK</dt><dd className="font-bold tabular-nums">{bestAttempt.twkScore}</dd></div>
+                  <div className="flex items-center gap-1.5 rounded-lg bg-violet-50 px-2.5 py-1.5 text-violet-800"><dt>TIU</dt><dd className="font-bold tabular-nums">{bestAttempt.tiuScore}</dd></div>
+                  <div className="flex items-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 text-amber-800"><dt>TKP</dt><dd className="font-bold tabular-nums">{bestAttempt.tkpScore}</dd></div>
+                </dl>
+              </div>
             )}
             {isCurrent && createOrResume.isError && (
               <p role="alert" className="mt-2 text-xs text-red-700">Tryout belum bisa dibuka. Coba lagi atau muat ulang halaman.</p>

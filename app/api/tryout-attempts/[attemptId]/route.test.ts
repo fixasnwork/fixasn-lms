@@ -101,6 +101,29 @@ describe('GET /api/tryout-attempts/[attemptId] — Ragu-ragu flag', () => {
     expect(data.attempt.raguRagu).toEqual({ 0: true, 1: false, 2: true });
   });
 
+  it('returns topic names with attempt questions and null for unassigned questions', async () => {
+    const attempt = makeAttemptWithAnswers([]);
+    const question = {
+      id: 1, category: 'TWK', topicId: 5, topic: { name: 'Pancasila' }, question: 'Test',
+      questionImage: null, correctAnswer: 0, explanation: null, explanationImage: null,
+      options: [], createdAt: new Date(), updatedAt: new Date(),
+    };
+    mockFindUnique.mockResolvedValue({ ...attempt, tryout: {
+      ...attempt.tryout, tryoutQuestions: [
+        { sortOrder: 0, question },
+        { sortOrder: 1, question: { ...question, id: 2, topicId: null, topic: null } },
+      ],
+    } });
+    const response = await GET(makeGetReq(), { params: makeParams('att-1') });
+    const data = await response.json();
+    expect(response.status).toBe(200);
+    expect(data.tryout.questions[0]).toMatchObject({ topicId: 5, topicName: 'Pancasila' });
+    expect(data.tryout.questions[1]).toMatchObject({ topicId: null, topicName: null });
+    expect(mockFindUnique.mock.calls[0][0].where.userId).toBe(SESSION.user.email);
+    expect(mockFindUnique.mock.calls[0][0].include.tryout.include.tryoutQuestions.include.question.include.topic)
+      .toEqual({ select: { name: true } });
+  });
+
   it('returns empty raguRagu map when no answers exist', async () => {
     mockFindUnique.mockResolvedValue(makeAttemptWithAnswers([]));
     const res = await GET(makeGetReq(), { params: makeParams('att-1') });

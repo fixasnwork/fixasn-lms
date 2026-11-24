@@ -69,30 +69,34 @@ function Winners({ entries }: { entries: RankingEntry[] }) {
   );
 }
 
-function Participant({ entry, rank, metric, viewer = false }: {
-  entry: RankingEntry; rank: number; metric: Metric; viewer?: boolean;
+export function RankingParticipant({ entry, rank, metric, viewer = false, compact = false }: {
+  entry: RankingEntry; rank: number; metric: Metric; viewer?: boolean; compact?: boolean;
 }) {
   return (
-    <div className={`grid items-center gap-x-4 gap-y-5 rounded-2xl p-4 sm:p-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:gap-6 ${viewer ? "bg-blue-50/70" : "bg-white"}`}>
+    <div className={`grid items-center ${compact ? "gap-3 rounded-xl bg-slate-50/80 p-3" : `gap-x-4 gap-y-5 rounded-2xl p-4 sm:p-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:gap-6 ${viewer ? "bg-blue-50/70" : "bg-white"}`}`}>
       <div className="flex min-w-0 items-center gap-3">
-        <span aria-label={`Peringkat ${rank}`} className={`w-7 shrink-0 text-center text-sm font-extrabold tabular-nums ${viewer ? "text-brand-secondary" : "text-slate-400"}`}>{rank}</span>
+        <span aria-label={`Peringkat ${rank}`} className={`min-w-7 shrink-0 text-center text-sm font-extrabold tabular-nums ${viewer ? "text-brand-secondary" : "text-slate-400"}`}>{compact ? `#${rank}` : rank}</span>
         <Avatar key={`${entry.userId}-${entry.avatar}`} entry={entry} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <p className="truncate text-sm font-extrabold text-slate-900" title={entry.name}>{entry.name}</p>
+            <p className={`${compact ? "wrap-break-word" : "truncate"} text-sm font-extrabold text-slate-900`} title={entry.name}>{entry.name}</p>
             {viewer && <span className="shrink-0 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-brand-secondary">Kamu</span>}
           </div>
-          <p className="mt-1 truncate text-xs text-slate-400" title={entry.packages}>{entry.tryoutCount} tryout{entry.packages ? ` · ${entry.packages}` : ""}</p>
+          {compact ? (
+            <p className="mt-1 text-xs text-slate-500"><span>Total skor</span>: <strong className="font-bold tabular-nums text-brand">{number.format(entry.totalScore)}</strong></p>
+          ) : (
+            <p className="mt-1 truncate text-xs text-slate-400" title={entry.packages}>{entry.tryoutCount} tryout{entry.packages ? ` · ${entry.packages}` : ""}</p>
+          )}
         </div>
       </div>
-      <dl className="grid grid-cols-4 gap-2 rounded-xl bg-slate-50/80 px-3 py-3 lg:bg-transparent lg:p-0">
+      {!compact && <dl className="grid grid-cols-4 gap-2 rounded-xl bg-slate-50/80 px-3 py-3 lg:bg-transparent lg:p-0">
         {metrics.map(({ value, label }) => (
           <div key={value} className="text-center lg:text-left">
             <dt className={`text-[10px] sm:text-xs ${metric === value ? "font-semibold text-brand-secondary" : "text-slate-400"}`}>{label}</dt>
             <dd className={`mt-1.5 text-sm font-extrabold tabular-nums sm:text-base ${metric === value ? "text-brand" : "text-slate-700"}`}>{number.format(entry[value])}</dd>
           </div>
         ))}
-      </dl>
+      </dl>}
     </div>
   );
 }
@@ -141,7 +145,7 @@ export default function GlobalRanking({ all, viewerUserId }: Props) {
             <span className="text-xs text-slate-400">{entries.length} peserta ditampilkan · Maks. 100 besar</span>
           </div>
           <ol aria-label="Daftar peringkat peserta" className="space-y-2.5">
-            {entries.map((entry, index) => <li key={entry.userId}><Participant entry={entry} rank={index + 1} metric={metric} viewer={entry.userId === viewerUserId} /></li>)}
+            {entries.map((entry, index) => <li key={entry.userId}><RankingParticipant entry={entry} rank={index + 1} metric={metric} viewer={entry.userId === viewerUserId} /></li>)}
           </ol>
           <p className="px-1 pt-1 text-xs leading-relaxed text-slate-400">Skor merupakan akumulasi hasil terbaik dari setiap tryout sepanjang waktu.</p>
         </section>

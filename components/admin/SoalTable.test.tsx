@@ -58,6 +58,34 @@ const sampleQuestionWithImageOption: Question = {
 };
 
 describe('SoalTable', () => {
+  it('shows the assigned topic and legacy unassigned labels in both layouts', () => {
+    render(<SoalTable questions={[{ ...sampleQuestion, topicId: 1 }, sampleQuestionWithImageOption]}
+      topics={[{ id: 1, category: 'TWK', name: 'Pancasila' }]} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    for (const testId of ['soal-mobile-list', 'soal-desktop-table']) {
+      const view = within(screen.getByTestId(testId));
+      expect(view.getByText('Topik: Pancasila')).toBeInTheDocument();
+      expect(view.getByText('Topik: Belum ditentukan')).toBeInTheDocument();
+    }
+  });
+
+  it('distinguishes empty filter results from an empty question bank', () => {
+    render(<SoalTable questions={[]} isFiltered onEdit={vi.fn()} onDelete={vi.fn()} />);
+    expect(screen.getByText('Tidak ada soal yang sesuai dengan filter.')).toBeInTheDocument();
+  });
+
+  it.each(['TWK', 'TIU'] as const)('shows %s option weights alongside the answer key in both layouts', (category) => {
+    const question = { ...sampleQuestion, category, options: sampleQuestion.options.map((option, index) => ({
+      ...option, tkpValue: index === 0 ? 5 : 0,
+    })) };
+    render(<SoalTable questions={[question]} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    for (const testId of ['soal-mobile-list', 'soal-desktop-table']) {
+      const view = within(screen.getByTestId(testId));
+      expect(view.getByText('A=5')).toBeInTheDocument();
+      expect(view.getByText('B=0')).toBeInTheDocument();
+    }
+    expect(screen.getByText('Jawaban: A')).toBeInTheDocument();
+  });
+
   it('renders mobile list and desktop table containers', () => {
     render(<SoalTable questions={[sampleQuestion]} onEdit={vi.fn()} onDelete={vi.fn()} />);
 

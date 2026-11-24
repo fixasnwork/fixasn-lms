@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { requireAdmin } from '@/lib/adminAuth';
 import type { Question } from '@/lib/types';
+import { isValidOptionWeight } from '@/lib/questionWeights';
+import { validateQuestionTopic } from '@/lib/questionTopics';
 
 interface QuestionOptionInput {
   optionIndex?: number;
@@ -12,6 +14,7 @@ interface QuestionOptionInput {
 
 interface QuestionInput {
   category?: string;
+  topicId?: number | null;
   question?: string;
   questionImage?: string | null;
   correctAnswer?: number | null;
@@ -32,7 +35,7 @@ function normalizeOptions(body: QuestionInput): QuestionOptionInput[] {
       optionIndex: Number.isInteger(option.optionIndex) ? option.optionIndex : index,
       optionText: option.optionText?.trim() ? option.optionText : null,
       optionImage: option.optionImage || null,
-      tkpValue: body.category === 'TKP' ? option.tkpValue ?? null : null,
+      tkpValue: option.tkpValue ?? null,
     }))
     .filter((option) => option.optionText || option.optionImage);
 }
@@ -51,6 +54,10 @@ function validateQuestion(body: QuestionInput) {
     return 'At least two options are required';
   }
 
+  if (normalizeOptions(body).some((option) => option.tkpValue != null && !isValidOptionWeight(option.tkpValue))) {
+    return 'Bobot jawaban harus bilangan bulat antara 0 dan 2147483647';
+  }
+
   if (category !== 'TKP') {
     const correctAnswer = Number(body.correctAnswer);
     if (!Number.isInteger(correctAnswer) || correctAnswer < 0 || correctAnswer > 4) {
@@ -64,6 +71,7 @@ function validateQuestion(body: QuestionInput) {
 function mapQuestion(row: {
   id: number;
   category: string;
+  topicId?: number | null;
   question: string;
   questionImage: string | null;
   correctAnswer: number | null;
@@ -83,6 +91,7 @@ function mapQuestion(row: {
   return {
     id: row.id,
     category: row.category as Question['category'],
+    topicId: row.topicId ?? null,
     question: row.question,
     questionImage: row.questionImage,
     correctAnswer: row.correctAnswer,
@@ -176,6 +185,9 @@ export async function POST(
       return NextResponse.json({ error: validationError }, { status: 400 });
     }
 
+    const topicError = await validateQuestionTopic(body.topicId, body.category ?? 'TWK');
+    if (topicError) return NextResponse.json({ error: topicError }, { status: 400 });
+
     const tryout = await prisma.tryout.findUnique({
       where: { id: tryoutId, deletedAt: null },
       select: { id: true },
@@ -190,6 +202,7 @@ export async function POST(
       const created = await tx.question.create({
         data: {
           category: body.category ?? 'TWK',
+          topicId: body.topicId ?? null,
           question: body.question ?? '',
           questionImage: body.questionImage || null,
           correctAnswer: body.category === 'TKP' ? null : Number(body.correctAnswer),

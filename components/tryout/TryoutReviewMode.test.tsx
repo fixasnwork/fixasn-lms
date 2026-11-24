@@ -56,6 +56,23 @@ describe("TryoutReviewMode — review player", () => {
 		));
 	}
 
+	it.each(["Pancasila", null, undefined])("shows the question topic in review (%s)", (topicName) => {
+		renderReview([{ ...baseQuestion, topicId: topicName ? 1 : null, topicName }], { 0: 0 });
+		if (topicName) expect(screen.getByText(topicName)).toBeInTheDocument();
+		expect(screen.queryByText("Belum ditentukan")).toBeNull();
+		expect(screen.getAllByText("TWK").length).toBeGreaterThan(0);
+	});
+
+	it("updates the topic label when navigating between review questions", () => {
+		renderReview([
+			{ ...baseQuestion, topicId: 1, topicName: "Pancasila" },
+			{ ...baseQuestion, id: 2, topicId: 2, topicName: "UUD 1945" },
+		], { 0: 0, 1: 0 });
+		fireEvent.click(screen.getByRole("button", { name: /Selanjutnya/ }));
+		expect(screen.getByText("UUD 1945")).toBeInTheDocument();
+		expect(screen.queryByText("Pancasila")).toBeNull();
+	});
+
 	it("counts missing and negative answers as empty, separately from wrong answers and TKP", () => {
 		const questions = makeQuestions(5);
 		questions[4] = { ...questions[4], category: "TKP" };
@@ -89,6 +106,16 @@ describe("TryoutReviewMode — review player", () => {
 		expect(screen.getByText("Penilaian TKP")).toBeInTheDocument();
 		expect(screen.getAllByText("Jawaban terbaik")).toHaveLength(2);
 		expect(screen.getAllByText("5 poin")).toHaveLength(2);
+	});
+
+	it.each(["TWK", "TIU"] as const)("shows %s option weights while retaining correct-answer feedback", (category) => {
+		const question: Question = { ...baseQuestion, category, correctAnswer: 0,
+			options: baseQuestion.options.map((option, index) => ({ ...option, tkpValue: index === 0 ? 5 : 0 })) };
+		renderReview([question], { 0: 1 });
+		expect(screen.getByText("5 poin")).toBeInTheDocument();
+		expect(screen.getByText("0 poin")).toBeInTheDocument();
+		expect(screen.getByText("Jawaban benar")).toBeInTheDocument();
+		expect(screen.queryByText("Jawaban terbaik")).toBeNull();
 	});
 
 	it("handles an empty question set without crashing", () => {

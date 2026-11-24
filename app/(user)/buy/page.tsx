@@ -16,6 +16,9 @@ export default function BuyPage() {
   const pendingIds = new Set(payments.filter((payment) => payment.status === "pending").map((payment) => payment.packageId));
 
   const renderPackage = (pkg: Package) => {
+    if (pkg.isTrial) {
+      return <PackageCard pkg={pkg} actionHref="/tryout" />;
+    }
     if (activeIds.has(pkg.id)) {
       const videoOnly = pkg.includesVideoPembelajaran && (pkg.tryoutCount ?? 0) === 0;
       return <PackageCard pkg={pkg} actionLabel="Buka" actionTone="success" actionHref={videoOnly ? "/video" : "/tryout"} />;

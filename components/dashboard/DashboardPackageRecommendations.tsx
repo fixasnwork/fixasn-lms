@@ -17,7 +17,7 @@ export default function DashboardPackageRecommendations() {
   const isPending = !isError && (catalogQuery.isPending || paymentsQuery.isPending);
   const isFetching = catalogQuery.isFetching || paymentsQuery.isFetching;
   const availablePackages = (catalogQuery.data ?? []).filter((pkg) =>
-    !pkg.isTrial && isAvailable(pkg) && ((pkg.tryoutCount ?? 0) > 0 || !pkg.includesVideoPembelajaran),
+    isAvailable(pkg) && ((pkg.tryoutCount ?? 0) > 0 || !pkg.includesVideoPembelajaran),
   );
   const ownedOrPendingIds = new Set(
     (paymentsQuery.data ?? [])
@@ -26,7 +26,8 @@ export default function DashboardPackageRecommendations() {
   );
   // Wait for ownership data before showing any package recommendations.
   const recommendations = isPending || isError ? [] : availablePackages
-    .filter((pkg) => !ownedOrPendingIds.has(pkg.id))
+    .filter((pkg) => pkg.isTrial || !ownedOrPendingIds.has(pkg.id))
+    .sort((a, b) => Number(b.isTrial) - Number(a.isTrial))
     .slice(0, 3);
 
   const retry = () => {
@@ -65,7 +66,7 @@ export default function DashboardPackageRecommendations() {
       ) : recommendations.length > 0 ? (
         <div className="mt-5 grid gap-4 @min-[560px]:grid-cols-3">
           {recommendations.map((pkg) => (
-            <PackageCard key={pkg.id} pkg={pkg} actionHref={`/buy#paket-${pkg.id}`} actionLabel="Lihat Paket" />
+            <PackageCard key={pkg.id} pkg={pkg} actionHref={pkg.isTrial ? "/tryout" : `/buy#paket-${pkg.id}`} actionLabel={pkg.isTrial ? "Coba Gratis" : "Lihat Paket"} />
           ))}
         </div>
       ) : !isError && (

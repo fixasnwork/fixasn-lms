@@ -82,6 +82,7 @@ export async function GET(request: NextRequest) {
     const questions: Question[] = data.map((row) => ({
       id: row.id,
       category: row.category as Question['category'],
+      topicId: row.topicId ?? null,
       question: row.question,
       correctAnswer: row.correctAnswer ?? null,
       questionImage: row.questionImage ?? null,
@@ -182,6 +183,7 @@ export async function POST(request: NextRequest) {
     const question: Question = {
       id: createdQuestion.id,
       category: createdQuestion.category as Question['category'],
+      topicId: createdQuestion.topicId ?? null,
       question: createdQuestion.question,
       correctAnswer: createdQuestion.correctAnswer ?? null,
       questionImage: createdQuestion.questionImage ?? null,
@@ -268,6 +270,7 @@ export async function PUT(request: NextRequest) {
     const question: Question = {
       id: updatedQuestion.id,
       category: updatedQuestion.category as Question['category'],
+      topicId: updatedQuestion.topicId ?? null,
       question: updatedQuestion.question,
       correctAnswer: updatedQuestion.correctAnswer ?? null,
       questionImage: updatedQuestion.questionImage ?? null,
