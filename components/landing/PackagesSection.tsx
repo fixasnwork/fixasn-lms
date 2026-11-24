@@ -48,7 +48,8 @@ export function PackagesSection({ packages, isLoading = false, isError = false, 
   const [activeTab, setActiveTab] = useState("all");
   const reducedMotion = useReducedMotion();
   const columns = useSyncExternalStore(subscribeToGridWidth, getGridColumns, getServerGridColumns);
-  const available = packages.filter((pkg) => isPackageAvailable(pkg) && !pkg.isTrial);
+  const available = packages.filter((pkg) => isPackageAvailable(pkg))
+    .sort((a, b) => Number(b.isTrial) - Number(a.isTrial));
   const filtered = available.filter((pkg) => activeTab === "all" || (activeTab === "video" ? pkg.includesVideoPembelajaran : hasTryouts(pkg)));
   const shown = filtered;
 

@@ -1,0 +1,42 @@
+@property --trial-border-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.trialCard {
+  position: relative;
+}
+
+.trialCard::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 3px;
+  pointer-events: none;
+  background: linear-gradient(135deg, #86efac, #15803d);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+@keyframes trialBorderOrbit {
+  to {
+    --trial-border-angle: 360deg;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .trialCard::after {
+    background: conic-gradient(
+      from var(--trial-border-angle),
+      transparent 0deg 260deg,
+      #bbf7d0 290deg,
+      #22c55e 325deg,
+      #15803d 360deg
+    );
+    animation: trialBorderOrbit 2.5s linear infinite;
+  }
+}
