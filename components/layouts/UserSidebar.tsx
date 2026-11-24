@@ -152,7 +152,7 @@ export default function UserSidebar() {
         </SidebarFooter>
       </Sidebar>
 
-      <nav aria-label="Navigasi mobile" className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom,0px)+12px)] z-40 mx-auto max-w-md rounded-2xl border border-slate-200/80 bg-white/95 p-1.5 shadow-[0_8px_32px_-8px_rgba(12,30,69,0.25)] backdrop-blur-xl md:hidden">
+      <nav data-ui="user-mobile-nav" aria-label="Navigasi mobile" className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom,0px)+12px)] z-40 mx-auto max-w-md rounded-2xl border border-slate-200/80 bg-white/95 p-1.5 shadow-[0_8px_32px_-8px_rgba(12,30,69,0.25)] backdrop-blur-xl md:hidden">
         <div className="grid grid-cols-5 gap-0.5">
           {primaryNav.map(({ id, icon: Icon, label }) => (
             <button key={id} onClick={() => handleNav(id)} aria-label={label} aria-current={currentPage === id ? "page" : undefined} className={"flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand " + (currentPage === id ? "bg-primary text-primary-foreground" : "text-slate-400 hover:bg-slate-50 hover:text-slate-600")}>

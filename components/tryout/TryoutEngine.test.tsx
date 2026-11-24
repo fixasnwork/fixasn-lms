@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import TryoutEngine from './TryoutEngine';
@@ -14,7 +14,6 @@ const { mockUpdateAnswersMutate, mockUpdateAnswersMutateAsync, mockUpdateFlagsMu
 }));
 
 vi.mock('@/hooks/useTryoutQueries', () => ({
-  useLogoConfig: () => ({ data: null }),
   useUpdateAttemptAnswers: () => ({
     mutate: mockUpdateAnswersMutate,
     mutateAsync: mockUpdateAnswersMutateAsync,
@@ -25,13 +24,6 @@ vi.mock('@/hooks/useTryoutQueries', () => ({
     mutateAsync: mockUpdateFlagsMutateAsync,
   }),
   queueFlagUpdate: vi.fn(),
-}));
-
-// The engine renders <Logo> from useLogoConfig; mock it out so the test
-// doesn't depend on the Logo component's null-handling (which is the real
-// production concern, not the engine's).
-vi.mock('@/components/ui/Logo', () => ({
-  default: () => <div data-testid="mock-logo" />,
 }));
 
 const baseQuestion: Question = {
@@ -137,6 +129,63 @@ describe('TryoutEngine — Simpan & Keluar (save-and-exit)', () => {
     // The Button primitive doesn't forward arbitrary props like data-testid,
     // so we locate the Simpan & Keluar button by its visible text instead.
     expect(screen.getByText(/Simpan & Keluar/)).toBeInTheDocument();
+  });
+
+  it('keeps selected answers and flags when navigating between questions', () => {
+    render(
+      <TryoutEngine
+        attemptId="att-navigation"
+        questions={makeQuestions(2)}
+        durationMin={15}
+        initialTimeLeftSeconds={900}
+      />,
+      { wrapper: makeWrapper() },
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Lanjutkan Tryout' }));
+    fireEvent.click(screen.getByRole('button', { name: 'A A' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tandai Ragu-ragu' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Selanjutnya' }));
+    expect(screen.getByRole('heading', { name: 'Soal 2 dari 2' })).toBeInTheDocument();
+
+    const navigator = within(screen.getByRole('region', { name: 'Navigator Soal' }));
+    fireEvent.click(navigator.getByRole('button', { name: 'Soal 1, ditandai Ragu-ragu, sudah dijawab' }));
+
+    expect(screen.getByRole('button', { name: 'A A' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Batalkan Ragu-ragu' })).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Daftar Soal' }));
+    const drawer = screen.getByRole('dialog', { name: 'Daftar Soal' });
+    expect(drawer).toHaveAttribute('data-side', 'bottom');
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Soal 2' }));
+    expect(screen.getByRole('heading', { name: 'Soal 2 dari 2' })).toBeInTheDocument();
+  });
+
+  it('waits for confirmation before completing a tryout', async () => {
+    const onFinish = vi.fn();
+    render(
+      <TryoutEngine
+        attemptId="att-finish"
+        questions={makeQuestions(2)}
+        durationMin={15}
+        initialTimeLeftSeconds={900}
+        preloadedAnswers={{ 0: 0 }}
+        onFinish={onFinish}
+      />,
+      { wrapper: makeWrapper() },
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Lanjutkan Tryout' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Selesaikan Tryout' }));
+
+    const confirmation = within(screen.getByRole('dialog', { name: 'Selesaikan tryout?' }));
+    expect(confirmation.getByText(/1 soal belum dijawab/)).toBeInTheDocument();
+    expect(onFinish).not.toHaveBeenCalled();
+
+    await act(async () => {
+      fireEvent.click(confirmation.getByRole('button', { name: 'Ya, Selesaikan' }));
+    });
+    expect(onFinish).toHaveBeenCalledExactlyOnceWith({ 0: 0 });
   });
 
   it('keeps the preparation screen open if the initial timer cannot be saved', async () => {

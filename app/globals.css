@@ -130,6 +130,20 @@ html, body {
   overflow-x: hidden;
 }
 
+body:has([data-tryout-player]) {
+  overflow-x: clip;
+}
+
+@media (width < 48rem) {
+  [data-ui="user-dashboard"]:has([data-tryout-player]) [data-ui="user-mobile-nav"] {
+    display: none;
+  }
+
+  [data-ui="user-dashboard"] > main:has([data-tryout-player]) {
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 img {
   max-width: 100%;
 }
