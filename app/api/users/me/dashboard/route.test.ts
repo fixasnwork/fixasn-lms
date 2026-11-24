@@ -44,11 +44,12 @@ function attempt(
   finishedAt: Date | null,
   createdAt: Date,
   scores: { twkScore?: number; tiuScore?: number; tkpScore?: number } = {},
-  progress: { answeredCount?: number; isTrial?: boolean } = {},
+  progress: { answeredCount?: number; isTrial?: boolean; timeLeftSeconds?: number } = {},
 ) {
   return {
     tryoutId,
     finishedAt,
+    timeLeftSeconds: progress.timeLeftSeconds ?? null,
     createdAt,
     twkScore: scores.twkScore ?? 0,
     tiuScore: scores.tiuScore ?? 0,
@@ -119,20 +120,21 @@ describe('GET /api/users/me/dashboard', () => {
     });
   });
 
-  it('counts in-progress tryouts as remaining (matches the tryout page resumable count)', async () => {
+  it('counts a started tryout with zero answers and skips a draft that never started', async () => {
     mocks.mockAuth.mockResolvedValue(SESSION);
     mocks.mockPaymentFindMany.mockResolvedValue([
       payment({ startDate: new Date('2025-01-01'), endDate: new Date('2027-01-01') }, 1, 2),
     ]);
     mocks.mockAttemptFindMany.mockResolvedValue([
-      attempt(1, null, new Date('2025-02-01')),
+      attempt(1, null, new Date('2025-02-01'), {}, { timeLeftSeconds: 900 }),
       attempt(2, null, new Date('2025-02-02')),
     ]);
     mocks.mockGetUserRank.mockResolvedValue({ rank: 5, totalScore: 0, tryoutCount: 2 });
 
     const res = await GET(makeRequest());
     const data = await res.json();
-    expect(data.remainingTryouts).toBe(2);
+    expect(data.remainingTryouts).toBe(1);
+    expect(data.openTryouts.map(({ status }: { status: string }) => status)).toEqual(['in-progress', 'not-started']);
     expect(data.completedTryouts).toBe(0);
     expect(data.categoryScores).toEqual({ twk: 0, tiu: 0, tkp: 0 });
   });
@@ -159,7 +161,7 @@ describe('GET /api/users/me/dashboard', () => {
       payment({ startDate: new Date('2025-01-01'), endDate: new Date('2027-01-01') }, 1),
     ]);
     mocks.mockAttemptFindMany.mockResolvedValue([
-      attempt(1, null, new Date('2025-02-15')),
+      attempt(1, null, new Date('2025-02-15'), {}, { timeLeftSeconds: 900 }),
       attempt(1, new Date('2025-01-01'), new Date('2025-01-01'), { twkScore: 70, tiuScore: 60, tkpScore: 150 }),
     ]);
     mocks.mockGetUserRank.mockResolvedValue({ rank: 1, totalScore: 340, tryoutCount: 1 });
@@ -177,8 +179,8 @@ describe('GET /api/users/me/dashboard', () => {
       payment({ startDate: new Date('2025-01-01'), endDate: new Date('2027-01-01') }, 1),
     ]);
     mocks.mockAttemptFindMany.mockResolvedValue([
-      attempt(1, null, new Date('2025-02-10')),
-      attempt(1, null, new Date('2025-02-05')),
+      attempt(1, null, new Date('2025-02-10'), {}, { timeLeftSeconds: 900 }),
+      attempt(1, null, new Date('2025-02-05'), {}, { timeLeftSeconds: 800 }),
     ]);
     mocks.mockGetUserRank.mockResolvedValue({ rank: 1, totalScore: 0, tryoutCount: 1 });
 
@@ -206,7 +208,7 @@ describe('GET /api/users/me/dashboard', () => {
       attempt(6, null, newer),
       attempt(1, null, newer, {}, { answeredCount: 12 }),
       attempt(2, null, older),
-      attempt(4, null, older),
+      attempt(4, null, older, {}, { timeLeftSeconds: 900 }),
     ]);
 
     const response = await GET(makeRequest());

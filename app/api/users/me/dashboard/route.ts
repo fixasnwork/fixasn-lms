@@ -73,6 +73,7 @@ export async function GET(request: NextRequest) {
       select: {
         tryoutId: true,
         finishedAt: true,
+        timeLeftSeconds: true,
         twkScore: true,
         tiuScore: true,
         tkpScore: true,
@@ -110,9 +111,12 @@ export async function GET(request: NextRequest) {
   const latestAttempts = [...latestByTryout.values()];
   const resumableAttempts = latestAttempts.filter(
     (a) => a.finishedAt === null &&
+      (a.timeLeftSeconds != null || a._count.answers > 0) &&
       a.tryout.deletedAt === null &&
       (a.tryout.isTrial || paidTryoutIds.has(a.tryoutId)),
   );
+  const resumableIds = new Set(resumableAttempts.map(({ tryoutId }) => tryoutId));
+  const finishedIds = new Set(allAttempts.filter((attempt) => attempt.finishedAt !== null).map(({ tryoutId }) => tryoutId));
   const openById = new Map(activePaidTryouts.map((tryout) => [tryout.id, tryout]));
   for (const tryout of trialTryouts) {
     if (isAvailable(tryout, now)) openById.set(tryout.id, tryout);
@@ -122,7 +126,9 @@ export async function GET(request: NextRequest) {
     .map<DashboardOpenTryout>((tryout) => {
       const latest = latestByTryout.get(tryout.id);
       const questionCount = tryout._count.tryoutQuestions;
-      const status = latest ? (latest.finishedAt === null ? 'in-progress' : 'finished') : 'not-started';
+      const status = resumableIds.has(tryout.id)
+        ? 'in-progress'
+        : finishedIds.has(tryout.id) ? 'finished' : 'not-started';
       return {
         tryoutId: tryout.id,
         name: tryout.name,
@@ -160,9 +166,7 @@ export async function GET(request: NextRequest) {
 
   const summary: DashboardSummary = {
     remainingTryouts: resumableAttempts.length,
-    completedTryouts: latestAttempts.filter(
-      (a) => a.finishedAt !== null && activeTryoutIds.has(a.tryoutId),
-    ).length,
+    completedTryouts: [...finishedIds].filter((tryoutId) => activeTryoutIds.has(tryoutId) && !resumableIds.has(tryoutId)).length,
     openTryouts,
     rank: rankResult?.rank ?? null,
     totalScore: rankResult?.totalScore ?? 0,

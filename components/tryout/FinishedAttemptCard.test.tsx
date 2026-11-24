@@ -32,16 +32,16 @@ describe('FinishedAttemptCard', () => {
     expect(screen.getByText('320')).toBeInTheDocument();
   });
 
-  it('calls onView with attemptId when Lihat Pembahasan is clicked', () => {
+  it('calls onView with attemptId when Pembahasan is clicked', () => {
     const onView = vi.fn();
     render(<FinishedAttemptCard {...defaultProps} onView={onView} />);
-    fireEvent.click(screen.getByText('Lihat Pembahasan'));
+    fireEvent.click(screen.getByRole('button', { name: 'Pembahasan' }));
     expect(onView).toHaveBeenCalledWith('att-123');
   });
 
-  it('renders a single button with Lihat Pembahasan text', () => {
+  it('renders a single button with Pembahasan text', () => {
     render(<FinishedAttemptCard {...defaultProps} />);
-    expect(screen.getByText('Lihat Pembahasan')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Pembahasan' })).toBeInTheDocument();
   });
 
   it('renders full-width (w-full) card container', () => {

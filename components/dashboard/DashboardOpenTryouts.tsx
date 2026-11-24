@@ -26,6 +26,9 @@ export default function DashboardOpenTryouts({ tryouts }: { tryouts: DashboardOp
           const progress = questionCount ? (answeredCount / questionCount) * 100 : 0;
           const isWorking = createOrResume.isPending && createOrResume.variables === tryoutId;
           const action = actionLabels[status];
+          const actionColor = status === "in-progress"
+            ? "bg-amber-300 text-amber-950 hover:bg-amber-400 focus-visible:outline-amber-700"
+            : "bg-brand text-white hover:bg-brand-dark focus-visible:outline-brand";
 
           return (
             <li key={tryoutId} className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-xl bg-brand/5 p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
@@ -55,7 +58,7 @@ export default function DashboardOpenTryouts({ tryouts }: { tryouts: DashboardOp
                 onClick={() => createOrResume.mutate(tryoutId, {
                   onSuccess: ({ attempt }) => router.push(`/tryout/${attempt.id}`),
                 })}
-                className="col-start-2 inline-flex min-h-11 cursor-pointer items-center justify-center gap-1.5 justify-self-start rounded-lg bg-brand px-3 text-xs font-semibold text-white hover:bg-brand-dark focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand disabled:cursor-wait disabled:opacity-60 sm:col-start-auto"
+                className={`col-start-2 inline-flex min-h-11 cursor-pointer items-center justify-center gap-1.5 justify-self-start rounded-lg px-3 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-offset-4 disabled:cursor-wait disabled:opacity-60 sm:col-start-auto ${actionColor}`}
               >
                 {isWorking ? "Membuka..." : action} <ArrowRight aria-hidden="true" className="size-3.5" />
               </button>

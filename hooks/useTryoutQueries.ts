@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Payment, Tryout, Package, BankAccount, LogoConfig, Question } from '@/lib/types';
+import type { AttemptAnswer, Payment, Tryout, Package, BankAccount, LogoConfig, Question } from '@/lib/types';
 
 /* ── Tryouts ───────────────────────────────────────────────────── */
 export function useTryouts() {
@@ -406,15 +406,12 @@ export interface AttemptHistoryEntry {
   tkpScore: number;
   totalScore: number;
   finishedAt: string | null;
-  /**
-   * Persisted answers keyed by questionIndex. Returned by the server
-   * (`/api/tryout-attempts` includes `answers: true`) for in-progress
-   * resume UX on the list page. May be undefined for legacy history rows.
-   */
-  answers?: Record<number, number>;
+  answers?: AttemptAnswer[];
   /** Remaining timer seconds at last flush; null for fresh/legacy attempts. */
   timeLeftSeconds?: number | null;
   createdAt: string;
+  updatedAt?: string;
+  deletedAt?: string | null;
 }
 
 export function useAttemptHistory(userId: string | undefined) {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
+import { useQueryClient } from "@tanstack/react-query";
 import type { Question } from "@/lib/types";
 import { getScore, formatTime } from "@/lib/scoring";
 import { Logo, Button, Badge, Card, Modal } from "@/components/ui";
@@ -207,6 +208,7 @@ export default function TryoutEngine({
   const { data: logoConfig } = useLogoConfig();
   const updateFlags = useUpdateAttemptFlags(attemptId ?? "");
   const updateAnswers = useUpdateAttemptAnswers(attemptId ?? "");
+  const queryClient = useQueryClient();
   const DURATION = (durationMin || 100) * 60;
 
   const [answers, setAnswers] =
@@ -214,27 +216,29 @@ export default function TryoutEngine({
   const [raguRagu, setRaguRagu] =
     useState<Record<number, boolean>>(preloadedRaguRagu);
   const [cur, setCur] = useState(0);
-  // Lazy initializer: when this is a resume (preloadedAnswers non-empty AND
-  // the server returned a saved timer), seed the countdown from the server.
-  // Otherwise start at the full duration. Runs exactly once on mount — later
-  // server refetches must NOT reset the live timer.
-  const [timeLeft, setTimeLeft] = useState<number>(() => {
-    if (
-      initialTimeLeftSeconds !== undefined &&
-      initialTimeLeftSeconds !== null &&
-      Object.keys(preloadedAnswers).length > 0
-    ) {
-      return Math.max(0, Math.min(DURATION, initialTimeLeftSeconds));
-    }
-    return DURATION;
-  });
+  // Restore a saved countdown even if no questions were answered.
+  const [timeLeft, setTimeLeft] = useState<number>(() =>
+    Math.max(0, Math.min(DURATION, initialTimeLeftSeconds ?? DURATION)),
+  );
   const [phase, setPhase] = useState<"ready" | "running" | "result">("ready");
+  const [startError, setStartError] = useState(false);
+  const hasSavedStart = useRef(initialTimeLeftSeconds != null);
+  const startPending = useRef(false);
+  const mounted = useRef(false);
   const [showMobileNav, setShowMobileNav] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [exitError, setExitError] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const shouldRehydrate = useRef(false);
   const prevPreloaded = useRef(preloadedAnswers);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
 
   // ── Autosave hook (60s cadence, lifecycle flush, rehydration) ──
   const { tryScheduleAutosave, syncAnswers } = useAutosaveAnswers({
@@ -318,7 +322,24 @@ export default function TryoutEngine({
     [attemptId],
   );
 
-  const startTryout = useCallback(() => {
+  const startTryout = useCallback(async () => {
+    if (startPending.current) return;
+    if (attemptId && !hasSavedStart.current) {
+      startPending.current = true;
+      setStartError(false);
+      try {
+        await updateAnswers.mutateAsync({ answers: {}, timeLeftSeconds: timeLeft });
+        hasSavedStart.current = true;
+        void queryClient.invalidateQueries({ queryKey: ["attempt-history"] });
+        void queryClient.invalidateQueries({ queryKey: ["dashboard", "summary"] });
+      } catch {
+        if (mounted.current) setStartError(true);
+        return;
+      } finally {
+        startPending.current = false;
+      }
+      if (!mounted.current) return;
+    }
     setPhase("running");
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
@@ -333,7 +354,7 @@ export default function TryoutEngine({
         return t - 1;
       });
     }, 1000);
-  }, [answers, onFinish, attemptId, raguRagu, updateFlags]);
+  }, [answers, onFinish, attemptId, raguRagu, updateFlags, updateAnswers, timeLeft, queryClient]);
 
   const finish = useCallback(async () => {
     clearInterval(timerRef.current!);
@@ -430,16 +451,18 @@ export default function TryoutEngine({
             ))}
           </div>
 
+          {startError && <p role="alert" className="mb-3 text-sm text-red-700">Tryout belum bisa dimulai. Coba lagi.</p>}
           <div className="flex flex-col sm:flex-row gap-3">
-            <Button variant="outline" className="flex-1" onClick={onBack}>
+            <Button variant="outline" className="flex-1" onClick={onBack} disabled={updateAnswers.isPending}>
               Batalkan
             </Button>
             <Button
               variant="primary"
               className="flex-[2]"
               onClick={startTryout}
+              disabled={updateAnswers.isPending}
             >
-              Mulai Tryout
+              {updateAnswers.isPending ? "Memulai..." : "Mulai Tryout"}
             </Button>
           </div>
         </Card>

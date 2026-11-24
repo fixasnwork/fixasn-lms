@@ -84,7 +84,7 @@ describe('TryoutEngine — Simpan & Keluar (save-and-exit)', () => {
   const getSimpanButton = () =>
     screen.getByText(/Simpan & Keluar/).closest('button') as HTMLButtonElement | null;
 
-  it('seeds the timer from initialTimeLeftSeconds when preloadedAnswers is non-empty (resume)', () => {
+  it('restores a saved timer even when no questions were answered', () => {
     const wrapper = makeWrapper();
     const questions = makeQuestions(3);
     render(
@@ -92,7 +92,6 @@ describe('TryoutEngine — Simpan & Keluar (save-and-exit)', () => {
         attemptId="att-resume"
         questions={questions}
         durationMin={100}
-        preloadedAnswers={{ 0: 0 }}
         initialTimeLeftSeconds={1234}
         onFinish={vi.fn()}
       />,
@@ -119,9 +118,10 @@ describe('TryoutEngine — Simpan & Keluar (save-and-exit)', () => {
     );
 
     expect(screen.queryByText(/Simpan & Keluar/)).not.toBeInTheDocument();
+    expect(mockUpdateAnswersMutateAsync).not.toHaveBeenCalled();
   });
 
-  it('shows the Simpan & Keluar button in the running phase', () => {
+  it('saves the initial timer before opening questions', async () => {
     const wrapper = makeWrapper();
     render(
       <TryoutEngine
@@ -133,10 +133,24 @@ describe('TryoutEngine — Simpan & Keluar (save-and-exit)', () => {
       { wrapper },
     );
 
-    fireEvent.click(screen.getByText(/Mulai Tryout/));
+    await act(async () => { fireEvent.click(screen.getByText(/Mulai Tryout/)); });
+    expect(mockUpdateAnswersMutateAsync).toHaveBeenCalledWith({ answers: {}, timeLeftSeconds: 900 });
     // The Button primitive doesn't forward arbitrary props like data-testid,
     // so we locate the Simpan & Keluar button by its visible text instead.
     expect(screen.getByText(/Simpan & Keluar/)).toBeInTheDocument();
+  });
+
+  it('keeps the preparation screen open if the initial timer cannot be saved', async () => {
+    mockUpdateAnswersMutateAsync.mockRejectedValueOnce(new Error('network down'));
+    render(
+      <TryoutEngine attemptId="att-start-error" questions={makeQuestions(2)} durationMin={15} />,
+      { wrapper: makeWrapper() },
+    );
+
+    await act(async () => { fireEvent.click(screen.getByText(/Mulai Tryout/)); });
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Tryout belum bisa dimulai');
+    expect(screen.queryByText(/Simpan & Keluar/)).not.toBeInTheDocument();
   });
 
   it('clicking the button opens the modal; clicking Batal closes it without calling onExit', () => {
@@ -147,6 +161,7 @@ describe('TryoutEngine — Simpan & Keluar (save-and-exit)', () => {
         attemptId="att-modal-cancel"
         questions={makeQuestions(3)}
         durationMin={15}
+        initialTimeLeftSeconds={900}
         onExit={onExit}
         onFinish={vi.fn()}
       />,
@@ -178,6 +193,7 @@ describe('TryoutEngine — Simpan & Keluar (save-and-exit)', () => {
         attemptId="att-modal-confirm"
         questions={makeQuestions(3)}
         durationMin={15}
+        initialTimeLeftSeconds={900}
         onExit={onExit}
         onFinish={vi.fn()}
       />,
@@ -226,6 +242,7 @@ describe('TryoutEngine — Simpan & Keluar (save-and-exit)', () => {
         attemptId="att-modal-error"
         questions={makeQuestions(3)}
         durationMin={15}
+        initialTimeLeftSeconds={900}
         onExit={onExit}
         onFinish={vi.fn()}
       />,
