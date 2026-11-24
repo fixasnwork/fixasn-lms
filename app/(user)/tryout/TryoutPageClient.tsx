@@ -7,7 +7,7 @@ import { ArrowRight, ArrowUpRight, CirclePlay, ClipboardList, History, ListOrder
 import { useState, type ReactNode } from "react";
 import { Highlight } from "@/components/landing/Highlight";
 import FinishedAttemptCard from "@/components/tryout/FinishedAttemptCard";
-import { Skeleton } from "@/components/shadcn/skeleton";
+import PageLoading from "@/components/ui/PageLoading";
 import { useDashboardSummaryQuery } from "@/hooks/useDashboardSummary";
 import {
   useAllTryouts,
@@ -153,11 +153,7 @@ export default function TryoutPageClient({ rankingPreview }: { rankingPreview: R
       <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Tryout SKD</h1>
 
       {isLoading ? (
-        <div role="status" className="space-y-3">
-          <span className="sr-only">Memuat data tryout...</span>
-          <Skeleton className="h-24 w-full rounded-2xl" />
-          <Skeleton className="h-24 w-full rounded-2xl" />
-        </div>
+        <PageLoading label="Memuat data tryout..." />
       ) : hasError ? (
         <div role="alert" className={`${surface} flex flex-wrap items-center gap-3`}>
           <p className="text-sm text-red-700">Data tryout belum berhasil dimuat.</p>

@@ -78,7 +78,7 @@ export default async function DashboardLayout({
         <Suspense fallback={<div className="hidden md:block w-64 shrink-0 bg-white border-r border-gray-100" />}>
           <UserSidebar />
         </Suspense>
-        <main className="min-w-0 flex-1 p-4 pb-[calc(env(safe-area-inset-bottom,0px)+112px)] sm:p-7 sm:pb-32 md:pb-7">
+        <main className="relative min-h-svh min-w-0 flex-1 p-4 pb-[calc(env(safe-area-inset-bottom,0px)+112px)] sm:p-7 sm:pb-32 md:pb-7">
           <HydrationBoundary state={dehydrate(queryClient)}>
             {children}
           </HydrationBoundary>

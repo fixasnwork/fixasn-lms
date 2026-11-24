@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, BookOpen, Check, CheckCircle2, ClipboardList, Clock3, Copy, CreditCard, FileQuestion, Landmark, PackageOpen, Upload, X } from "lucide-react";
 import { cn } from "cn";
 import { Button, buttonVariants } from "@/components/shadcn/button";
+import PageLoading from "@/components/ui/PageLoading";
 import { SocialIcon } from "react-social-icons/component";
 import "react-social-icons/whatsapp";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/shadcn/dialog";
@@ -101,7 +102,7 @@ function PaymentContent({ packageId }: { packageId: number }) {
   };
 
   if (packagesQuery.isError || paymentsQuery.isError) return <Notice error>Detail paket atau status pembelian gagal dimuat. Silakan muat ulang halaman.</Notice>;
-  if (status === "loading" || packagesQuery.isPending || paymentsQuery.isPending) return <p role="status" className={`${surface} text-muted-foreground`}>Memuat detail paket...</p>;
+  if (status === "loading" || packagesQuery.isPending || paymentsQuery.isPending) return <PageLoading label="Memuat detail paket..." />;
   if (!pkg || pkg.isTrial || !isAvailable(pkg)) return <Notice>Paket tidak ditemukan atau sudah tidak tersedia untuk dibeli.</Notice>;
 
   const tryouts = (pkg.tryoutCount ?? 0) > 0 || !pkg.includesVideoPembelajaran;
@@ -184,5 +185,5 @@ function SelectedPackage() {
 }
 
 export default function PaymentPage() {
-  return <Suspense fallback={<p role="status" className={`${surface} text-muted-foreground`}>Memuat detail paket...</p>}><SelectedPackage /></Suspense>;
+  return <Suspense fallback={<PageLoading label="Memuat detail paket..." />}><SelectedPackage /></Suspense>;
 }

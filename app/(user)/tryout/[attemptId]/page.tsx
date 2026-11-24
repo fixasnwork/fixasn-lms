@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { calculateScoring } from "@/lib/scoring";
 import TryoutEngine from "@/components/tryout/TryoutEngine";
 import { Button } from "@/components/ui";
+import PageLoading from "@/components/ui/PageLoading";
 import { useAttempt, useUpdateAttempt } from "@/hooks/useTryoutQueries";
 import TryoutReviewMode from "@/components/tryout/TryoutReviewMode";
 
@@ -41,12 +42,7 @@ export default function TryoutAttemptPage({
 
 	if (isFetching && !data) {
 		return (
-			<div className="min-h-screen flex items-center justify-center">
-				<div className="flex items-center gap-2 text-gray-400 text-sm">
-					<span className="inline-block w-5 h-5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
-					Memuat tryout...
-				</div>
-			</div>
+			<PageLoading label="Memuat tryout..." />
 		);
 	}
 

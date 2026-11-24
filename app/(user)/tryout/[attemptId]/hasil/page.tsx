@@ -4,6 +4,7 @@ import { use, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAttempt } from "@/hooks/useTryoutQueries";
 import TryoutCompletion from "@/components/tryout/TryoutCompletion";
+import PageLoading from "@/components/ui/PageLoading";
 
 export default function TryoutResultPage({ params }: { params: Promise<{ attemptId: string }> }) {
   const { attemptId } = use(params);
@@ -21,7 +22,7 @@ export default function TryoutResultPage({ params }: { params: Promise<{ attempt
     </div>
   );
 
-  if (isPending || !data?.attempt.finishedAt) return <p role="status" className="py-12 text-center text-sm text-slate-500">Memuat hasil tryout...</p>;
+  if (isPending || !data?.attempt.finishedAt) return <PageLoading label="Memuat hasil tryout..." />;
 
   return <TryoutCompletion questions={data.tryout.questions} answers={data.attempt.answers} totalScore={data.attempt.totalScore} tryoutId={data.tryout.id} onReview={() => router.push(`/tryout/${attemptId}`)} onBack={() => router.push("/tryout")} />;
 }

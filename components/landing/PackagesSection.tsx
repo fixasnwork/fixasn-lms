@@ -1,4 +1,5 @@
 "use client";
+import PageLoading from "@/components/ui/PageLoading";
 
 import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -84,7 +85,7 @@ export function PackagesSection({ packages, isLoading = false, isError = false, 
 
           <TabsContent value={activeTab} className="mt-0">
             {isLoading ? (
-              <p role="status" className="py-12 text-center text-base text-muted-foreground">Memuat paket...</p>
+              variant === "dashboard" ? <PageLoading label="Memuat paket..." /> : <p role="status" className="py-12 text-center text-base text-muted-foreground">Memuat paket...</p>
             ) : isError ? (
               <p role="alert" className="py-12 text-center text-base text-muted-foreground">Gagal memuat paket. Silakan muat ulang halaman.</p>
             ) : (

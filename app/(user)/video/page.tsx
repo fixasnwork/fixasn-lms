@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Card, Modal, Button, Badge } from "@/components/ui";
+import PageLoading from "@/components/ui/PageLoading";
 import { useUserVideos, useFetchVideoProgress } from "@/hooks/useVideoQueries";
 import { useVideoProgress } from "@/hooks/useVideoProgress";
 import YouTubePlayer from "@/components/video/YouTubePlayer";
@@ -53,10 +54,7 @@ export default function VideoPage() {
   if (isLoading) {
     return (
       <div className="max-w-4xl mx-auto p-4 sm:p-6" data-testid="video-page-loading">
-        <div className="flex items-center justify-center py-20 gap-3 text-gray-400">
-          <span className="inline-block w-5 h-5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
-          <span className="text-sm">Memuat katalog video...</span>
-        </div>
+        <PageLoading label="Memuat katalog video..." />
       </div>
     );
   }
