@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ClipboardList, LayoutGrid, PackageOpen, PlayCircle } from "lucide-react";
 import { PackageCard } from "@/components/packages/PackageCard";
@@ -19,8 +19,10 @@ interface PackagesSectionProps {
   packages: Package[];
   isLoading?: boolean;
   isError?: boolean;
-  logoConfig: LogoConfig;
-  onRegister: () => void;
+  logoConfig: Pick<LogoConfig, "paketTitle" | "paketSubtitle">;
+  onRegister?: () => void;
+  variant?: "landing" | "dashboard";
+  renderPackage?: (pkg: Package) => ReactNode;
 }
 
 function hasTryouts(pkg: Package) {
@@ -41,7 +43,7 @@ function getGridColumns() {
 
 function getServerGridColumns() { return 1; }
 
-export function PackagesSection({ packages, isLoading = false, isError = false, logoConfig, onRegister }: PackagesSectionProps) {
+export function PackagesSection({ packages, isLoading = false, isError = false, logoConfig, onRegister, variant = "landing", renderPackage }: PackagesSectionProps) {
   const [activeTab, setActiveTab] = useState("all");
   const reducedMotion = useReducedMotion();
   const columns = useSyncExternalStore(subscribeToGridWidth, getGridColumns, getServerGridColumns);
@@ -56,8 +58,8 @@ export function PackagesSection({ packages, isLoading = false, isError = false, 
   };
 
   return (
-    <section id="paket" aria-labelledby="packages-title" className="scroll-mt-24 border-b border-border/60 bg-transparent">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-5 py-14 sm:px-6 sm:py-20">
+    <section id="paket" aria-labelledby="packages-title" className={variant === "dashboard" ? "scroll-mt-6 bg-background" : "scroll-mt-24 border-b border-border/60 bg-transparent"}>
+      <div className={variant === "dashboard" ? "mx-auto flex w-full max-w-6xl flex-col gap-8" : "mx-auto flex w-full max-w-6xl flex-col gap-8 px-5 py-14 sm:px-6 sm:py-20"}>
         <motion.div initial={{ opacity: 0, y: reducedMotion ? 0 : 18 }} whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.3 }} transition={{ duration: reducedMotion ? 0 : 0.4 }}
           className="mx-auto flex max-w-3xl flex-col items-center gap-4 text-center">
@@ -92,12 +94,12 @@ export function PackagesSection({ packages, isLoading = false, isError = false, 
                     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                       {shown.map((pkg, index) => {
                         return (
-                          <motion.article key={pkg.id} inherit={false}
+                          <motion.article key={pkg.id} id={variant === "dashboard" ? `paket-${pkg.id}` : undefined} inherit={false}
                             initial={{ opacity: reducedMotion ? 1 : 0, y: reducedMotion ? 0 : 18 }}
                             whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }}
                             transition={{ duration: reducedMotion ? 0 : 0.35, delay: reducedMotion ? 0 : (index % columns) * 0.06 }}
-                            className="min-w-0">
-                            <PackageCard pkg={pkg} onAction={onRegister} />
+                            className="min-w-0 scroll-mt-6">
+                            {renderPackage ? renderPackage(pkg) : <PackageCard pkg={pkg} onAction={onRegister} />}
                           </motion.article>
                         );
                       })}
