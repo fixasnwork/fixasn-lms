@@ -16,7 +16,8 @@ import {
 } from "@/hooks/useTryoutQueries";
 import { useAutosaveAnswers } from "@/hooks/useAutosaveAnswers";
 import { useNavGuardStore } from "@/store/useNavGuardStore";
-import PembahasanNavigator from "./PembahasanNavigator";
+import TryoutReviewMode from "./TryoutReviewMode";
+import TryoutCompletion from "./TryoutCompletion";
 
 const playerButton = "inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm";
 
@@ -202,6 +203,7 @@ export default function TryoutEngine({
     Math.max(0, Math.min(DURATION, initialTimeLeftSeconds ?? DURATION)),
   );
   const [phase, setPhase] = useState<"ready" | "running" | "result">("ready");
+  const [showReview, setShowReview] = useState(false);
   const [showSavedTime, setShowSavedTime] = useState(initialTimeLeftSeconds != null);
   const [startError, setStartError] = useState(false);
   const hasSavedStart = useRef(initialTimeLeftSeconds != null);
@@ -213,6 +215,7 @@ export default function TryoutEngine({
   const [isFinishing, setIsFinishing] = useState(false);
   const [finishError, setFinishError] = useState(false);
   const finishPending = useRef(false);
+  const finishRef = useRef<() => Promise<void>>(async () => {});
   const [exitError, setExitError] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const shouldRehydrate = useRef(false);
@@ -335,15 +338,13 @@ export default function TryoutEngine({
         if (t <= 1) {
           if (finishPending.current) return 0;
           clearInterval(timerRef.current!);
-          setPhase("result");
-          if (attemptId) updateFlags.mutate(raguRagu);
-          onFinish?.(answers);
+          void finishRef.current();
           return 0;
         }
         return t - 1;
       });
     }, 1000);
-  }, [answers, onFinish, attemptId, raguRagu, updateFlags, updateAnswers, timeLeft, queryClient]);
+  }, [attemptId, updateAnswers, timeLeft, queryClient]);
 
   const finish = useCallback(async () => {
     if (finishPending.current) return;
@@ -358,11 +359,15 @@ export default function TryoutEngine({
       setPhase("result");
     } catch {
       setFinishError(true);
+      setShowFinishConfirm(true);
     } finally {
       finishPending.current = false;
       setIsFinishing(false);
     }
   }, [answers, onFinish, attemptId, raguRagu, updateFlags]);
+  useEffect(() => {
+    finishRef.current = finish;
+  }, [finish]);
 
   // ── Save-and-exit (Simpan & Keluar) ──
   // Delegates the actual PUT to the ref so the nav-guard modal and this
@@ -387,9 +392,9 @@ export default function TryoutEngine({
   questions.forEach((q, i) => {
     totals[q.category] += getScore(q, answers[i]);
   });
-  const totalScore = totals.TWK + totals.TIU + totals.TKP;
 
   const retry = () => {
+    setShowReview(false);
     setAnswers({});
     setCur(0);
     setTimeLeft(DURATION);
@@ -480,76 +485,20 @@ export default function TryoutEngine({
 
   // ── PHASE: RESULT ──
   if (phase === "result") {
+    if (!showReview) return <TryoutCompletion questions={questions} answers={answers} totalScore={totals.TWK + totals.TIU + totals.TKP} onReview={() => setShowReview(true)} onBack={() => onBack?.()} />;
     return (
-      <div className="min-h-screen bg-[#F8FAFF] p-3 sm:p-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex flex-col sm:flex-row gap-3 mb-4 sm:mb-5">
-            <Button
-              variant="outline"
-              onClick={onBack}
-              className="w-full sm:w-auto"
-            >
-              ← Kembali ke Dashboard
-            </Button>
-            <Button
-              variant="primary"
-              onClick={retry}
-              className="w-full sm:w-auto sm:ml-auto"
-            >
-              🔄 Ulangi Tryout
-            </Button>
-          </div>
-
-          <Card className="bg-gradient-to-br from-brand-dark to-brand-secondary text-white text-center p-5 sm:p-8 mb-5 sm:mb-6">
-            <div className="text-4xl sm:text-5xl lg:text-6xl mb-2 sm:mb-3">
-              {totalScore >= 195 ? "🎉" : "💪"}
-            </div>
-            <h2 className="text-lg sm:text-xl lg:text-2xl font-black mb-1">
-              Hasil {setName}
-            </h2>
-            <div className="text-5xl sm:text-6xl lg:text-7xl font-black text-yellow-400 leading-none my-2 sm:my-3">
-              {totalScore}
-            </div>
-            <div className="text-white/70 text-xs sm:text-sm mt-1">
-              Total Skor · Nilai Ambang Batas SKD: 195 (TWK≥13, TIU≥16, TKP≥166)
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-4 sm:mt-6">
-              {[
-                { cat: "TWK", col: "#60A5FA", pass: 13 },
-                { cat: "TIU", col: "#A78BFA", pass: 16 },
-                { cat: "TKP", col: "#FCD34D", pass: 166 },
-              ].map(({ cat, col, pass }) => (
-                <div key={cat} className="bg-white/10 rounded-xl p-3 sm:p-4">
-                  <div className="font-bold text-xs sm:text-sm mb-1">{cat}</div>
-                  <div
-                    className="text-2xl sm:text-3xl font-black"
-                    style={{ color: col }}
-                  >
-                    {totals[cat as keyof typeof totals]}
-                  </div>
-                  <div className="text-white/60 text-[10px] sm:text-xs mt-1">
-                    Ambang: {pass}
-                    {cat === "TKP" ? "" : " soal"} &nbsp;{" "}
-                    {totals[cat as keyof typeof totals] >= pass ? "✅" : "❌"}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          <PembahasanNavigator
-            questions={questions}
-            answers={answers}
-            name={setName}
-            onBack={onBack}
-            onRetry={retry}
-          />
-        </div>
-      </div>
+      <TryoutReviewMode
+        questions={questions}
+        answers={answers}
+        name={setName}
+        scores={{ twk: totals.TWK, tiu: totals.TIU, tkp: totals.TKP }}
+        raguRaguFlags={raguRagu}
+        onBack={() => onBack?.()}
+        onRetry={retry}
+      />
     );
   }
-
-  // ── PHASE: RUNNING ──
+  // Running player.
   const q = questions[cur];
   const answered = questions.filter((_, index) => answers[index] >= 0).length;
   const sections: Section[] = [

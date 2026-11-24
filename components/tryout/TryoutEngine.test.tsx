@@ -55,6 +55,29 @@ function makeWrapper() {
 }
 
 describe('TryoutEngine — Simpan & Keluar (save-and-exit)', () => {
+  it('shows completion choices after saving on timeout, and opens review only on request', async () => {
+    const onFinish = vi.fn().mockResolvedValue(undefined);
+    render(<TryoutEngine questions={makeQuestions(1)} durationMin={15} initialTimeLeftSeconds={1} onFinish={onFinish} />, { wrapper: makeWrapper() });
+    fireEvent.click(screen.getByRole('button', { name: 'Lanjutkan Tryout' }));
+    fireEvent.click(screen.getAllByText('B')[0].closest('button')!);
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    expect(onFinish).toHaveBeenCalledWith({ 0: 1 });
+    expect(screen.getByRole('heading', { name: 'Terima kasih' })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Jawaban dan kunci soal' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Lihat Pembahasan' }));
+    expect(screen.getByRole('group', { name: 'Jawaban dan kunci soal' })).toBeInTheDocument();
+  });
+
+  it('keeps the completion screen hidden and offers retry when timeout saving fails', async () => {
+    const onFinish = vi.fn().mockRejectedValue(new Error('Save failed'));
+    render(<TryoutEngine questions={makeQuestions(1)} durationMin={15} initialTimeLeftSeconds={1} onFinish={onFinish} />, { wrapper: makeWrapper() });
+    fireEvent.click(screen.getByRole('button', { name: 'Lanjutkan Tryout' }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    expect(screen.queryByRole('heading', { name: 'Terima kasih' })).not.toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Tryout belum berhasil diselesaikan');
+    expect(screen.getByRole('button', { name: 'Ya, Selesaikan' })).toBeInTheDocument();
+  });
+
   beforeEach(() => {
     vi.useFakeTimers();
     mockUpdateAnswersMutate.mockReset();

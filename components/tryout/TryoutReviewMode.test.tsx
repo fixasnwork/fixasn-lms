@@ -1,12 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import TryoutReviewMode from "./TryoutReviewMode";
 import type { Question } from "@/lib/types";
 
-// TryoutReviewMode uses useQuery for the Ranking tab badge.
-// Even when the ranking props are omitted (and the tab is hidden), the
-// hook still runs and needs a QueryClient in the tree.
 function withQueryClient(node: React.ReactNode) {
 	const client = new QueryClient({
 		defaultOptions: { queries: { retry: false, gcTime: 0 } },
@@ -51,6 +48,54 @@ function makeQuestions(n: number): Question[] {
 		question: `Q${i + 1}`,
 	}));
 }
+
+describe("TryoutReviewMode — review player", () => {
+	function renderReview(questions: Question[], answers: Record<number, number>) {
+		return render(withQueryClient(
+			<TryoutReviewMode questions={questions} answers={answers} name="Review SKD" scores={{ twk: 1, tiu: 0, tkp: 3 }} onBack={vi.fn()} onRetry={vi.fn()} />,
+		));
+	}
+
+	it("counts missing and negative answers as empty, separately from wrong answers and TKP", () => {
+		const questions = makeQuestions(5);
+		questions[4] = { ...questions[4], category: "TKP" };
+		renderReview(questions, { 0: 0, 1: 1, 2: -1, 4: 1 });
+		const summary = within(screen.getByLabelText("Ringkasan jawaban"));
+		expect(summary.getByText("Benar").nextElementSibling).toHaveTextContent("1");
+		expect(summary.getByText("Salah").nextElementSibling).toHaveTextContent("1");
+		expect(summary.getByText("Tidak dijawab").nextElementSibling).toHaveTextContent("2");
+		expect(summary.queryByText("TKP terjawab")).not.toBeInTheDocument();
+	});
+
+	it("shows the selected wrong answer alongside the correct answer without answer controls", () => {
+		renderReview(makeQuestions(1), { 0: 1 });
+		const options = within(screen.getByRole("group", { name: "Jawaban dan kunci soal" }));
+		expect(options.getByText("Jawaban benar").closest("div")?.parentElement).toHaveTextContent("A");
+		expect(options.getByText("Pilihan kamu").closest("div")?.parentElement).toHaveTextContent("B");
+		expect(options.queryByRole("button")).not.toBeInTheDocument();
+	});
+
+	it("renders option images and image-only explanations", () => {
+		const question = { ...baseQuestion, explanationImage: "https://images.unsplash.com/explanation.jpg", options: baseQuestion.options.map((option, i) => ({ ...option, optionImage: i === 0 ? "https://images.unsplash.com/option.jpg" : null })) };
+		renderReview([question], { 0: 0 });
+		expect(screen.getByAltText("Gambar pilihan A")).toBeInTheDocument();
+		expect(screen.getByAltText("Gambar pembahasan soal 1")).toBeInTheDocument();
+		expect(screen.queryByText("Pembahasan belum tersedia untuk soal ini.")).not.toBeInTheDocument();
+	});
+
+	it("shows TKP weights and all equally best options", () => {
+		const question: Question = { ...baseQuestion, category: "TKP", correctAnswer: null, options: baseQuestion.options.map((option) => ({ ...option, tkpValue: 5 })) };
+		renderReview([question], { 0: 1 });
+		expect(screen.getByText("Penilaian TKP")).toBeInTheDocument();
+		expect(screen.getAllByText("Jawaban terbaik")).toHaveLength(2);
+		expect(screen.getAllByText("5 poin")).toHaveLength(2);
+	});
+
+	it("handles an empty question set without crashing", () => {
+		renderReview([], {});
+		expect(screen.getByRole("status")).toHaveTextContent("Soal pembahasan belum tersedia.");
+	});
+});
 
 describe("TryoutReviewMode — Ragu-ragu flag", () => {
 	it('shows "X dari Y soal ditandai Ragu-ragu" summary', () => {
@@ -177,32 +222,6 @@ describe("TryoutReviewMode — Ragu-ragu flag", () => {
 	});
 });
 
-/* ── Per-tryout Ranking tab integration ─────────────────────────────────
- * These tests verify the outer Pembahasan | Ranking tab nav added in
- * the per-tryout-ranking change. They live in the same file because
- * TryoutReviewMode is the component under test for both.
- * ------------------------------------------------------------------------ */
-
-const mockFetch = vi.fn();
-vi.stubGlobal("fetch", mockFetch);
-
-function makeRankingPayload(rank = 5, total = 50, score = 250) {
-	return {
-		entries: Array.from({ length: total }, (_, i) => ({
-			userId: `u-${i + 1}`,
-			name: `User ${i + 1}`,
-			avatar: null,
-			initials: `U${i + 1}`,
-			totalScore: 350 - i * 2,
-			tryoutCount: 1,
-			packages: "",
-		})),
-		viewer: { rank, score },
-		participantCount: total,
-		period: "all",
-	};
-}
-
 beforeEach(() => {
 	vi.clearAllMocks();
 	localStorage.clear();
@@ -221,147 +240,13 @@ beforeEach(() => {
 	});
 });
 
-describe("TryoutReviewMode — Ranking tab", () => {
-	it("hides the outer tab nav when ranking props are omitted", () => {
-		render(
-			withQueryClient(
-				<TryoutReviewMode
-					questions={makeQuestions(2)}
-					answers={{ 0: 0, 1: 0 }}
-					name="Test"
-					scores={{ twk: 5, tiu: 5, tkp: 15 }}
-					onBack={vi.fn()}
-					onRetry={vi.fn()}
-				/>,
-			),
-		);
-		expect(screen.queryByTestId("outer-tablist")).not.toBeInTheDocument();
-	});
-
-	it("renders the outer tab nav when tryoutId/attemptId/viewerUserId are provided", () => {
-		mockFetch.mockResolvedValue(makeResponse(makeRankingPayload()));
-		render(
-			withQueryClient(
-				<TryoutReviewMode
-					questions={makeQuestions(2)}
-					answers={{ 0: 0, 1: 0 }}
-					name="Test"
-					scores={{ twk: 5, tiu: 5, tkp: 15 }}
-					tryoutId={42}
-					attemptId="att-1"
-					viewerUserId="viewer@test.id"
-					onBack={vi.fn()}
-					onRetry={vi.fn()}
-				/>,
-			),
-		);
-		expect(screen.getByTestId("outer-tablist")).toBeInTheDocument();
-		expect(screen.getByTestId("tab-pembahasan")).toBeInTheDocument();
-		expect(screen.getByTestId("tab-ranking")).toBeInTheDocument();
-	});
-
-	it("defaults to the Pembahasan tab", () => {
-		mockFetch.mockResolvedValue(makeResponse(makeRankingPayload()));
-		render(
-			withQueryClient(
-				<TryoutReviewMode
-					questions={makeQuestions(2)}
-					answers={{ 0: 0, 1: 0 }}
-					name="Test"
-					scores={{ twk: 5, tiu: 5, tkp: 15 }}
-					tryoutId={42}
-					attemptId="att-1"
-					viewerUserId="viewer@test.id"
-					onBack={vi.fn()}
-					onRetry={vi.fn()}
-				/>,
-			),
-		);
-		const pembahasanTab = screen.getByTestId("tab-pembahasan");
-		expect(pembahasanTab.getAttribute("aria-selected")).toBe("true");
-	});
-
-	it("switches to the Ranking tab on click and mounts the panel", async () => {
-		mockFetch.mockResolvedValue(makeResponse(makeRankingPayload(5, 50, 250)));
-		render(
-			withQueryClient(
-				<TryoutReviewMode
-					questions={makeQuestions(2)}
-					answers={{ 0: 0, 1: 0 }}
-					name="Test"
-					scores={{ twk: 5, tiu: 5, tkp: 15 }}
-					tryoutId={42}
-					attemptId="att-1"
-					viewerUserId="viewer@test.id"
-					onBack={vi.fn()}
-					onRetry={vi.fn()}
-				/>,
-			),
-		);
-		fireEvent.click(screen.getByTestId("tab-ranking"));
-		await waitFor(() => {
-			expect(screen.getByTestId("tryout-ranking-panel")).toBeInTheDocument();
-		});
-	});
-
-	it("preserves the question index when switching back to Pembahasan", async () => {
-		mockFetch.mockResolvedValue(makeResponse(makeRankingPayload()));
-		render(
-			withQueryClient(
-				<TryoutReviewMode
-					questions={makeQuestions(5)}
-					answers={{ 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 }}
-					name="Test"
-					scores={{ twk: 5, tiu: 5, tkp: 15 }}
-					tryoutId={42}
-					attemptId="att-1"
-					viewerUserId="viewer@test.id"
-					onBack={vi.fn()}
-					onRetry={vi.fn()}
-				/>,
-			),
-		);
-		// Click question 3 (index 2) to change idx
-		const navButtons = screen.getAllByLabelText(/^Soal \d+$/);
-		fireEvent.click(navButtons[2]);
-		// Switch to Ranking
-		fireEvent.click(screen.getByTestId("tab-ranking"));
-		await waitFor(() => {
-			expect(screen.getByTestId("tryout-ranking-panel")).toBeInTheDocument();
-		});
-		// Switch back
-		fireEvent.click(screen.getByTestId("tab-pembahasan"));
-		// The pembahasan body should be back; the "Soal 3 dari 5" indicator shows
-		// we are still on the same idx.
-		expect(screen.getByText(/Soal 3 dari 5/)).toBeInTheDocument();
-	});
-
-	it("shows the rank/total badge in the Ranking tab label after fetch", async () => {
-		mockFetch.mockResolvedValue(makeResponse(makeRankingPayload(5, 50, 250)));
-		render(
-			withQueryClient(
-				<TryoutReviewMode
-					questions={makeQuestions(2)}
-					answers={{ 0: 0, 1: 0 }}
-					name="Test"
-					scores={{ twk: 5, tiu: 5, tkp: 15 }}
-					tryoutId={42}
-					attemptId="att-1"
-					viewerUserId="viewer@test.id"
-					onBack={vi.fn()}
-					onRetry={vi.fn()}
-				/>,
-			),
-		);
-		// Badge appears after the fetch lands
-		await waitFor(() => {
-			const badge = screen.getByTestId("ranking-badge");
-			expect(badge.textContent).toMatch(/#5\/50/);
-		});
-	});
+describe("Review navigation", () => {
+  it("opens questions directly without review or ranking tabs", () => {
+    render(withQueryClient(
+      <TryoutReviewMode questions={makeQuestions(3)} answers={{ 0: 0 }} name="Test" scores={{ twk: 1, tiu: 0, tkp: 0 }} onBack={vi.fn()} onRetry={vi.fn()} />,
+    ));
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("Soal 3"));
+    expect(screen.getByText("Soal 3 dari 3")).toBeInTheDocument();
+  });
 });
-
-// Response helper for the new tests (avoids importing from elsewhere)
-function makeResponse(payload: unknown) {
-	return { ok: true, status: 200, json: async () => payload } as Response;
-}
