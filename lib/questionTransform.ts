@@ -12,7 +12,7 @@ export function inputToQuestion(input: QuestionInput): Question {
     optionIndex: index,
     optionText: text,
     optionImage: input.optionImages?.[index] ?? null,
-    tkpValue: input.category === "TKP" ? (input.tkpValues?.[index] ?? null) : null,
+    tkpValue: input.tkpValues?.[index] ?? null,
   }));
 
   return {

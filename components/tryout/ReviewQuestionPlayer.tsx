@@ -155,7 +155,7 @@ export default function ReviewQuestionPlayer(props: Props) {
                   <div className="min-w-0 flex-1 wrap-break-word">
                     {option.optionText && <p className="whitespace-pre-wrap">{option.optionText}</p>}
                     {option.optionImage && <div className="relative mt-1 h-24 w-full sm:h-36"><Image src={option.optionImage} alt={`Gambar pilihan ${letter}`} fill sizes={imageSizes} className="rounded-lg object-contain object-left" /></div>}
-                    {(selected || correct || q.category === "TKP") && <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold">{selected && <span>Pilihan kamu</span>}{correct && <span className="inline-flex items-center gap-1 text-emerald-700"><Check aria-hidden="true" className="size-3" />{q.category === "TKP" ? "Jawaban terbaik" : "Jawaban benar"}</span>}{q.category === "TKP" && <span>{option.tkpValue ?? 0} poin</span>}</div>}
+                    {(selected || correct || q.category === "TKP" || option.tkpValue != null) && <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold">{selected && <span>Pilihan kamu</span>}{correct && <span className="inline-flex items-center gap-1 text-emerald-700"><Check aria-hidden="true" className="size-3" />{q.category === "TKP" ? "Jawaban terbaik" : "Jawaban benar"}</span>}{(q.category === "TKP" || option.tkpValue != null) && <span>{getScore(q, i)} poin</span>}</div>}
                   </div>
                 </div>
               );

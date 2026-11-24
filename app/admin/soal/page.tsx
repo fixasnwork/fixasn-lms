@@ -6,6 +6,8 @@ import type { Question, QuestionCategory, Tryout } from "@/lib/types";
 import { Button, Card, Modal } from "@/components/ui";
 import SoalTable from "@/components/admin/SoalTable";
 import ImageUpload from "@/components/admin/ImageUpload";
+import { defaultOptionWeights, isValidOptionWeight } from "@/lib/questionWeights";
+import { getScore } from "@/lib/scoring";
 import {
   usePackages,
   useTryouts,
@@ -32,7 +34,7 @@ function emptyForm(): SoalFormState {
     opts: ["", "", "", "", ""],
     optImgs: ["", "", "", "", ""],
     correctAnswer: 0,
-    tkpValues: [5, 4, 3, 2, 1],
+    tkpValues: defaultOptionWeights("TWK"),
     explanation: "",
     explanationImg: "",
   };
@@ -50,7 +52,7 @@ function questionPayload(form: SoalFormState) {
       optionIndex: index,
       optionText: text || null,
       optionImage: form.optImgs[index] || null,
-      tkpValue: form.category === "TKP" ? form.tkpValues[index] : null,
+      tkpValue: form.tkpValues[index],
     })),
   };
 }
@@ -235,7 +237,7 @@ export default function SoalPage() {
       correctAnswer: q.correctAnswer ?? 0,
       tkpValues: Array.from(
         { length: 5 },
-        (_, index) => q.options[index]?.tkpValue ?? 1,
+        (_, index) => getScore(q, index),
       ),
       explanation: q.explanation || "",
       explanationImg: q.explanationImage || "",
@@ -255,6 +257,11 @@ export default function SoalPage() {
     });
     if (filledOpts.length < 2) {
       alert("Isi minimal 2 pilihan jawaban (A dan B)!");
+      return;
+    }
+
+    if (soalForm.tkpValues.some((value) => !isValidOptionWeight(value))) {
+      alert("Bobot jawaban harus berupa bilangan bulat nonnegatif (maksimal 2147483647).");
       return;
     }
 
@@ -527,7 +534,13 @@ export default function SoalPage() {
                     key={cat}
                     type="button"
                     onClick={() =>
-                      setSoalForm((f) => ({ ...f, category: cat }))
+                      setSoalForm((f) => ({
+                        ...f,
+                        category: cat,
+                        tkpValues: (f.category === "TKP") !== (cat === "TKP")
+                          ? defaultOptionWeights(cat, f.correctAnswer)
+                          : f.tkpValues,
+                      }))
                     }
                     className={`px-4 py-2 border-2 rounded-lg cursor-pointer font-bold text-sm transition-all ${
                       soalForm.category === cat
@@ -569,6 +582,10 @@ export default function SoalPage() {
               />
             </div>
 
+            <p className="text-xs leading-relaxed text-gray-500">
+              Atur bobot nilai setiap pilihan jawaban. Jawaban kosong bernilai 0.
+              {soalForm.category !== "TKP" && " Kunci jawaban menentukan status benar/salah; skor mengikuti bobot pilihan yang dipilih."}
+            </p>
             {["A", "B", "C", "D", "E"].map((opt, index) => (
               <div
                 key={opt}
@@ -587,12 +604,15 @@ export default function SoalPage() {
                         <span className="text-green-600 ml-1.5">Kunci</span>
                       )}
                   </label>
-                  {soalForm.category === "TKP" ? (
-                    <span className="text-sm text-violet-600 font-semibold">
-                      Nilai:{" "}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="text-sm text-violet-600 font-semibold">
+                      Bobot:{" "}
                       <input
                         type="number"
                         min={0}
+                        max={2147483647}
+                        step={1}
+                        aria-label={`Bobot pilihan ${opt}`}
                         value={soalForm.tkpValues[index]}
                         onChange={(e) => {
                           const values = [...soalForm.tkpValues];
@@ -601,20 +621,26 @@ export default function SoalPage() {
                         }}
                         className="w-10 px-1 py-0.5 border border-gray-200 rounded text-xs text-center"
                       />
-                    </span>
-                  ) : (
+                    </label>
+                    {soalForm.category !== "TKP" &&
                     soalForm.correctAnswer !== index && (
                       <button
                         type="button"
                         onClick={() =>
-                          setSoalForm((f) => ({ ...f, correctAnswer: index }))
+                          setSoalForm((f) => ({
+                            ...f,
+                            correctAnswer: index,
+                            tkpValues: f.tkpValues.every((value, i) => value === (i === f.correctAnswer ? 1 : 0))
+                              ? defaultOptionWeights(f.category, index)
+                              : f.tkpValues,
+                          }))
                         }
                         className="text-xs text-gray-500 bg-white border border-gray-200 rounded-md px-2 py-1 cursor-pointer"
                       >
                         Jadikan Kunci
                       </button>
-                    )
-                  )}
+                    )}
+                  </div>
                 </div>
                 <input
                   value={soalForm.opts[index] || ""}

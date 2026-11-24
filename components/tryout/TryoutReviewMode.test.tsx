@@ -91,6 +91,16 @@ describe("TryoutReviewMode — review player", () => {
 		expect(screen.getAllByText("5 poin")).toHaveLength(2);
 	});
 
+	it.each(["TWK", "TIU"] as const)("shows %s option weights while retaining correct-answer feedback", (category) => {
+		const question: Question = { ...baseQuestion, category, correctAnswer: 0,
+			options: baseQuestion.options.map((option, index) => ({ ...option, tkpValue: index === 0 ? 5 : 0 })) };
+		renderReview([question], { 0: 1 });
+		expect(screen.getByText("5 poin")).toBeInTheDocument();
+		expect(screen.getByText("0 poin")).toBeInTheDocument();
+		expect(screen.getByText("Jawaban benar")).toBeInTheDocument();
+		expect(screen.queryByText("Jawaban terbaik")).toBeNull();
+	});
+
 	it("handles an empty question set without crashing", () => {
 		renderReview([], {});
 		expect(screen.getByRole("status")).toHaveTextContent("Soal pembahasan belum tersedia.");

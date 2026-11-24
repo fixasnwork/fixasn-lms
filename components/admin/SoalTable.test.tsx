@@ -58,6 +58,19 @@ const sampleQuestionWithImageOption: Question = {
 };
 
 describe('SoalTable', () => {
+  it.each(['TWK', 'TIU'] as const)('shows %s option weights alongside the answer key in both layouts', (category) => {
+    const question = { ...sampleQuestion, category, options: sampleQuestion.options.map((option, index) => ({
+      ...option, tkpValue: index === 0 ? 5 : 0,
+    })) };
+    render(<SoalTable questions={[question]} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    for (const testId of ['soal-mobile-list', 'soal-desktop-table']) {
+      const view = within(screen.getByTestId(testId));
+      expect(view.getByText('A=5')).toBeInTheDocument();
+      expect(view.getByText('B=0')).toBeInTheDocument();
+    }
+    expect(screen.getByText('Jawaban: A')).toBeInTheDocument();
+  });
+
   it('renders mobile list and desktop table containers', () => {
     render(<SoalTable questions={[sampleQuestion]} onEdit={vi.fn()} onDelete={vi.fn()} />);
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { requireAdmin } from '@/lib/adminAuth';
 import type { Question } from '@/lib/types';
+import { isValidOptionWeight } from '@/lib/questionWeights';
 
 interface QuestionOptionInput {
   optionIndex?: number;
@@ -32,7 +33,7 @@ function normalizeOptions(body: QuestionInput): QuestionOptionInput[] {
       optionIndex: Number.isInteger(option.optionIndex) ? option.optionIndex : index,
       optionText: option.optionText?.trim() ? option.optionText : null,
       optionImage: option.optionImage || null,
-      tkpValue: body.category === 'TKP' ? option.tkpValue ?? null : null,
+      tkpValue: option.tkpValue ?? null,
     }))
     .filter((option) => option.optionText || option.optionImage);
 }
@@ -49,6 +50,10 @@ function validateQuestion(body: QuestionInput) {
 
   if (normalizeOptions(body).length < 2) {
     return 'At least two options are required';
+  }
+
+  if (normalizeOptions(body).some((option) => option.tkpValue != null && !isValidOptionWeight(option.tkpValue))) {
+    return 'Bobot jawaban harus bilangan bulat antara 0 dan 2147483647';
   }
 
   if (category !== 'TKP') {

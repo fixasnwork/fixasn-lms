@@ -146,6 +146,23 @@ const tkpQuestion: Question = {
 };
 
 describe("getScore", () => {
+	it.each([twkQuestion, tiuQuestion])("uses configured option weights for $category, including zero and partial credit", (question) => {
+		const weighted = { ...question, options: question.options.map((option, index) => ({
+			...option, tkpValue: index === question.correctAnswer ? 5 : index === 0 ? 2 : 0,
+		})) };
+		expect(getScore(weighted, question.correctAnswer)).toBe(5);
+		expect(getScore(weighted, 0)).toBe(2);
+		expect(getScore(weighted, 3)).toBe(0);
+		expect(getScore(weighted, undefined)).toBe(0);
+		expect(getScore(weighted, -1)).toBe(0);
+		expect(getScore(weighted, 99)).toBe(0);
+	});
+
+	it("keeps an explicit zero weight even for the correct answer", () => {
+		const question = { ...twkQuestion, options: twkQuestion.options.map((option) => ({ ...option, tkpValue: 0 })) };
+		expect(getScore(question, question.correctAnswer)).toBe(0);
+	});
+
 	it("returns 0 when answer is undefined", () => {
 		expect(getScore(twkQuestion, undefined)).toBe(0);
 	});
@@ -189,6 +206,16 @@ describe("getScore", () => {
 });
 
 describe("calculateScoring", () => {
+	it("aggregates weighted TWK and TIU alongside TKP", () => {
+		const weighted = [twkQuestion, tiuQuestion].map((question) => ({
+			...question, options: question.options.map((option, index) => ({
+				...option, tkpValue: index === question.correctAnswer ? 5 : 0,
+			})),
+		}));
+		expect(calculateScoring([...weighted, tkpQuestion], { 0: 1, 1: 2, 2: 2 }))
+			.toEqual({ TWK: 5, TIU: 5, TKP: 5, total: 15 });
+	});
+
 	it("returns all zeros for empty questions", () => {
 		const result = calculateScoring([], {});
 		expect(result).toEqual({ TWK: 0, TIU: 0, TKP: 0, total: 0 });

@@ -96,22 +96,21 @@ export default function SoalTable({ questions, onEdit, onDelete }: SoalTableProp
               </div>
 
               <div className="text-xs">
-                {q.category !== 'TKP' ? (
+                {q.category !== 'TKP' && (
                   <span className="font-bold text-green-600">
                     Jawaban: {q.correctAnswer !== undefined && q.correctAnswer !== null ? String.fromCharCode(65 + q.correctAnswer) : '-'}
                   </span>
-                ) : (
-                  <div className="flex gap-1 flex-wrap">
-                    {q.options.map((opt, i) => opt.tkpValue != null && (
-                      <span
-                        key={i}
-                        className="bg-violet-100 text-violet-700 rounded px-1.5 py-0.5 font-bold"
-                      >
-                        {String.fromCharCode(65 + i)}={opt.tkpValue}
-                      </span>
-                    ))}
-                  </div>
                 )}
+                <div className="flex gap-1 flex-wrap">
+                  {q.options.map((opt, i) => opt.tkpValue != null && (
+                    <span
+                      key={i}
+                      className="bg-violet-100 text-violet-700 rounded px-1.5 py-0.5 font-bold"
+                    >
+                      {String.fromCharCode(65 + i)}={opt.tkpValue}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
           );
@@ -209,22 +208,21 @@ export default function SoalTable({ questions, onEdit, onDelete }: SoalTableProp
                   </div>
                 </td>
                 <td className="px-3 py-2.5 text-xs">
-                  {q.category !== 'TKP' ? (
+                  {q.category !== 'TKP' && (
                     <span className="font-bold text-green-600">
                       {q.correctAnswer !== undefined && q.correctAnswer !== null ? String.fromCharCode(65 + q.correctAnswer) : '-'}
                     </span>
-                  ) : (
-                    <div className="flex gap-1 flex-wrap">
-                      {q.options.map((opt, i) => opt.tkpValue != null && (
-                        <span
-                          key={i}
-                          className="bg-violet-100 text-violet-700 rounded px-1.5 py-0.5 font-bold"
-                        >
-                          {String.fromCharCode(65 + i)}={opt.tkpValue}
-                        </span>
-                      ))}
-                    </div>
                   )}
+                  <div className="flex gap-1 flex-wrap">
+                    {q.options.map((opt, i) => opt.tkpValue != null && (
+                      <span
+                        key={i}
+                        className="bg-violet-100 text-violet-700 rounded px-1.5 py-0.5 font-bold"
+                      >
+                        {String.fromCharCode(65 + i)}={opt.tkpValue}
+                      </span>
+                    ))}
+                  </div>
                 </td>
                 <td className="px-3 py-2.5">
                   <div className="flex gap-1.5">

@@ -5,9 +5,11 @@ export function getScore(
 	answerIdx: number | undefined | null,
 ): number {
 	if (answerIdx === undefined || answerIdx === null) return 0;
+	const opt = q.options[answerIdx];
+	if (!opt) return 0;
+	if (opt.tkpValue != null) return opt.tkpValue;
 	if (q.category === "TKP") {
-		const opt = q.options[answerIdx];
-		return opt?.tkpValue ?? 0;
+		return 0;
 	}
 	return answerIdx === q.correctAnswer ? 1 : 0;
 }

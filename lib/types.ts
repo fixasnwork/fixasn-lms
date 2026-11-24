@@ -30,6 +30,7 @@ export interface QuestionOption {
   optionIndex: number;
   optionText: string | null;
   optionImage: string | null;
+  /** Per-option score for all categories; legacy field name retained for compatibility. */
   tkpValue: number | null;
 }
 
@@ -54,6 +55,7 @@ export interface QuestionInput {
   questionImage?: string;
   options: string[];
   optionImages?: string[];
+  /** Per-option weights for TWK, TIU, and TKP. */
   tkpValues?: number[];
   explanation?: string;
   explanationImage?: string;
