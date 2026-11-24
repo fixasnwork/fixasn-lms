@@ -26,6 +26,7 @@ function mapOption(opt: {
 function mapQuestion(q: {
   id: number;
   category: string;
+  topicId?: number | null;
   question: string;
   questionImage: string | null;
   correctAnswer: number | null;
@@ -45,6 +46,7 @@ function mapQuestion(q: {
   return {
     id: q.id,
     category: q.category as Question['category'],
+    topicId: q.topicId ?? null,
     question: q.question,
     correctAnswer: q.correctAnswer,
     questionImage: q.questionImage,

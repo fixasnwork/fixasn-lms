@@ -5,7 +5,7 @@ import Image from "next/image";
 import { ArrowLeft, ArrowRight, BookOpen, Check, ClipboardList, Flag, RotateCcw, X } from "lucide-react";
 import type { Question } from "@/lib/types";
 import { getScore } from "@/lib/scoring";
-import { Badge } from "@/components/ui";
+import QuestionHeader from "./QuestionHeader";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/shadcn/sheet";
 
 const action = "inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm";
@@ -134,8 +134,7 @@ export default function ReviewQuestionPlayer(props: Props) {
 
         <section ref={questionRef} aria-labelledby="review-question-title" className="min-w-0 rounded-2xl bg-white p-4 sm:p-6">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 id="review-question-title" className="text-sm font-semibold text-slate-900">Soal {index + 1} dari {questions.length}</h2>
-            <Badge color={q.category === "TWK" ? "blue" : q.category === "TIU" ? "purple" : "yellow"}>{q.category}</Badge>
+            <QuestionHeader id="review-question-title" number={index + 1} category={q.category} topicName={q.topicName} />
             <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${statuses[status].soft}`}>{status === "correct" ? <Check aria-hidden="true" className="size-3" /> : status === "wrong" ? <X aria-hidden="true" className="size-3" /> : null}{statuses[status].label}</span>
             {raguRaguFlags[index] && <span data-testid="review-pill" className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-900"><Flag aria-hidden="true" className="size-3" />Ragu-ragu</span>}
             <span className="text-xs text-slate-500 sm:ml-auto">Nilai kamu: <strong className="text-slate-900">{getScore(q, answer)}</strong> poin</span>

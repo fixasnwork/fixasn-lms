@@ -56,6 +56,23 @@ describe("TryoutReviewMode — review player", () => {
 		));
 	}
 
+	it.each(["Pancasila", null, undefined])("shows the question topic in review (%s)", (topicName) => {
+		renderReview([{ ...baseQuestion, topicId: topicName ? 1 : null, topicName }], { 0: 0 });
+		if (topicName) expect(screen.getByText(topicName)).toBeInTheDocument();
+		expect(screen.queryByText("Belum ditentukan")).toBeNull();
+		expect(screen.getAllByText("TWK").length).toBeGreaterThan(0);
+	});
+
+	it("updates the topic label when navigating between review questions", () => {
+		renderReview([
+			{ ...baseQuestion, topicId: 1, topicName: "Pancasila" },
+			{ ...baseQuestion, id: 2, topicId: 2, topicName: "UUD 1945" },
+		], { 0: 0, 1: 0 });
+		fireEvent.click(screen.getByRole("button", { name: /Selanjutnya/ }));
+		expect(screen.getByText("UUD 1945")).toBeInTheDocument();
+		expect(screen.queryByText("Pancasila")).toBeNull();
+	});
+
 	it("counts missing and negative answers as empty, separately from wrong answers and TKP", () => {
 		const questions = makeQuestions(5);
 		questions[4] = { ...questions[4], category: "TKP" };

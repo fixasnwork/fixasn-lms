@@ -1,20 +1,24 @@
 'use client';
 
 import Image from 'next/image';
-import type { Question } from '@/lib/types';
+import type { Question, QuestionTopic } from '@/lib/types';
 import { Badge, Button } from '@/components/ui';
 
 interface SoalTableProps {
   questions: Question[];
+  topics?: QuestionTopic[];
+  isFiltered?: boolean;
   onEdit: (q: Question) => void;
   onDelete: (id: number) => void;
 }
 
-export default function SoalTable({ questions, onEdit, onDelete }: SoalTableProps) {
+export default function SoalTable({ questions, topics = [], isFiltered = false, onEdit, onDelete }: SoalTableProps) {
+  const topicNames = new Map(topics.map((topic) => [topic.id, topic.name]));
+  const topicLabel = (question: Question) => question.topicId == null ? "Belum ditentukan" : topicNames.get(question.topicId) ?? "Topik tidak tersedia";
   if (questions.length === 0) {
     return (
       <div className="text-center py-10 text-gray-400 text-sm">
-        Belum ada soal. Klik &quot;+ Tambah Soal&quot; untuk menambahkan.
+        {isFiltered ? "Tidak ada soal yang sesuai dengan filter." : <>Belum ada soal. Klik &quot;+ Tambah Soal&quot; untuk menambahkan.</>}
       </div>
     );
   }
@@ -43,6 +47,7 @@ export default function SoalTable({ questions, onEdit, onDelete }: SoalTableProp
                       {q.category}
                     </Badge>
                   </div>
+                  <p className="mt-1 text-xs break-words text-gray-500">Topik: {topicLabel(q)}</p>
                 </div>
                 <div className="flex gap-1.5">
                   <Button variant="ghost" size="sm" onClick={() => onEdit(q)}>
@@ -165,6 +170,7 @@ export default function SoalTable({ questions, onEdit, onDelete }: SoalTableProp
                   >
                     {q.category}
                   </Badge>
+                  <p className="mt-1 text-xs break-words text-gray-500">Topik: {topicLabel(q)}</p>
                 </td>
                 <td className="px-3 py-2.5">
                   <div className="max-w-sm">

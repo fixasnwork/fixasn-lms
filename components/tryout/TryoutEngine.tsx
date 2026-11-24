@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, BatteryCharging, Check, CirclePlay, ClipboardList, Clock3, Flag, LogOut, NotebookPen, RotateCcw, Save, ShieldCheck, VolumeX, Wifi } from "lucide-react";
 import type { Question } from "@/lib/types";
 import { getScore, formatTime } from "@/lib/scoring";
-import { Button, Badge, Card, Modal } from "@/components/ui";
+import { Button, Card, Modal } from "@/components/ui";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/shadcn/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/shadcn/sheet";
 import {
@@ -18,6 +18,7 @@ import { useAutosaveAnswers } from "@/hooks/useAutosaveAnswers";
 import { useNavGuardStore } from "@/store/useNavGuardStore";
 import TryoutReviewMode from "./TryoutReviewMode";
 import TryoutCompletion from "./TryoutCompletion";
+import QuestionHeader from "./QuestionHeader";
 
 const playerButton = "inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm";
 
@@ -536,7 +537,7 @@ export default function TryoutEngine({
               </span>
               <div className="min-w-0">
                 <h1 className="truncate text-sm font-semibold text-slate-900 sm:text-base" title={setName}>{setName}</h1>
-                <p className="mt-0.5 text-xs text-slate-600 lg:hidden">Soal {cur + 1} dari {questions.length}</p>
+                <p className="mt-1 inline-flex rounded-lg bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground lg:hidden">No. {cur + 1}</p>
               </div>
             </div>
 
@@ -572,8 +573,7 @@ export default function TryoutEngine({
 
         <section ref={questionRef} aria-labelledby="question-title" className="min-w-0 rounded-2xl bg-white p-4 sm:p-6">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 id="question-title" className="text-sm font-semibold text-slate-900">Soal {cur + 1} dari {questions.length}</h2>
-            <Badge color={q.category === "TWK" ? "blue" : q.category === "TIU" ? "purple" : "yellow"}>{q.category}</Badge>
+            <QuestionHeader id="question-title" number={cur + 1} category={q.category} topicName={q.topicName} />
             {raguRagu[cur] && (
               <span data-testid="ragu-ragu-badge" className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-900">
                 <Flag aria-hidden="true" className="size-3" /> Ragu-ragu

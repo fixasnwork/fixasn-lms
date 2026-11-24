@@ -2,12 +2,16 @@
 
 import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Tags } from "lucide-react";
 import type { Question, QuestionCategory, Tryout } from "@/lib/types";
 import { Button, Card, Modal } from "@/components/ui";
 import SoalTable from "@/components/admin/SoalTable";
 import ImageUpload from "@/components/admin/ImageUpload";
 import { defaultOptionWeights, isValidOptionWeight } from "@/lib/questionWeights";
 import { getScore } from "@/lib/scoring";
+import { useQuestionTopics } from "@/hooks/useQuestionTopics";
+import QuestionTopicManager from "@/components/admin/QuestionTopicManager";
+import { Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/shadcn/combobox";
 import {
   usePackages,
   useTryouts,
@@ -16,6 +20,7 @@ import {
 
 interface SoalFormState {
   category: QuestionCategory;
+  topicId: number | null;
   question: string;
   questionImage: string;
   opts: string[];
@@ -26,9 +31,15 @@ interface SoalFormState {
   explanationImg: string;
 }
 
+interface TopicOption {
+  value: string;
+  label: string;
+}
+
 function emptyForm(): SoalFormState {
   return {
     category: "TWK",
+    topicId: null,
     question: "",
     questionImage: "",
     opts: ["", "", "", "", ""],
@@ -43,6 +54,7 @@ function emptyForm(): SoalFormState {
 function questionPayload(form: SoalFormState) {
   return {
     category: form.category,
+    topicId: form.topicId,
     question: form.question,
     questionImage: form.questionImage || null,
     correctAnswer: form.category === "TKP" ? null : form.correctAnswer,
@@ -73,6 +85,11 @@ function allTryouts(packageBanks: Record<string, Tryout[]>): Tryout[] {
 
 export default function SoalPage() {
   const queryClient = useQueryClient();
+  const topicsQuery = useQuestionTopics();
+  const topics = topicsQuery.data ?? [];
+  const [showTopicManager, setShowTopicManager] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<QuestionCategory | "all">("all");
+  const [topicFilter, setTopicFilter] = useState("all");
   const {
     data: packages = [],
     isFetching: isFetchingPackages,
@@ -134,6 +151,24 @@ export default function SoalPage() {
   );
 
   const currentQ = currentTryoutWithQuestions?.questions || [];
+  const filterTopics = topics.filter((topic) => categoryFilter === "all" || topic.category === categoryFilter);
+  const effectiveTopicFilter = topicFilter === "unassigned" || filterTopics.some((topic) => String(topic.id) === topicFilter) ? topicFilter : "all";
+  const topicFilterOptions: TopicOption[] = [
+    { value: "all", label: "Semua topik" },
+    { value: "unassigned", label: "Belum ditentukan" },
+    ...filterTopics.map((topic) => ({ value: String(topic.id), label: categoryFilter === "all" ? `${topic.category} — ${topic.name}` : topic.name })),
+  ];
+  const formTopicOptions: TopicOption[] = [
+    { value: "", label: "Belum ditentukan" },
+    ...topics.filter((topic) => topic.category === soalForm.category).map((topic) => ({ value: String(topic.id), label: topic.name })),
+  ];
+  if (soalForm.topicId != null && !formTopicOptions.some((option) => option.value === String(soalForm.topicId))) {
+    formTopicOptions.push({ value: String(soalForm.topicId), label: "Topik tidak tersedia — pilih ulang" });
+  }
+  const filteredQuestions = currentQ.filter((question) =>
+    (categoryFilter === "all" || question.category === categoryFilter) &&
+    (effectiveTopicFilter === "all" || (effectiveTopicFilter === "unassigned" ? question.topicId == null : String(question.topicId) === effectiveTopicFilter)),
+  );
   const activePkg = packages.find((p) => p.id === activePkgTab);
   const adminDuration =
     durationDraft ??
@@ -224,6 +259,7 @@ export default function SoalPage() {
   const openEditSoal = (q: Question) => {
     setSoalForm({
       category: q.category,
+      topicId: q.topicId ?? null,
       question: q.question,
       questionImage: q.questionImage || "",
       opts: Array.from(
@@ -283,6 +319,11 @@ export default function SoalPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
+          <Button variant="primary" size="sm" onClick={() => setShowTopicManager(true)}
+            className="inline-flex min-h-10 items-center gap-2 shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
+            <Tags aria-hidden="true" className="size-4" />
+            Kelola Topik
+          </Button>
           <span className="font-bold text-sm text-gray-500">Durasi:</span>
           <input
             type="number"
@@ -404,6 +445,32 @@ export default function SoalPage() {
           })}
       </div>
 
+      <div className="mb-4 flex flex-wrap items-end gap-3 rounded-xl bg-white p-4">
+        <div>
+          <label htmlFor="question-category-filter" className="mb-1 block text-xs font-semibold text-gray-600">Kategori soal</label>
+          <select id="question-category-filter" value={categoryFilter} onChange={(event) => {
+            setCategoryFilter(event.target.value as QuestionCategory | "all"); setTopicFilter("all");
+          }} className="min-h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm">
+            <option value="all">Semua kategori</option>
+            {(["TWK", "TIU", "TKP"] as const).map((category) => <option key={category} value={category}>{category}</option>)}
+          </select>
+        </div>
+        <div className="min-w-0 flex-1 sm:max-w-sm">
+          <label htmlFor="question-topic-filter" className="mb-1 block text-xs font-semibold text-gray-600">Topik soal</label>
+          <Combobox items={topicFilterOptions} value={topicFilterOptions.find((option) => option.value === effectiveTopicFilter) ?? null}
+            isItemEqualToValue={(a, b) => a.value === b.value} autoHighlight
+            onValueChange={(option) => { if (option) setTopicFilter(option.value); }}>
+            <ComboboxInput id="question-topic-filter" placeholder="Cari topik..." className="min-h-10 w-full rounded-lg bg-white" />
+            <ComboboxContent>
+              <ComboboxEmpty>Topik tidak ditemukan.</ComboboxEmpty>
+              <ComboboxList>{(option: TopicOption) => <ComboboxItem key={option.value} value={option}>{option.label}</ComboboxItem>}</ComboboxList>
+            </ComboboxContent>
+          </Combobox>
+        </div>
+        <p role="status" className="py-2 text-xs text-gray-500">Menampilkan {filteredQuestions.length} dari {currentQ.length} soal</p>
+        {topicsQuery.isError && <p role="alert" className="w-full text-sm text-red-700">Topik gagal dimuat. <button type="button" disabled={topicsQuery.isFetching} onClick={() => void topicsQuery.refetch()} className="rounded px-2 py-1 font-semibold underline">Coba Lagi</button></p>}
+      </div>
+
       <Card className="p-0 overflow-hidden">
         {activePkgTab === "trial" && (
           <div>
@@ -431,7 +498,9 @@ export default function SoalPage() {
                 </div>
               ) : (
                 <SoalTable
-                  questions={currentTryoutWithQuestions?.questions || []}
+                  questions={filteredQuestions}
+                  topics={topics}
+                  isFiltered={categoryFilter !== "all" || effectiveTopicFilter !== "all"}
                   onEdit={(q) => openEditSoal(q)}
                   onDelete={(id) => deleteQuestionMutation.mutate(id)}
                 />
@@ -503,7 +572,9 @@ export default function SoalPage() {
                 </div>
               ) : (
                 <SoalTable
-                  questions={currentQ}
+                  questions={filteredQuestions}
+                  topics={topics}
+                  isFiltered={categoryFilter !== "all" || effectiveTopicFilter !== "all"}
                   onEdit={(q) => openEditSoal(q)}
                   onDelete={(id) => deleteQuestionMutation.mutate(id)}
                 />
@@ -512,6 +583,8 @@ export default function SoalPage() {
           </div>
         )}
       </Card>
+
+      {showTopicManager && <QuestionTopicManager onClose={() => setShowTopicManager(false)} />}
 
       {showAddSoal && (
         <Modal
@@ -537,6 +610,7 @@ export default function SoalPage() {
                       setSoalForm((f) => ({
                         ...f,
                         category: cat,
+                        topicId: f.category === cat ? f.topicId : null,
                         tkpValues: (f.category === "TKP") !== (cat === "TKP")
                           ? defaultOptionWeights(cat, f.correctAnswer)
                           : f.tkpValues,
@@ -552,6 +626,20 @@ export default function SoalPage() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            <div>
+              <label htmlFor="question-topic" className="mb-1.5 block text-sm font-bold text-gray-700">Topik soal <span className="font-normal text-gray-400">(opsional)</span></label>
+              <Combobox items={formTopicOptions} value={formTopicOptions.find((option) => option.value === String(soalForm.topicId ?? "")) ?? null}
+                isItemEqualToValue={(a, b) => a.value === b.value} autoHighlight disabled={topicsQuery.isPending || topicsQuery.isError}
+                onValueChange={(option) => { if (option) setSoalForm((form) => ({ ...form, topicId: option.value ? Number(option.value) : null })); }}>
+                <ComboboxInput id="question-topic" placeholder="Cari topik..." className="min-h-10 w-full rounded-lg bg-white" disabled={topicsQuery.isPending || topicsQuery.isError} />
+                <ComboboxContent>
+                  <ComboboxEmpty>Topik tidak ditemukan.</ComboboxEmpty>
+                  <ComboboxList>{(option: TopicOption) => <ComboboxItem key={option.value} value={option}>{option.label}</ComboboxItem>}</ComboboxList>
+                </ComboboxContent>
+              </Combobox>
+              <p className="mt-1.5 text-xs text-gray-500">{topicsQuery.isPending ? "Memuat topik..." : topicsQuery.isError ? "Topik gagal dimuat. Tutup form dan gunakan Coba Lagi." : `Hanya topik ${soalForm.category} yang ditampilkan. Tambahkan topik melalui Kelola Topik.`}</p>
             </div>
 
             <div>

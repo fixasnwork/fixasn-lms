@@ -55,6 +55,14 @@ function makeWrapper() {
 }
 
 describe('TryoutEngine — Simpan & Keluar (save-and-exit)', () => {
+  it.each(['Pancasila', null, undefined])('shows the current question topic in the player (%s)', async (topicName) => {
+    render(<TryoutEngine questions={[{ ...baseQuestion, topicId: topicName ? 1 : null, topicName }]} durationMin={15} onFinish={vi.fn()} />, { wrapper: makeWrapper() });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Mulai Tryout' })); });
+    if (topicName) expect(screen.getByText(topicName)).toBeInTheDocument();
+    expect(screen.queryByText('Belum ditentukan')).toBeNull();
+    expect(screen.getAllByText('TWK').length).toBeGreaterThan(0);
+  });
+
   it('shows completion choices after saving on timeout, and opens review only on request', async () => {
     const onFinish = vi.fn().mockResolvedValue(undefined);
     render(<TryoutEngine questions={makeQuestions(1)} durationMin={15} initialTimeLeftSeconds={1} onFinish={onFinish} />, { wrapper: makeWrapper() });

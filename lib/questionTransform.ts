@@ -18,6 +18,7 @@ export function inputToQuestion(input: QuestionInput): Question {
   return {
     id: input.id,
     category: input.category,
+    topicId: null,
     question: input.question,
     correctAnswer: input.correctAnswer ?? null,
     questionImage: input.questionImage ?? null,

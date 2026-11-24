@@ -10,10 +10,20 @@
 export type QuestionCategory = "TWK" | "TIU" | "TKP";
 export type VideoCategory = "TWK" | "TIU" | "TKP";
 
+export interface QuestionTopic {
+  id: number;
+  category: QuestionCategory;
+  name: string;
+}
+
 // ── Questions & Options ───────────────────────
 export interface Question {
   id: number;
   category: QuestionCategory;
+  /** Null for legacy/unassigned questions. */
+  topicId?: number | null;
+  /** Topic display name resolved by the authenticated attempt endpoint. */
+  topicName?: string | null;
   question: string;
   correctAnswer: number | null;
   questionImage: string | null;

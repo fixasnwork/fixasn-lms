@@ -6,6 +6,7 @@ import { PUT } from "./[questionId]/route";
 
 const db = vi.hoisted(() => ({
   tryout: { findUnique: vi.fn() },
+  questionTopic: { findUnique: vi.fn() },
   question: { create: vi.fn(), update: vi.fn(), findUniqueOrThrow: vi.fn() },
   questionOption: { deleteMany: vi.fn(), createMany: vi.fn() },
   tryoutQuestion: { findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn() },
@@ -30,6 +31,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(requireAdmin).mockResolvedValue(null);
   db.tryout.findUnique.mockResolvedValue({ id: 1 });
+  db.questionTopic.findUnique.mockResolvedValue({ category: "TWK" });
   db.tryoutQuestion.findUnique.mockResolvedValue({ id: 1 });
   db.tryoutQuestion.findFirst.mockResolvedValue(null);
   const row = { id: 10, ...body, questionImage: null, explanation: null, explanationImage: null,
@@ -40,7 +42,36 @@ beforeEach(() => {
   db.$transaction.mockImplementation((callback) => callback(db));
 });
 
-describe.each(handlers)("$method question weights", ({ save, savedOptions }) => {
+describe.each(handlers)("$method questions", ({ method, save, savedOptions }) => {
+  it("stores a topic from the matching category", async () => {
+    expect((await save(request({ ...body, topicId: 5 }))).status).toBe(200);
+    const write = method === "POST" ? db.question.create : db.question.update;
+    expect(write.mock.calls[0][0].data.topicId).toBe(5);
+  });
+
+  it("allows clearing a question topic", async () => {
+    expect((await save(request({ ...body, topicId: null }))).status).toBe(200);
+    const write = method === "POST" ? db.question.create : db.question.update;
+    expect(write.mock.calls[0][0].data.topicId).toBeNull();
+  });
+
+  it("rejects topics from another category before writing", async () => {
+    db.questionTopic.findUnique.mockResolvedValue({ category: "TIU" });
+    expect((await save(request({ ...body, topicId: 5 }))).status).toBe(400);
+    expect(db.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects deleted topics before writing", async () => {
+    db.questionTopic.findUnique.mockResolvedValue(null);
+    expect((await save(request({ ...body, topicId: 5 }))).status).toBe(400);
+    expect(db.$transaction).not.toHaveBeenCalled();
+  });
+
+  it.each([-1, 0, 1.5, "5", 2147483648])("rejects invalid topic id %s", async (topicId) => {
+    expect((await save(request({ ...body, topicId }))).status).toBe(400);
+    expect(db.$transaction).not.toHaveBeenCalled();
+  });
+
   it.each(["TWK", "TIU", "TKP"])("persists %s option weights and returns them", async (category) => {
     const response = await save(request({ ...body, category }));
     expect(response.status).toBe(200);

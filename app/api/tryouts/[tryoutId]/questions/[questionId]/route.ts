@@ -3,6 +3,7 @@ import prisma from '@/lib/prisma';
 import { requireAdmin } from '@/lib/adminAuth';
 import type { Question } from '@/lib/types';
 import { isValidOptionWeight } from '@/lib/questionWeights';
+import { validateQuestionTopic } from '@/lib/questionTopics';
 
 interface QuestionOptionInput {
   optionIndex?: number;
@@ -13,6 +14,7 @@ interface QuestionOptionInput {
 
 interface QuestionInput {
   category?: string;
+  topicId?: number | null;
   question?: string;
   questionImage?: string | null;
   correctAnswer?: number | null;
@@ -69,6 +71,7 @@ function validateQuestion(body: QuestionInput) {
 function mapQuestion(row: {
   id: number;
   category: string;
+  topicId?: number | null;
   question: string;
   questionImage: string | null;
   correctAnswer: number | null;
@@ -88,6 +91,7 @@ function mapQuestion(row: {
   return {
     id: row.id,
     category: row.category as Question['category'],
+    topicId: row.topicId ?? null,
     question: row.question,
     questionImage: row.questionImage,
     correctAnswer: row.correctAnswer,
@@ -127,6 +131,9 @@ export async function PUT(
       return NextResponse.json({ error: validationError }, { status: 400 });
     }
 
+    const topicError = await validateQuestionTopic(body.topicId, body.category ?? 'TWK');
+    if (topicError) return NextResponse.json({ error: topicError }, { status: 400 });
+
     const link = await prisma.tryoutQuestion.findUnique({
       where: { tryoutId_questionId: { tryoutId, questionId } },
       select: { id: true },
@@ -141,6 +148,7 @@ export async function PUT(
         where: { id: questionId },
         data: {
           category: body.category ?? 'TWK',
+          topicId: body.topicId ?? null,
           question: body.question ?? '',
           questionImage: body.questionImage || null,
           correctAnswer: body.category === 'TKP' ? null : Number(body.correctAnswer),
