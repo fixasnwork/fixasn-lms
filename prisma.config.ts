@@ -8,6 +8,6 @@ export default defineConfig({
   },
   datasource: {
     // prisma generate needs env to resolve, but doesn't connect — fallback for Docker build
-    url: process.env.DATABASE_URL || "postgresql://dummy:dummy@localhost:5432/dummy",
+    url: process.env.DIRECT_URL || process.env.DATABASE_URL || "postgresql://dummy:dummy@localhost:5432/dummy",
   },
 });
