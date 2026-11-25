@@ -22,7 +22,7 @@ export interface AdminPaymentRow {
   createdAt: string; paidAt: string | null; transactionId: string | null;
   userIsBlocked: boolean; userBlockedReason: string | null;
 }
-export interface AdminPaymentSummary { total: number; pendingManual: number; paid: number; blocked: number }
+export interface AdminPaymentSummary { total: number; pending: number; paid: number; blocked: number }
 export interface AdminPaymentsPage { payments: AdminPaymentRow[]; total: number; page: number; pageSize: number; summary: AdminPaymentSummary }
 export type AdminPaymentAction = 'verify' | 'reject' | 'block' | 'restore' | 'sync' | 'ban' | 'unban';
 

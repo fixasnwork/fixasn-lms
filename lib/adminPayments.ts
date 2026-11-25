@@ -60,7 +60,7 @@ export async function getAdminPayments(filters: AdminPaymentFilters, identity?: 
     SELECT (SELECT count(*) FROM filtered) AS total,
       (SELECT jsonb_build_object(
         'total', count(*),
-        'pendingManual', count(*) FILTER (WHERE source = 'manual' AND status = 'pending'),
+        'pending', count(*) FILTER (WHERE status IN ('pending', 'creating')),
         'paid', count(*) FILTER (WHERE status IN ('paid', 'partially_refunded')),
         'blocked', count(*) FILTER (WHERE "accessStatus" = 'blocked')
       ) FROM filtered) AS summary,
@@ -70,7 +70,7 @@ export async function getAdminPayments(filters: AdminPaymentFilters, identity?: 
   const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
   // A verification or another admin's update can remove the last filtered row.
   if (total && filters.page > lastPage) return getAdminPayments({ ...filters, page: lastPage }, identity);
-  return { payments: result?.payments ?? [], total, page: Math.min(filters.page, lastPage), pageSize: PAGE_SIZE, summary: result?.summary ?? { total, pendingManual: 0, paid: 0, blocked: 0 } };
+  return { payments: result?.payments ?? [], total, page: Math.min(filters.page, lastPage), pageSize: PAGE_SIZE, summary: result?.summary ?? { total, pending: 0, paid: 0, blocked: 0 } };
 }
 
 export async function getAdminPaymentDetail(source: string, id: string) {

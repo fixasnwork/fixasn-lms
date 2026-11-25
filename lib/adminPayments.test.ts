@@ -26,10 +26,10 @@ describe('admin payment search', () => {
     expect(() => parseAdminPaymentFilters(new URLSearchParams(input))).toThrow('Filter');
   });
   it('keeps malicious search text in SQL parameters and returns total count for an empty page', async () => {
-    mocks.raw.mockResolvedValue([{ total: BigInt(40), payments: [], summary: { total: 40, pendingManual: 0, paid: 0, blocked: 0 } }]);
+    mocks.raw.mockResolvedValue([{ total: BigInt(40), payments: [], summary: { total: 40, pending: 0, paid: 0, blocked: 0 } }]);
     const search = "%' OR 1=1 --";
     const result = await getAdminPayments({ ...filters, search, page: 2, source: 'midtrans', status: 'pending' });
-    expect(result).toMatchObject({ total: 40, payments: [], page: 2, pageSize: 20, summary: { total: 40, pendingManual: 0, paid: 0, blocked: 0 } });
+    expect(result).toMatchObject({ total: 40, payments: [], page: 2, pageSize: 20, summary: { total: 40, pending: 0, paid: 0, blocked: 0 } });
     const sql = mocks.raw.mock.calls[0][0];
     expect(sql.sql).not.toContain(search);
     expect(sql.values).toContain('midtrans');

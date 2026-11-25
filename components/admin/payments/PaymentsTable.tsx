@@ -44,7 +44,7 @@ export function PaymentsTable() {
   const summary = query.data?.summary;
   const summaryCards = [
     { label: 'Total pembayaran', value: summary?.total, icon: ReceiptText, color: 'bg-blue-600 text-white' },
-    { label: 'Menunggu verifikasi', value: summary?.pendingManual, icon: ClipboardClock, color: 'bg-yellow-400 text-yellow-950' },
+    { label: 'Menunggu pembayaran', value: summary?.pending, icon: ClipboardClock, color: 'bg-yellow-400 text-yellow-950' },
     { label: 'Pembayaran berhasil', value: summary?.paid, icon: CircleCheck, color: 'bg-green-700 text-white' },
     { label: 'Akses diblokir', value: summary?.blocked, icon: Ban, color: 'bg-red-600 text-white' },
   ];
