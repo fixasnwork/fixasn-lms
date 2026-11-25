@@ -13,6 +13,9 @@ const state = vi.hoisted(() => ({
 vi.mock("next-auth/react", () => ({
   useSession: () => ({ data: { user: { email: "user@example.com" } }, status: "authenticated" }),
 }));
+vi.mock("@/hooks/usePaymentOrders", () => ({
+  usePaymentOrders: () => ({ data: [], isPending: false, isError: false }),
+}));
 vi.mock("@/hooks/useTryoutQueries", () => ({
   usePackages: () => ({ data: [
     { id: 1, name: "Paket Tryout", price: 50000, tryoutCount: 5 },

@@ -75,12 +75,14 @@ export function useCreatePayment() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(input),
       });
-      if (!res.ok) throw new Error('Gagal membuat pembayaran');
-      return res.json() as Promise<{ success: boolean; payment: Payment }>;
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error || 'Gagal membuat pembayaran');
+        return body as { success: boolean; payment: Payment };
     },
     onSuccess: () => {
       // Invalidate payments query so any component using it refetches
-      queryClient.invalidateQueries({ queryKey: ['payments'] });
+       queryClient.invalidateQueries({ queryKey: ['payments'] });
+       queryClient.invalidateQueries({ queryKey: ['purchase-history'] });
       // video-pembelajaran: a new payment may have just granted video access
       // (Paket Video Belajar). Invalidate the user video catalog so the
       // /video page flips from locked to unlocked on the next visit.

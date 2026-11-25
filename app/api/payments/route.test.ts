@@ -2,12 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { NextRequest } from 'next/server';
 import { POST, PUT } from './route';
 
-const mocks = vi.hoisted(() => ({ create: vi.fn(), update: vi.fn(), upsert: vi.fn(), package: vi.fn() }));
-vi.mock('@/lib/routeAuth', () => ({ requireActiveSession: vi.fn().mockResolvedValue({
-  ok: true, session: { user: { email: 'buyer@example.com', role: 'admin' } },
-}) }));
+const mocks = vi.hoisted(() => ({ create: vi.fn(), update: vi.fn(), upsert: vi.fn(), package: vi.fn(), auth: vi.fn(), findPayment: vi.fn(), findOrder: vi.fn(), mode: false }));
+vi.mock('@/lib/paymentMode', () => ({ get IS_MIDTRANS_PAYMENT_ENABLED() { return mocks.mode; } }));
+vi.mock('@/lib/routeAuth', () => ({ requireActiveSession: mocks.auth }));
 vi.mock('@/lib/prisma', () => {
-  const tx = { payment: { update: mocks.update }, userPurchase: { upsert: mocks.upsert } };
+  const tx = { $queryRaw: vi.fn(), payment: { update: mocks.update, create: mocks.create, findFirst: mocks.findPayment }, paymentOrder: { findFirst: mocks.findOrder }, userPurchase: { upsert: mocks.upsert } };
   return { default: {
     package: { findFirst: mocks.package }, payment: { create: mocks.create },
     $transaction: (callback: (value: typeof tx) => unknown) => callback(tx),
@@ -25,6 +24,8 @@ const base = () => ({
 describe('payment access lifecycle', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mocks.mode = false;
+    mocks.auth.mockResolvedValue({ ok: true, session: { user: { email: 'buyer@example.com', role: 'admin' } } });
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-11-15T04:00:00Z'));
   });
@@ -62,5 +63,30 @@ describe('payment access lifecycle', () => {
     mocks.update.mockImplementation(async ({ data }) => Object.assign(payment, data));
     const data = await (await PUT(request({ id: payment.id, status: 'verified' }))).json();
     expect(data.payment.accessExpiresAt).toBeNull();
+  });
+
+  it('accepts manual proof in manual mode without granting access', async () => {
+    mocks.auth.mockResolvedValue({ ok: true, session: { user: { email: 'buyer@example.com', role: 'user' } } });
+    mocks.package.mockResolvedValue({ accessDurationMonths: 3, startDate: new Date('2026-01-01'), endDate: null });
+    mocks.create.mockResolvedValue(base());
+    const response = await POST(request({ packageId: 1, proofUrl: 'data:image/png;base64,cHJvb2Y=' }));
+    expect(response.status).toBe(200);
+    expect(mocks.create).toHaveBeenCalledWith({ data: expect.objectContaining({ userId: 'buyer@example.com', status: 'pending' }) });
+    expect(mocks.upsert).not.toHaveBeenCalled();
+  });
+
+  it('rejects regular-user manual submissions in Midtrans mode', async () => {
+    mocks.mode = true;
+    mocks.auth.mockResolvedValue({ ok: true, session: { user: { email: 'buyer@example.com', role: 'user' } } });
+    expect((await POST(request({ packageId: 1, proofUrl: 'data:image/png;base64,cHJvb2Y=' }))).status).toBe(403);
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+
+  it('prevents manual proof from creating a second purchase while a gateway order is open', async () => {
+    mocks.auth.mockResolvedValue({ ok: true, session: { user: { email: 'buyer@example.com', role: 'user' } } });
+    mocks.package.mockResolvedValue({ accessDurationMonths: 3, startDate: new Date('2026-01-01'), endDate: null });
+    mocks.findOrder.mockResolvedValue({ orderId: 'FX-1' });
+    expect((await POST(request({ packageId: 1, proofUrl: 'data:image/png;base64,cHJvb2Y=' }))).status).toBe(409);
+    expect(mocks.create).not.toHaveBeenCalled();
   });
 });

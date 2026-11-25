@@ -8,7 +8,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { useNavGuardStore } from "@/store/useNavGuardStore";
 import { Modal, Button } from "@/components/ui";
 import { Menu } from "@base-ui/react/menu";
-import { LayoutDashboard, ClipboardList, ShoppingBag, PlaySquare, Trophy, UserRound, LogOut, Ellipsis, ChevronsUpDown } from "lucide-react";
+import { LayoutDashboard, ClipboardList, ShoppingBag, ReceiptText, PlaySquare, Trophy, UserRound, LogOut, Ellipsis, ChevronsUpDown } from "lucide-react";
 import { Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarTrigger } from "@/components/shadcn/sidebar";
 
 const navItems = [
@@ -129,6 +129,10 @@ export default function UserSidebar() {
                 <SidebarMenuButton tooltip="Beli Paket" isActive={currentPage === "buy"} aria-current={currentPage === "buy" ? "page" : undefined} onClick={() => handleNav("buy")} className={navButtonClass}>
                   <ShoppingBag aria-hidden="true" /><span>Beli Paket</span>
                 </SidebarMenuButton>
+              </SidebarMenuItem><SidebarMenuItem>
+                <SidebarMenuButton tooltip="Riwayat Pembelian" isActive={currentPage === "purchases"} aria-current={currentPage === "purchases" ? "page" : undefined} onClick={() => handleNav("purchases")} className={navButtonClass}>
+                  <ReceiptText aria-hidden="true" /><span>Riwayat Pembelian</span>
+                </SidebarMenuButton>
               </SidebarMenuItem></SidebarMenu>
             </SidebarGroup>
           </nav>
@@ -161,12 +165,13 @@ export default function UserSidebar() {
             </button>
           ))}
           <Menu.Root>
-            <Menu.Trigger aria-label="Menu lainnya" className={"flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-brand data-popup-open:bg-primary data-popup-open:text-primary-foreground " + (["ranking", "profile"].includes(currentPage) ? "bg-primary text-primary-foreground" : "text-slate-400")}>
+            <Menu.Trigger aria-label="Menu lainnya" className={"flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-brand data-popup-open:bg-primary data-popup-open:text-primary-foreground " + (["ranking", "profile", "purchases"].includes(currentPage) ? "bg-primary text-primary-foreground" : "text-slate-400")}>
               <Ellipsis aria-hidden="true" className="size-5" /><span className="text-[9px] font-semibold sm:text-[10px]">Lainnya</span>
             </Menu.Trigger>
             <Menu.Portal><Menu.Positioner side="top" align="end" sideOffset={16} className="z-40 md:hidden">
               <Menu.Popup className="w-64 max-w-[calc(100vw-2rem)] rounded-2xl border border-slate-200 bg-white p-2 shadow-xl outline-none">
                 <div className="mb-2 flex items-center gap-3 border-b border-slate-100 p-2 pb-3">{avatar}<div className="min-w-0"><div className="truncate text-sm font-semibold text-slate-800">{user?.name || "Pengguna"}</div><div className="truncate text-xs text-slate-400">{user?.email}</div></div></div>
+                <Menu.Item className={menuItemClass} onClick={() => handleNav("purchases")}><ReceiptText aria-hidden="true" />Riwayat Pembelian</Menu.Item>
                 <Menu.Item className={menuItemClass} onClick={() => handleNav("ranking")}><Trophy aria-hidden="true" />Ranking</Menu.Item>
                 {accountItems}
               </Menu.Popup>

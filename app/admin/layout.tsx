@@ -30,13 +30,6 @@ export default async function AdminLayout({
 
   await Promise.all([
     queryClient.prefetchQuery({
-      queryKey: ['admin-payments'],
-      queryFn: async () => {
-        const data = await prisma.payment.findMany({ orderBy: { createdAt: 'desc' } });
-        return data.map((p) => ({ ...p, createdAt: p.createdAt.toISOString(), updatedAt: p.updatedAt.toISOString() }));
-      },
-    }),
-    queryClient.prefetchQuery({
       queryKey: ['packages'],
       queryFn: async () => {
         const data = await prisma.package.findMany({

@@ -38,6 +38,7 @@ model User {
   deletedAt DateTime? @db.Timestamptz(6)
 
   payments        Payment[]
+  paymentOrders   PaymentOrder[]
   purchases       UserPurchase[]
   attempts        TryoutAttempt[]
   userPermissions UserPermission[]
@@ -117,6 +118,7 @@ model Package {
   deletedAt   DateTime? @db.Timestamptz(6)
 
   payments       Payment[]
+  paymentOrders  PaymentOrder[]
   purchases      UserPurchase[]
   packageTryouts PackageTryout[]
 
@@ -282,12 +284,46 @@ model Payment {
   package Package @relation(fields: [packageId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   purchases UserPurchase[]
+  gatewayOrder PaymentOrder?
 
   @@index([userId, status, accessExpiresAt])
   @@map("payments")
 }
 
 // ── User Purchases ────────────────────────────────────────────────────────
+model PaymentOrder {
+  id String @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  orderId String @unique @db.Text
+  userId String @db.Text
+  packageId Int
+  packageName String @db.Text
+  amount Int
+  adminFee Int
+  totalAmount Int
+  accessDurationMonths Int
+  paymentMethod String @db.Text
+  status String @default("creating") @db.Text
+  transactionId String? @db.Text
+  snapToken String? @db.Text
+  snapRedirectUrl String? @db.Text
+  paymentId String? @unique @db.Uuid
+  paidAt DateTime? @db.Timestamptz(6)
+  expiresAt DateTime @db.Timestamptz(6)
+  lastSyncedAt DateTime? @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [email], onDelete: NoAction, onUpdate: NoAction)
+  package Package @relation(fields: [packageId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([userId, packageId, status])
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@index([packageId])
+  @@map("paymentOrders")
+}
+
 model UserPurchase {
   id        String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
   userId    String   @db.Text

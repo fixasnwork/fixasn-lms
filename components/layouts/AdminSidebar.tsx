@@ -21,13 +21,10 @@ export default function AdminSidebar() {
   const logoConfig = useAppStore((state) => state.logoConfig);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
 
-  // Mock pending count for demo
-  const pendingCount = 3;
-
   const navItems: NavItem[] = [
     { id: 'dashboard', icon: '📊', label: 'Dashboard' },
     { id: 'soal', icon: '📝', label: 'Bank Soal' },
-    { id: 'payments', icon: '💳', label: 'Verifikasi Bayar', count: pendingCount },
+    { id: 'payments', icon: '💳', label: 'Pembayaran' },
     { id: 'settings', icon: '⚙️', label: 'Pengaturan' },
     { id: 'video', icon: '🎬', label: 'Video Belajar' },
     { id: 'landing', icon: '🌐', label: 'Landing Page' },

@@ -4,9 +4,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { isPackageAvailable } from '@/lib/availability';
-import { accessExpiry } from '@/lib/packageAccess';
+import { activatePayment } from '@/lib/paymentActivation';
 import { getEmailFromSessionUser, getRoleFromSessionUser, isAdminRole } from '@/lib/deviceSession';
 import { requireActiveSession } from '@/lib/routeAuth';
+import { IS_MIDTRANS_PAYMENT_ENABLED } from '@/lib/paymentMode';
+import { activePaymentWhere } from '@/lib/packageAccess';
+import { PaymentError } from '@/lib/midtrans';
+import { OPEN_ORDER_STATUSES } from '@/lib/paymentOrderTypes';
 
 function mapPayment(payment: {
   id: string;
@@ -83,11 +87,20 @@ export async function POST(request: NextRequest) {
   }
   const session = authResult.session;
 
+  const isAdmin = isAdminRole(getRoleFromSessionUser(session.user));
+  if (IS_MIDTRANS_PAYMENT_ENABLED && !isAdmin) {
+    return NextResponse.json({ error: 'Gunakan checkout Midtrans untuk membeli paket.' }, { status: 403 });
+  }
+
+  if (!isAdmin && (typeof body.proofUrl !== 'string' || body.proofUrl.length > 7_000_000 || !/^data:image\/(jpeg|png);base64,[A-Za-z0-9+/=\r\n]+$/.test(body.proofUrl) || Buffer.byteLength(body.proofUrl.split(',')[1], 'base64') > 5 * 1024 * 1024)) {
+    return NextResponse.json({ error: 'Bukti transfer JPG/PNG maksimal 5 MB wajib disertakan.' }, { status: 400 });
+  }
+
   if (!body.packageId) {
     return NextResponse.json({ error: 'packageId is required' }, { status: 400 });
   }
 
-  const userId = getEmailFromSessionUser(session.user) || body.userId;
+  const userId = getEmailFromSessionUser(session.user);
 
   if (!userId) {
     return NextResponse.json({ error: 'userId is required (must be logged in or provided)' }, { status: 400 });
@@ -106,15 +119,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'package_unavailable', reason: 'package_closed' }, { status: 403 });
   }
 
-  const data = await prisma.payment.create({
-    data: {
-      userId,
-      packageId,
-      status: 'pending',
-      accessDurationMonths: pkg.accessDurationMonths,
-      proofUrl: body.proofUrl || null,
-    },
-  });
+  const paymentData = {
+    userId,
+    packageId,
+    status: 'pending',
+    accessDurationMonths: pkg.accessDurationMonths,
+    proofUrl: body.proofUrl || null,
+  };
+  let data;
+  try {
+    data = isAdmin ? await prisma.payment.create({ data: paymentData }) : await prisma.$transaction(async (tx) => {
+      // Serialize manual and gateway purchases through the same account lock.
+      await tx.$queryRaw`SELECT email FROM users WHERE email = ${userId} FOR UPDATE`;
+      const active = await tx.payment.findFirst({ where: { userId, packageId, ...activePaymentWhere() } });
+      if (active) throw new PaymentError('Paket ini sudah aktif.', 409);
+      const pending = await tx.payment.findFirst({ where: { userId, packageId, status: 'pending', deletedAt: null } });
+      if (pending) return pending;
+      const gateway = await tx.paymentOrder.findFirst({ where: { userId, packageId, status: { in: OPEN_ORDER_STATUSES } } });
+      if (gateway) throw new PaymentError('Masih ada transaksi Midtrans untuk paket ini. Selesaikan atau cek status transaksi tersebut terlebih dahulu.', 409);
+      return tx.payment.create({ data: paymentData });
+    });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof PaymentError ? error.message : 'Pembayaran belum berhasil disimpan.' }, { status: error instanceof PaymentError ? error.status : 500 });
+  }
 
   // Pending payments do not grant access; verification activates the purchase.
 
@@ -155,23 +182,13 @@ export async function PUT(request: NextRequest) {
         ...(body.proofUrl !== undefined ? { proofUrl: body.proofUrl } : {}),
         ...(body.blockReason !== undefined ? { blockReason: body.blockReason } : {}),
       },
-      include: { package: true },
+      include: { package: true, gatewayOrder: { select: { status: true } } },
     });
+    if (payment.gatewayOrder && (
+      body.status === 'pending' || (body.status === 'verified' && !['paid', 'partially_refunded'].includes(payment.gatewayOrder.status))
+    )) return null;
     if (body.status === 'verified') {
-      const legacyVerified = payment.status === 'verified' && payment.accessDurationMonths === null;
-      if (!payment.verifiedAt && !legacyVerified) {
-        const now = new Date();
-        const months = payment.accessDurationMonths ?? payment.package.accessDurationMonths;
-        await tx.payment.update({
-          where: { id: payment.id },
-          data: { verifiedAt: now, accessDurationMonths: months, accessExpiresAt: accessExpiry(now, months) },
-        });
-      }
-      await tx.userPurchase.upsert({
-        where: { userId_packageId: { userId: payment.userId, packageId: payment.packageId } },
-        create: { userId: payment.userId, packageId: payment.packageId, paymentId: payment.id },
-        update: { paymentId: payment.id, deletedAt: null },
-      });
+      await activatePayment(tx, payment);
     }
     // Access gates evaluate payment status directly. Revoking one payment
     // does not revoke a different active purchase of the same package.
@@ -180,6 +197,8 @@ export async function PUT(request: NextRequest) {
       data: { ...(body.status !== undefined ? { status: body.status } : {}) },
     });
   });
+
+  if (!data) return NextResponse.json({ error: 'Status transaksi Midtrans harus mengikuti konfirmasi gateway.' }, { status: 409 });
 
   return NextResponse.json({
     success: true,
