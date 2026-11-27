@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Tags } from "lucide-react";
+import { BookOpen, Tags } from "lucide-react";
 import type { Question, QuestionCategory, Tryout } from "@/lib/types";
 import { Button, Card, Modal } from "@/components/ui";
 import SoalTable from "@/components/admin/SoalTable";
@@ -11,6 +11,7 @@ import { defaultOptionWeights, isValidOptionWeight } from "@/lib/questionWeights
 import { getScore } from "@/lib/scoring";
 import { useQuestionTopics } from "@/hooks/useQuestionTopics";
 import QuestionTopicManager from "@/components/admin/QuestionTopicManager";
+import QuestionBankPicker from "@/components/admin/QuestionBankPicker";
 import { Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/shadcn/combobox";
 import {
   useAllTryouts,
@@ -98,6 +99,7 @@ export default function SoalPage() {
   const [durationDraft, setDurationDraft] = useState<number | null>(null);
 
   const [showAddSoal, setShowAddSoal] = useState(false);
+  const [bankTarget, setBankTarget] = useState<{ id: number; name: string } | null>(null);
   const [editSoal, setEditSoal] = useState<number | null>(null);
   const [soalForm, setSoalForm] = useState<SoalFormState>(emptyForm);
   const [soalSavedMsg, setSoalSavedMsg] = useState("");
@@ -168,8 +170,9 @@ export default function SoalPage() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["tryouts"] }),
       queryClient.invalidateQueries({ queryKey: ["all-tryouts"] }),
+      queryClient.invalidateQueries({ queryKey: ["question-bank"] }),
       queryClient.invalidateQueries({
-        queryKey: ["tryout-questions", currentTryoutId],
+        queryKey: ["tryout-questions"],
       }),
       queryClient.invalidateQueries({ queryKey: ["attempt"] }),
     ]);
@@ -491,14 +494,13 @@ export default function SoalPage() {
                   {currentTryoutWithQuestions?.questions?.length || 0} soal
                 </span>
               </div>
-              <Button
-                variant="gold"
-                size="sm"
-                onClick={openAddSoal}
-                disabled={!currentTryout}
-              >
-                + Tambah Soal
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" className="inline-flex min-h-9 items-center gap-2 border-0! bg-brand/10! hover:bg-brand/15! focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand" disabled={!currentTryout || isFetchingQuestions} onClick={() => currentTryout && setBankTarget({ id: currentTryout.id, name: currentTryout.name })}>
+                  <BookOpen aria-hidden="true" className="size-4 shrink-0" />
+                  Pilih dari Bank Soal
+                </Button>
+                <Button variant="gold" size="sm" onClick={openAddSoal} disabled={!currentTryout}>+ Tambah Soal</Button>
+              </div>
             </div>
             <div className="p-3 sm:p-4">
               {isFetchingQuestions && fetchedQuestions.length === 0 ? (
@@ -564,14 +566,13 @@ export default function SoalPage() {
                   {currentQ.filter((q) => q.category === "TKP").length})
                 </span>
               </span>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={openAddSoal}
-                disabled={!currentTryout}
-              >
-                + Tambah Soal
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" className="inline-flex min-h-9 items-center gap-2 border-0! bg-brand/10! hover:bg-brand/15! focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand" disabled={!currentTryout || isFetchingQuestions} onClick={() => currentTryout && setBankTarget({ id: currentTryout.id, name: currentTryout.name })}>
+                  <BookOpen aria-hidden="true" className="size-4 shrink-0" />
+                  Pilih dari Bank Soal
+                </Button>
+                <Button variant="primary" size="sm" onClick={openAddSoal} disabled={!currentTryout}>+ Tambah Soal</Button>
+              </div>
             </div>
 
             <div className="p-3 sm:p-4">
@@ -595,6 +596,12 @@ export default function SoalPage() {
       </Card>
 
       {showTopicManager && <QuestionTopicManager onClose={() => setShowTopicManager(false)} />}
+      {bankTarget && <QuestionBankPicker key={bankTarget.id} tryoutId={bankTarget.id} tryoutName={bankTarget.name}
+        onClose={() => setBankTarget(null)} onAttached={(addedCount) => {
+          setBankTarget(null);
+          setSoalSavedMsg(addedCount > 0 ? `${addedCount} soal ditambahkan dari bank soal.` : "Soal terpilih sudah ada di tryout ini.");
+          setTimeout(() => setSoalSavedMsg(""), 2500);
+        }} />}
 
       {showAddSoal && (
         <Modal

@@ -30,7 +30,10 @@ export function useSaveQuestionTopic() {
       if (!response.ok) throw new Error(data.error || "Gagal menyimpan topik.");
       return data.topic;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["question-topics"] }),
+    onSuccess: () => Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["question-topics"] }),
+      queryClient.invalidateQueries({ queryKey: ["question-bank"] }),
+    ]),
   });
 }
 
@@ -45,6 +48,7 @@ export function useDeleteQuestionTopic() {
     onSuccess: () => Promise.all([
       queryClient.invalidateQueries({ queryKey: ["question-topics"] }),
       queryClient.invalidateQueries({ queryKey: ["tryout-questions"] }),
+      queryClient.invalidateQueries({ queryKey: ["question-bank"] }),
       queryClient.invalidateQueries({ queryKey: ["tryouts"] }),
       queryClient.invalidateQueries({ queryKey: ["attempt"] }),
     ]),
