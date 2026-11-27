@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
   // Verify the tryout exists
   const tryout = await prisma.tryout.findUnique({
     where: { id: tryoutId, deletedAt: null },
+    include: { _count: { select: { tryoutQuestions: true } } },
   });
   if (!tryout) {
     return NextResponse.json({ error: 'Tryout not found' }, { status: 404 });
@@ -31,6 +32,13 @@ export async function POST(request: NextRequest) {
 
   if (!(await hasTryoutAccess(session.user.email, tryoutId))) {
     return NextResponse.json({ error: 'Akses paket belum aktif atau sudah berakhir. Silakan beli paket atau tunggu verifikasi.' }, { status: 403 });
+  }
+
+  if (tryout._count.tryoutQuestions === 0) {
+    return NextResponse.json(
+      { error: 'Soal tryout belum tersedia.', reason: 'no_questions', retryable: false },
+      { status: 409 }
+    );
   }
 
   // Find the most recent attempt for this user + tryout

@@ -17,7 +17,7 @@ describe('package access gates', () => {
   });
 
   it('requires a verified, unexpired payment for the correct user and linked package', async () => {
-    mocks.tryout.mockResolvedValue({ isTrial: false });
+    mocks.tryout.mockResolvedValue({ isTrial: false, packageTryouts: [] });
     mocks.payment.mockResolvedValue(null);
     expect(await hasTryoutAccess('user@example.com', 1)).toBe(false);
     expect(mocks.payment).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
@@ -25,6 +25,37 @@ describe('package access gates', () => {
       OR: [{ accessExpiresAt: null }, { accessExpiresAt: { gt: expect.any(Date) } }],
       package: { deletedAt: null, packageTryouts: { some: { tryoutId: 1 } } },
     }) }));
+  });
+
+  it('allows a non-trial tryout linked to an available free package without payment', async () => {
+    mocks.tryout.mockResolvedValue({ isTrial: false, packageTryouts: [{ packageId: 7 }] });
+    expect(await hasTryoutAccess('user@example.com', 1)).toBe(true);
+    expect(mocks.payment).not.toHaveBeenCalled();
+    expect(mocks.tryout).toHaveBeenCalledWith({
+      where: { id: 1, deletedAt: null },
+      select: {
+        isTrial: true,
+        packageTryouts: {
+          where: { package: {
+            isTrial: true, deletedAt: null, startDate: { lte: expect.any(Date) },
+            OR: [{ endDate: null }, { endDate: { gt: expect.any(Date) } }],
+          } },
+          select: { packageId: true }, take: 1,
+        },
+      },
+    });
+  });
+
+  it('keeps paid access when no linked free package is currently available', async () => {
+    mocks.tryout.mockResolvedValue({ isTrial: false, packageTryouts: [] });
+    mocks.payment.mockResolvedValue({ id: 'paid' });
+    expect(await hasTryoutAccess('user@example.com', 1)).toBe(true);
+  });
+
+  it('denies access to a deleted or missing tryout', async () => {
+    mocks.tryout.mockResolvedValue(null);
+    expect(await hasTryoutAccess('user@example.com', 1)).toBe(false);
+    expect(mocks.payment).not.toHaveBeenCalled();
   });
 
   it('checks all payments for video access, preserving legacy direct grants', async () => {

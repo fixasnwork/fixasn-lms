@@ -8,7 +8,12 @@ import SoalPage from "./page";
 const state = vi.hoisted(() => ({ questions: [] as Question[], topics: [] as QuestionTopic[], fetch: vi.fn() }));
 vi.mock("@/hooks/useTryoutQueries", () => ({
   usePackages: () => ({ data: [], isFetching: false }),
-  useTryouts: () => ({ data: { trial: [{ id: 1, isTrial: true, name: "Trial", questions: [] }] }, isFetching: false }),
+  useAllTryouts: () => ({ data: [
+    { id: 1, isTrial: true, name: "Trial", durationMin: 15, questions: [] },
+    { id: 2, isTrial: true, name: "Trial Kedua", durationMin: 30, questions: [] },
+    { id: 3, isTrial: false, name: "Tryout Berbayar", durationMin: 100, questions: [] },
+  ], isFetching: false }),
+  useTryouts: () => ({ data: {}, isFetching: false }),
   useTryoutQuestions: () => ({ data: state.questions, isFetching: false }),
 }));
 vi.mock("@/hooks/useQuestionTopics", () => ({
@@ -49,6 +54,23 @@ function renderPage() {
 }
 
 describe("Bank Soal topics", () => {
+  it("switches trials, resets the duration draft, and saves questions to the selected trial", async () => {
+    renderPage();
+    expect(screen.queryByRole("button", { name: /Tryout Berbayar/ })).toBeNull();
+    const duration = screen.getByRole("spinbutton");
+    expect(duration).toHaveValue(15);
+    fireEvent.change(duration, { target: { value: "45" } });
+    fireEvent.click(screen.getByRole("button", { name: /Trial Kedua/ }));
+    expect(screen.getByRole("button", { name: /Trial Kedua/ })).toHaveAttribute("aria-pressed", "true");
+    expect(duration).toHaveValue(30);
+    fireEvent.click(screen.getByRole("button", { name: "Edit Soal Pancasila" }));
+    fireEvent.click(screen.getByRole("button", { name: "Simpan Soal" }));
+    await waitFor(() => expect(state.fetch).toHaveBeenCalledOnce());
+    const [url, init] = state.fetch.mock.calls[0];
+    expect(url).toBe("/api/tryouts/2/questions/1");
+    expect(init.method).toBe("PUT");
+  });
+
   it("searches topics and filters by topic, category, and unassigned status", async () => {
     const user = userEvent.setup();
     renderPage();

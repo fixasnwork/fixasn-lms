@@ -1,5 +1,7 @@
 # Code Context: Tryout Functionality (End-to-End)
 
+> November 2026 empty-tryout guard: both attempt creation endpoints reject zero-question tryouts with HTTP 409 (`reason: no_questions`) before creating an attempt; resume also rejects existing attempts whose tryout now has no questions. The user list disables Mulai/Ulangi/Lanjutkan on empty cards and displays "Soal tryout belum tersedia." The engine also blocks starting empty attempts opened directly by URL, preserving the back action. Tests were added but not executed.
+
 > November 2026 ranking-preview update: `/tryout` streams the server component `TryoutRankingPreview` into its sidebar. It retains the valid-user session guard, all-time ranking order, original rank numbers, exclusion of the viewer, and ten-participant limit. Participant names are shown without masking, using the same `RankingParticipant` UI as `/ranking` with a compact layout: avatar/initials, full name, tryout/package metadata, and Total/TWK/TIU/TKP scores. Empty/error states remain available. Tests were added but not executed.
 
 > November 2026 retry-card score update: `TryoutPageClient` shows TWK/TIU/TKP below "Skor terbaik" on cards with the Ulangi action. All three scores come from the single completed, non-deleted attempt with the highest total; equal totals use the earliest finish. Zero totals still render scores and Ulangi. New/unfinished attempts do not contribute a best score, and continuation cards retain their progress display. Tests were added but not executed.

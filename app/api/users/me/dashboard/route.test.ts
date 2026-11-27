@@ -91,6 +91,34 @@ describe('GET /api/users/me/dashboard', () => {
     expect(res.status).toBe(401);
   });
 
+  it('lists and resumes non-trial tryouts from a free package without payment', async () => {
+    mocks.mockAuth.mockResolvedValue(SESSION);
+    mocks.mockTrialFindMany.mockResolvedValue([
+      tryout(9, { startDate: new Date('2020-01-01'), endDate: null }),
+    ]);
+    mocks.mockAttemptFindMany.mockResolvedValue([
+      attempt(9, null, new Date('2026-11-01'), {}, { timeLeftSeconds: 900, answeredCount: 4 }),
+    ]);
+    const res = await GET(makeRequest());
+    const data = await res.json();
+    expect(data.remainingTryouts).toBe(1);
+    expect(data.openTryouts).toEqual([
+      { tryoutId: 9, name: 'Tryout 9', status: 'in-progress', answeredCount: 4, questionCount: 110 },
+    ]);
+    expect(mocks.mockTrialFindMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: {
+        deletedAt: null,
+        OR: [
+          { isTrial: true },
+          { packageTryouts: { some: { package: {
+            isTrial: true, deletedAt: null, startDate: { lte: expect.any(Date) },
+            OR: [{ endDate: null }, { endDate: { gt: expect.any(Date) } }],
+          } } } },
+        ],
+      },
+    }));
+  });
+
   it('averages the latest finished result per tryout instead of summing retries', async () => {
     mocks.mockAuth.mockResolvedValue(SESSION);
     mocks.mockPaymentFindMany.mockResolvedValue([

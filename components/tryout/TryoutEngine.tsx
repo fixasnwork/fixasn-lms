@@ -315,7 +315,7 @@ export default function TryoutEngine({
   );
 
   const startTryout = useCallback(async () => {
-    if (startPending.current) return;
+    if (startPending.current || questions.length === 0) return;
     if (attemptId && !hasSavedStart.current) {
       startPending.current = true;
       setStartError(false);
@@ -345,7 +345,7 @@ export default function TryoutEngine({
         return t - 1;
       });
     }, 1000);
-  }, [attemptId, updateAnswers, timeLeft, queryClient]);
+  }, [attemptId, updateAnswers, timeLeft, queryClient, questions.length]);
 
   const finish = useCallback(async () => {
     if (finishPending.current) return;
@@ -462,6 +462,7 @@ export default function TryoutEngine({
           </div>
 
           {startError && <p role="alert" className="mb-3 text-sm text-red-700">Tryout belum bisa dimulai. Coba lagi.</p>}
+          {questions.length === 0 && <p role="alert" className="mb-3 text-sm text-amber-800">Soal tryout belum tersedia.</p>}
           <div className="flex flex-col sm:flex-row gap-3">
             {onBack && (
               <Button variant="outline" className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 bg-brand/5! hover:bg-brand/10! focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand" onClick={onBack} disabled={updateAnswers.isPending}>
@@ -473,7 +474,7 @@ export default function TryoutEngine({
               variant="primary"
               className={`inline-flex min-h-11 flex-[2] items-center justify-center gap-2 bg-none! shadow-none! focus-visible:outline-2 focus-visible:outline-offset-2 ${actionColor}`}
               onClick={startTryout}
-              disabled={updateAnswers.isPending}
+              disabled={updateAnswers.isPending || questions.length === 0}
             >
               <ActionIcon aria-hidden="true" className="size-4" />
               {updateAnswers.isPending ? "Membuka..." : isResume ? "Lanjutkan Tryout" : "Mulai Tryout"}

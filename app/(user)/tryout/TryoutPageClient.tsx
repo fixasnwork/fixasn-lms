@@ -53,12 +53,14 @@ export default function TryoutPageClient({ rankingPreview }: { rankingPreview: R
   const now = new Date();
 
   const activePayments = payments.filter((payment) => hasPaymentAccess(payment, now));
-  const ownedPackages = packages.filter((pkg) => activePayments.some((payment) => payment.packageId === pkg.id));
+  const accessiblePackages = packages.filter((pkg) =>
+    (pkg.isTrial && isAvailable(pkg, now)) || activePayments.some((payment) => payment.packageId === pkg.id),
+  ).sort((a, b) => Number(b.isTrial) - Number(a.isTrial));
   const accessibleTryouts = new Map<number, { tryout: Tryout; packageName?: string }>();
   for (const tryout of allTryoutsQuery.data ?? []) {
     if (tryout.isTrial) accessibleTryouts.set(tryout.id, { tryout });
   }
-  for (const pkg of ownedPackages) {
+  for (const pkg of accessiblePackages) {
     for (const tryout of tryoutBanks[pkg.id] ?? []) {
       if (!accessibleTryouts.has(tryout.id)) {
         accessibleTryouts.set(tryout.id, { tryout, packageName: pkg.name });
@@ -144,16 +146,19 @@ export default function TryoutPageClient({ rankingPreview }: { rankingPreview: R
             {isCurrent && createOrResume.isError && (
               <p role="alert" className="mt-2 text-xs text-red-700">Tryout belum bisa dibuka. Coba lagi atau muat ulang halaman.</p>
             )}
+            {questionCount === 0 && (
+              <p className="mt-2 text-xs text-amber-800">Soal tryout belum tersedia.</p>
+            )}
           </div>
         </div>
         <button
           type="button"
-          disabled={createOrResume.isPending}
+          disabled={createOrResume.isPending || questionCount === 0}
           aria-label={`${action} ${tryout.name}`}
           onClick={() => createOrResume.mutate(tryout.id, {
             onSuccess: ({ attempt }) => router.push(`/tryout/${attempt.id}`),
           })}
-          className={`inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-2 self-end rounded-lg px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-60 sm:self-auto ${actionColor}`}
+          className={`inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-2 self-end rounded-lg px-4 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:self-auto ${actionColor}`}
         >
           {isOpening ? "Membuka..." : action}
           <ArrowRight aria-hidden="true" className="size-4" />

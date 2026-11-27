@@ -1,11 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import type { AttemptHistoryEntry } from "@/hooks/useTryoutQueries";
-import type { Tryout } from "@/lib/types";
+import type { Package, Payment, Tryout } from "@/lib/types";
 import TryoutPageClient from "./TryoutPageClient";
 
-const state = vi.hoisted(() => ({ attempts: [] as AttemptHistoryEntry[] }));
+const state = vi.hoisted(() => ({
+  attempts: [] as AttemptHistoryEntry[], packages: [] as Package[],
+  banks: {} as Record<string, Tryout[]>, payments: [] as Payment[],
+  start: vi.fn(),
+}));
 const tryout: Tryout = { id: 1, name: "Trial SKD", isTrial: true, sortOrder: 0, durationMin: 100,
   questions: [], _questionCount: 110, startDate: "2020-01-01T00:00:00Z", endDate: null, createdAt: "", updatedAt: "" };
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
@@ -13,12 +17,12 @@ vi.mock("next-auth/react", () => ({ useSession: () => ({ data: { user: { email: 
 vi.mock("@/components/landing/Highlight", () => ({ Highlight: ({ children }: { children: ReactNode }) => <span>{children}</span> }));
 vi.mock("@/hooks/useDashboardSummary", () => ({ useDashboardSummaryQuery: () => ({ data: { rank: null } }) }));
 vi.mock("@/hooks/useTryoutQueries", () => ({
-  usePackages: () => ({ data: [], isLoading: false, isError: false }),
-  useTryouts: () => ({ data: {}, isLoading: false, isError: false }),
+  usePackages: () => ({ data: state.packages, isLoading: false, isError: false }),
+  useTryouts: () => ({ data: state.banks, isLoading: false, isError: false }),
   useAllTryouts: () => ({ data: [tryout], isLoading: false, isError: false }),
-  useUserPayments: () => ({ data: [], isLoading: false, isError: false }),
+  useUserPayments: () => ({ data: state.payments, isLoading: false, isError: false }),
   useAttemptHistory: () => ({ data: state.attempts, isLoading: false, isError: false }),
-  useCreateOrResumeAttempt: () => ({ mutate: vi.fn(), isPending: false, isError: false }),
+  useCreateOrResumeAttempt: () => ({ mutate: state.start, isPending: false, isError: false }),
 }));
 
 function attempt(id: string, scores: [number, number, number], finishedAt: string): AttemptHistoryEntry {
@@ -32,8 +36,66 @@ function expectBreakdown(scores: [number, number, number]) {
     expect(view.getByText(category).nextElementSibling).toHaveTextContent(String(scores[index]));
   });
 }
-beforeEach(() => { state.attempts = []; });
+beforeEach(() => { state.attempts = []; state.packages = []; state.banks = {}; state.payments = []; state.start.mockReset(); });
 afterEach(cleanup);
+
+const sharedTryout: Tryout = { ...tryout, id: 2, name: "Tryout Bersama", isTrial: false };
+function freePackage(): Package {
+  return { id: 7, name: "Paket Gratis", description: "", price: 0, isTrial: true,
+    includesVideoPembelajaran: false, startDate: "2020-01-01T00:00:00Z", endDate: null,
+    createdAt: "", updatedAt: "" };
+}
+
+describe("free package access", () => {
+  it.each(["new", "finished", "in-progress"])("disables opening an empty tryout (%s)", (status) => {
+    state.packages = [freePackage()];
+    state.banks = { 7: [{ ...sharedTryout, _questionCount: 0 }] };
+    if (status !== "new") {
+      state.attempts = [{
+        ...attempt("empty", [0, 0, 0], "2026-11-01T00:00:00Z"), tryoutId: 2,
+        ...(status === "in-progress" ? { finishedAt: null, timeLeftSeconds: 900 } : {}),
+      }];
+    }
+    renderPage();
+    const action = status === "finished" ? "Ulangi" : status === "in-progress" ? "Lanjutkan" : "Mulai";
+    const button = screen.getByRole("button", { name: `${action} Tryout Bersama` });
+    expect(button).toBeDisabled();
+    expect(screen.getByText("Soal tryout belum tersedia.")).toBeInTheDocument();
+    fireEvent.click(button);
+    expect(state.start).not.toHaveBeenCalled();
+  });
+
+  it("lists a non-trial tryout once when shared by free and paid packages without a payment", () => {
+    state.packages = [freePackage(), { ...freePackage(), id: 8, name: "Paket Berbayar", isTrial: false, price: 50000 }];
+    state.banks = { 7: [sharedTryout], 8: [sharedTryout] };
+    renderPage();
+    expect(screen.getAllByRole("button", { name: "Mulai Tryout Bersama" })).toHaveLength(1);
+    expect(screen.getByText(/Paket Gratis · 110 soal/)).toBeInTheDocument();
+  });
+
+  it.each([
+    { startDate: null, endDate: null },
+    { startDate: "2999-01-01T00:00:00Z", endDate: null },
+    { startDate: "2020-01-01T00:00:00Z", endDate: "2020-02-01T00:00:00Z" },
+  ])("hides non-trial tryouts when the free package is unavailable (%j)", (dates) => {
+    state.packages = [{ ...freePackage(), ...dates }];
+    state.banks = { 7: [sharedTryout] };
+    renderPage();
+    expect(screen.queryByRole("button", { name: "Mulai Tryout Bersama" })).toBeNull();
+  });
+
+  it("keeps the same tryout available through a verified paid package after the free package closes", () => {
+    state.packages = [
+      { ...freePackage(), endDate: "2020-02-01T00:00:00Z" },
+      { ...freePackage(), id: 8, name: "Paket Berbayar", isTrial: false, price: 50000 },
+    ];
+    state.banks = { 7: [sharedTryout], 8: [sharedTryout] };
+    state.payments = [{ packageId: 8, status: "verified", accessExpiresAt: null } as Payment];
+    renderPage();
+    expect(screen.getByRole("button", { name: "Mulai Tryout Bersama" })).toBeInTheDocument();
+    expect(screen.getByText(/Paket Berbayar · 110 soal/)).toBeInTheDocument();
+  });
+});
 
 describe("Tryout retry score breakdown", () => {
   it("shows all category scores from the same highest-total completed attempt", () => {

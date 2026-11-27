@@ -67,6 +67,7 @@ export async function POST(request: NextRequest) {
   // ── Availability gate ──────────────────────────────────────────
   const tryout = await prisma.tryout.findUnique({
     where: { id: tryoutId, deletedAt: null },
+    include: { _count: { select: { tryoutQuestions: true } } },
   });
   if (!tryout) {
     return NextResponse.json({ error: 'Tryout not found' }, { status: 404 });
@@ -75,6 +76,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: 'tryout_unavailable', reason: 'out_of_window', retryable: true },
       { status: 403 }
+    );
+  }
+
+  if (tryout._count.tryoutQuestions === 0) {
+    return NextResponse.json(
+      { error: 'Soal tryout belum tersedia.', reason: 'no_questions', retryable: false },
+      { status: 409 }
     );
   }
 

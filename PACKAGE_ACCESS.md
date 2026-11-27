@@ -3,6 +3,7 @@
 Admin Settings offers 1, 3, 6, or 12 months per package. API and database validation accept any positive integer number of months, independently of dropdown choices. Adding a dropdown option does not require a schema migration. Existing packages receive 1 year during the initial migration; new packages default to 1 month.
 
 - `Package.startDate/endDate` define the sales window. Closing sales does not end an existing purchase's access. Tryouts retain their own scheduling window.
+- Free tryout access is also granted by membership in an available, non-deleted package with `isTrial: true`, even when the tryout itself is not a trial. Free packages require a start date at or before now and no end date or a future end date. Closing that free window ends this access path; a direct trial flag or another verified, unexpired purchase can still grant access. The user tryout list and dashboard follow the same rule, deduplicating shared tryouts by ID. This does not grant video access.
 - Checkout snapshots duration into `Payment.accessDurationMonths`. Later package edits do not change that purchase.
 - Pending payments do not grant access. First admin verification sets `verifiedAt` and `accessExpiresAt` in the same transaction as status and the purchase grant.
 - Expiry uses calendar months in Asia/Makassar (WITA), with the last day clamped for shorter months. Access is denied at the expiry instant.

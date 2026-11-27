@@ -107,6 +107,21 @@ describe('TryoutEngine — Simpan & Keluar (save-and-exit)', () => {
   const getSimpanButton = () =>
     screen.getByText(/Simpan & Keluar/).closest('button') as HTMLButtonElement | null;
 
+  it.each([undefined, 900])('blocks starting an existing empty attempt with saved time %s', (savedTime) => {
+    const onFinish = vi.fn();
+    render(
+      <TryoutEngine attemptId="empty-attempt" questions={[]} durationMin={15}
+        initialTimeLeftSeconds={savedTime} onFinish={onFinish} />,
+      { wrapper: makeWrapper() },
+    );
+    const button = screen.getByRole('button', { name: savedTime == null ? 'Mulai Tryout' : 'Lanjutkan Tryout' });
+    expect(button).toBeDisabled();
+    expect(screen.getByRole('alert')).toHaveTextContent('Soal tryout belum tersedia.');
+    fireEvent.click(button);
+    expect(mockUpdateAnswersMutateAsync).not.toHaveBeenCalled();
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
   it('restores a saved timer even when no questions were answered', () => {
     const wrapper = makeWrapper();
     const questions = makeQuestions(3);

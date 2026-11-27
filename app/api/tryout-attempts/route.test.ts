@@ -46,6 +46,7 @@ function makeTryout(
     endDate: new Date('2999-12-31T23:59:59Z') as Date | null,
     deletedAt: null,
     packageTryouts: pkgOverrides !== undefined ? [{ package: pkg }] : [],
+    _count: { tryoutQuestions: 110 },
     ...tryoutOverrides,
   };
 }
@@ -98,6 +99,16 @@ describe('POST /api/tryout-attempts — availability gate', () => {
     const data = await res.json();
     expect(data.success).toBe(true);
     expect(data.attempt).toBeDefined();
+  });
+
+  it('rejects empty tryouts without creating an attempt', async () => {
+    mockFindUnique.mockResolvedValue(makeTryout(undefined, { _count: { tryoutQuestions: 0 } }));
+    const res = await POST(makePostReq(BASE_BODY));
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({
+      error: 'Soal tryout belum tersedia.', reason: 'no_questions', retryable: false,
+    });
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 
   it('tryout with null startDate → 403 + reason=out_of_window', async () => {

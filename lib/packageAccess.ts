@@ -41,3 +41,13 @@ export function activePaymentWhere(now = new Date()) {
     OR: [{ accessExpiresAt: null }, { accessExpiresAt: { gt: now } }],
   };
 }
+
+/** Free package access follows the same scheduling rules as isAvailable. */
+export function activeFreePackageWhere(now = new Date()) {
+  return {
+    isTrial: true,
+    deletedAt: null,
+    startDate: { lte: now },
+    OR: [{ endDate: null }, { endDate: { gt: now } }],
+  };
+}

@@ -63,6 +63,8 @@ function makeTryout(overrides: Record<string, unknown> = {}) {
     id: 1,
     name: 'Tryout 1',
     isTrial: false,
+    packageTryouts: [],
+    _count: { tryoutQuestions: 110 },
     startDate: new Date('2026-01-01T00:00:00Z'),
     endDate: new Date('2999-12-31T23:59:59Z') as Date | null,
     deletedAt: null,
@@ -184,5 +186,37 @@ describe('POST /api/tryout-attempts/resume — package_closed bug regression', (
 
     const res = await POST(makePostReq({ tryoutId: 5 }));
     expect(res.status).toBe(200);
+  });
+
+  it('starts a non-trial tryout through an available free package without payment', async () => {
+    mockTryoutFindUnique.mockResolvedValue(makeTryout({ packageTryouts: [{ packageId: 7 }] }));
+    mockPaymentFindFirst.mockResolvedValue(null);
+    const res = await POST(makePostReq({ tryoutId: 1 }));
+    expect(res.status).toBe(200);
+    expect((await res.json()).attempt.isNew).toBe(true);
+    expect(mockPaymentFindFirst).not.toHaveBeenCalled();
+  });
+
+  it.each([true, false])('rejects an empty tryout before creating or resuming an attempt (trial=%s)', async (isTrial) => {
+    mockTryoutFindUnique.mockResolvedValue(makeTryout({ isTrial, _count: { tryoutQuestions: 0 } }));
+    mockPaymentFindFirst.mockResolvedValue({ id: 'verified-payment' });
+    mockAttemptFindFirst.mockResolvedValue({ id: 'old-empty-attempt', finishedAt: null });
+    const res = await POST(makePostReq({ tryoutId: 1 }));
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({
+      error: 'Soal tryout belum tersedia.', reason: 'no_questions', retryable: false,
+    });
+    expect(mockAttemptFindFirst).not.toHaveBeenCalled();
+    expect(mockAttemptCreate).not.toHaveBeenCalled();
+  });
+
+  it('still rejects new attempts outside the tryout schedule when the free package grants access', async () => {
+    mockTryoutFindUnique.mockResolvedValue(makeTryout({
+      packageTryouts: [{ packageId: 7 }], endDate: new Date('2020-01-01'),
+    }));
+    const res = await POST(makePostReq({ tryoutId: 1 }));
+    expect(res.status).toBe(403);
+    expect((await res.json()).reason).toBe('out_of_window');
+    expect(mockAttemptCreate).not.toHaveBeenCalled();
   });
 });

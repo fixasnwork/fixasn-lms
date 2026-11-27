@@ -13,6 +13,7 @@ import { useQuestionTopics } from "@/hooks/useQuestionTopics";
 import QuestionTopicManager from "@/components/admin/QuestionTopicManager";
 import { Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList } from "@/components/shadcn/combobox";
 import {
+  useAllTryouts,
   usePackages,
   useTryouts,
   useTryoutQuestions,
@@ -69,20 +70,6 @@ function questionPayload(form: SoalFormState) {
   };
 }
 
-function allTryouts(packageBanks: Record<string, Tryout[]>): Tryout[] {
-  const seen = new Set<number>();
-  const result: Tryout[] = [];
-  for (const tryouts of Object.values(packageBanks)) {
-    for (const tryout of tryouts) {
-      if (!seen.has(tryout.id)) {
-        seen.add(tryout.id);
-        result.push(tryout);
-      }
-    }
-  }
-  return result;
-}
-
 export default function SoalPage() {
   const queryClient = useQueryClient();
   const topicsQuery = useQuestionTopics();
@@ -100,6 +87,11 @@ export default function SoalPage() {
     isFetching: isFetchingTryouts,
     error: tryoutsError,
   } = useTryouts();
+  const {
+    data: allTryouts = [],
+    isFetching: isFetchingAllTryouts,
+    error: allTryoutsError,
+  } = useAllTryouts();
 
   const [activePkgTab, setActivePkgTab] = useState<string | number>("trial");
   const [activeTryoutTab, setActiveTryoutTab] = useState<number | null>(null);
@@ -110,9 +102,9 @@ export default function SoalPage() {
   const [soalForm, setSoalForm] = useState<SoalFormState>(emptyForm);
   const [soalSavedMsg, setSoalSavedMsg] = useState("");
 
-  const trialSet = useMemo(
-    () => allTryouts(packageBanks).find((tryout) => tryout.isTrial) ?? null,
-    [packageBanks],
+  const trialTryouts = useMemo(
+    () => allTryouts.filter((tryout) => tryout.isTrial),
+    [allTryouts],
   );
 
   const paidPackageBanks = useMemo(() => {
@@ -128,17 +120,14 @@ export default function SoalPage() {
   const currentBank =
     activePkgTab && activePkgTab !== "trial"
       ? paidPackageBanks[String(activePkgTab)] || []
-      : [];
+      : trialTryouts;
 
   const currentTab =
     activeTryoutTab && currentBank.find((t) => t.id === activeTryoutTab)
       ? activeTryoutTab
       : currentBank[0]?.id;
 
-  const currentTryout =
-    activePkgTab === "trial"
-      ? trialSet
-      : (currentBank.find((t) => t.id === currentTab) ?? null);
+  const currentTryout = currentBank.find((t) => t.id === currentTab) ?? null;
 
   const currentTryoutId = currentTryout?.id ?? null;
   const { data: fetchedQuestions = [], isFetching: isFetchingQuestions } =
@@ -178,6 +167,7 @@ export default function SoalPage() {
   const invalidateTryouts = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["tryouts"] }),
+      queryClient.invalidateQueries({ queryKey: ["all-tryouts"] }),
       queryClient.invalidateQueries({
         queryKey: ["tryout-questions", currentTryoutId],
       }),
@@ -304,8 +294,8 @@ export default function SoalPage() {
     saveQuestionMutation.mutate();
   };
 
-  const isLoading = isFetchingPackages || isFetchingTryouts;
-  const pageError = packagesError || tryoutsError;
+  const isLoading = isFetchingPackages || isFetchingTryouts || isFetchingAllTryouts;
+  const pageError = packagesError || tryoutsError || allTryoutsError;
 
   return (
     <div>
@@ -399,14 +389,11 @@ export default function SoalPage() {
             )}
           </div>
           <div className="text-xs text-gray-400">
-            {trialSet?._questionCount || 0} soal · {trialSet?.durationMin || 15}{" "}
-            menit
+            {trialTryouts.length} tryout · {trialTryouts.reduce((sum, tryout) => sum + (tryout._questionCount ?? tryout.questions.length), 0)} soal total
           </div>
         </div>
 
-        {packages
-          .filter((p) => !p.isTrial)
-          .map((pkg) => {
+        {packages.map((pkg) => {
             const bank = paidPackageBanks[String(pkg.id)] || [];
             const totalSoal = bank.reduce(
               (sum, tryout) => sum + (tryout._questionCount || 0),
@@ -474,9 +461,32 @@ export default function SoalPage() {
       <Card className="p-0 overflow-hidden">
         {activePkgTab === "trial" && (
           <div>
+            <div aria-label="Pilihan tryout gratis" className="flex overflow-x-auto border-b border-gray-100 bg-gray-50">
+              {trialTryouts.map((tryout) => (
+                <button
+                  key={tryout.id}
+                  type="button"
+                  aria-pressed={currentTab === tryout.id}
+                  onClick={() => {
+                    setActiveTryoutTab(tryout.id);
+                    setDurationDraft(null);
+                  }}
+                  className={`shrink-0 border-b-2 px-4 py-2.5 text-sm font-bold transition-all focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-amber-600 ${
+                    currentTab === tryout.id
+                      ? "border-amber-500 bg-white text-amber-700"
+                      : "border-transparent text-gray-500"
+                  }`}
+                >
+                  {tryout.name}
+                  <span className="ml-1.5 rounded-md bg-amber-50 px-1.5 py-0.5 text-xs font-extrabold text-amber-700">
+                    {tryout._questionCount ?? tryout.questions.length}
+                  </span>
+                </button>
+              ))}
+            </div>
             <div className="px-4 sm:px-5 py-3.5 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">
-                <span className="font-bold text-brand">Trial Gratis</span>
+                <span className="font-bold text-brand">{currentTryout?.name ?? "Trial Gratis"}</span>
                 <span className="text-sm text-gray-400 ml-2">
                   {currentTryoutWithQuestions?.questions?.length || 0} soal
                 </span>
@@ -485,7 +495,7 @@ export default function SoalPage() {
                 variant="gold"
                 size="sm"
                 onClick={openAddSoal}
-                disabled={!trialSet}
+                disabled={!currentTryout}
               >
                 + Tambah Soal
               </Button>

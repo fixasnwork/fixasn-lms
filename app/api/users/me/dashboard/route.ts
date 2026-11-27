@@ -6,8 +6,7 @@
 // Per-tryout classification uses "latest attempt wins" semantics, matching the
 // inProgressByTryout map in app/(user)/tryout/page.tsx and the resume API.
 //
-// Resuming requires trial or paid access. Finished statistics use the
-// currently scheduled tryouts in paid packages.
+// Access comes from a direct trial, an available free package, or a paid purchase.
 //
 // Auth: requireActiveSession.
 // ─────────────────────────────────────────────
@@ -17,7 +16,7 @@ import { requireActiveSession } from '@/lib/routeAuth';
 import { getEmailFromSessionUser } from '@/lib/deviceSession';
 import { getUserRank } from '@/lib/ranking';
 import { isAvailable } from '@/lib/availability';
-import { activePaymentWhere } from '@/lib/packageAccess';
+import { activeFreePackageWhere, activePaymentWhere } from '@/lib/packageAccess';
 import type { DashboardOpenTryout, DashboardSummary } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -45,7 +44,7 @@ export async function GET(request: NextRequest) {
 
   const now = new Date();
   // Fetch verified, unexpired purchases. Package dates control sales only.
-  const [payments, trialTryouts, allAttempts, rankResult] = await Promise.all([
+  const [payments, freeTryouts, allAttempts, rankResult] = await Promise.all([
     prisma.payment.findMany({
       where: {
         userId,
@@ -65,7 +64,13 @@ export async function GET(request: NextRequest) {
       },
     }),
     prisma.tryout.findMany({
-      where: { isTrial: true, deletedAt: null },
+      where: {
+        deletedAt: null,
+        OR: [
+          { isTrial: true },
+          { packageTryouts: { some: { package: activeFreePackageWhere(now) } } },
+        ],
+      },
       select: dashboardTryoutSelect,
     }),
     prisma.tryoutAttempt.findMany({
@@ -95,7 +100,11 @@ export async function GET(request: NextRequest) {
   );
   const paidTryoutIds = new Set(paidTryouts.map(({ id }) => id));
   const activePaidTryouts = paidTryouts.filter((tryout) => isAvailable(tryout, now));
-  const activeTryoutIds = new Set(activePaidTryouts.map(({ id }) => id));
+  const freeTryoutIds = new Set(freeTryouts.map(({ id }) => id));
+  const activeTryoutIds = new Set([
+    ...activePaidTryouts.map(({ id }) => id),
+    ...freeTryouts.filter((tryout) => isAvailable(tryout, now)).map(({ id }) => id),
+  ]);
 
   // ── 4. Keep only attempts for active tryouts.
   const activeAttempts = allAttempts.filter((a) => activeTryoutIds.has(a.tryoutId));
@@ -113,12 +122,12 @@ export async function GET(request: NextRequest) {
     (a) => a.finishedAt === null &&
       (a.timeLeftSeconds != null || a._count.answers > 0) &&
       a.tryout.deletedAt === null &&
-      (a.tryout.isTrial || paidTryoutIds.has(a.tryoutId)),
+      (a.tryout.isTrial || freeTryoutIds.has(a.tryoutId) || paidTryoutIds.has(a.tryoutId)),
   );
   const resumableIds = new Set(resumableAttempts.map(({ tryoutId }) => tryoutId));
   const finishedIds = new Set(allAttempts.filter((attempt) => attempt.finishedAt !== null).map(({ tryoutId }) => tryoutId));
   const openById = new Map(activePaidTryouts.map((tryout) => [tryout.id, tryout]));
-  for (const tryout of trialTryouts) {
+  for (const tryout of freeTryouts) {
     if (isAvailable(tryout, now)) openById.set(tryout.id, tryout);
   }
   const openTryouts = [...openById.values()]
